@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="specKitGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#247bbf;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a5a8a;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="30" fill="url(#specKitGradient)" />
+  <!-- Document/spec icon -->
+  <path d="M22 18 L42 18 L42 46 L22 46 Z" fill="none" stroke="white" stroke-width="2.5" stroke-linejoin="round" />
+  <path d="M28 24 L36 24" stroke="white" stroke-width="2" stroke-linecap="round" />
+  <path d="M28 30 L36 30" stroke="white" stroke-width="2" stroke-linecap="round" />
+  <path d="M28 36 L34 36" stroke="white" stroke-width="2" stroke-linecap="round" />
+  <path d="M28 42 L32 42" stroke="white" stroke-width="2" stroke-linecap="round" />
+  <!-- Checkmark for verification -->
+  <path d="M38 22 L41 25 L46 20" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

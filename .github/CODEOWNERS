@@ -1,0 +1,46 @@
+# CODEOWNERS - Reglas de ownership para code reviews obligatorias
+# Estos usuarios/equipos serán solicitados automáticamente como reviewers
+
+# Global owners (requeridos para todo)
+* @sg-sst-team
+
+# Configuración raíz
+package.json @sg-sst-team
+pnpm-lock.yaml @sg-sst-team
+.eslintrc.js @sg-sst-team
+.prettierrc @sg-sst-team
+.commitlint.config.js @sg-sst-team
+.husky/ @sg-sst-team
+lint-staged.config.js @sg-sst-team
+.editorconfig @sg-sst-team
+.nvmrc @sg-sst-team
+.gitignore @sg-sst-team
+
+# GitHub workflows
+.github/workflows/ @sg-sst-team
+.github/dependabot.yml @sg-sst-team
+.github/CODEOWNERS @sg-sst-team
+.github/pull_request_template.md @sg-sst-team
+.github/ISSUE_TEMPLATE/ @sg-sst-team
+
+# Documentación
+docs/ @sg-sst-team
+
+# Server (Backend)
+server/package.json @sg-sst-team
+server/tsconfig.json @sg-sst-team
+server/eslint.config.js @sg-sst-team
+server/vitest.config.ts @sg-sst-team
+server/src/ @sg-sst-team
+
+# Web (Frontend)
+web/package.json @sg-sst-team
+web/tsconfig.json @sg-sst-team
+web/tsconfig.node.json @sg-sst-team
+web/eslint.config.js @sg-sst-team
+web/vite.config.ts @sg-sst-team
+web/vitest.config.ts @sg-sst-team
+web/playwright.config.ts @sg-sst-team
+web/src/ @sg-sst-team
+web/index.html @sg-sst-team
+web/public/ @sg-sst-team

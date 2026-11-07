@@ -1,0 +1,53 @@
+{
+  "name": "sg-sst-micro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SG-SST para microempresa de servicios de instalacion electronica (CCTV, alarmas, control de acceso, cableado). Colombia.",
+  "scripts": {
+    "dev:api": "pnpm -w server run dev",
+    "dev:web": "pnpm -w web run dev",
+    "dev": "concurrently \"pnpm run dev:api\" \"pnpm run dev:web\"",
+    "build": "pnpm -w web run build && pnpm -w server run build",
+    "start": "pnpm -w server run start",
+    "seed": "pnpm -w server run seed",
+    "reset": "pnpm -w server run reset",
+    "test": "pnpm -w server run test && pnpm -w web run test",
+    "test:watch": "concurrently \"pnpm -w server run test:watch\" \"pnpm -w web run test:watch\"",
+    "test:coverage": "pnpm -w server run test:coverage && pnpm -w web run test:coverage",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,md,yml,yaml}\"",
+    "typecheck": "pnpm -w server run typecheck && pnpm -w web run typecheck",
+    "prepare": "husky install",
+    "release": "standard-version",
+    "release:minor": "standard-version --release-as minor",
+    "release:major": "standard-version --release-as major",
+    "release:patch": "standard-version --release-as patch"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.3.0",
+    "@commitlint/config-conventional": "^19.2.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.14.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "prettier": "^3.4.2",
+    "standard-version": "^9.5.0",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

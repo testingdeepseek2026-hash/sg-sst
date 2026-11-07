@@ -1,0 +1,76 @@
+{
+  "meta": {
+    "title": "Spec Kit",
+    "description": "Procesos estructurados para agentes de codificación IA - Desarrollo dirigido por especificaciones, corrección de errores y evaluación de ideas"
+  },
+  "tools": {
+    "specKitInit": {
+      "name": "Inicializar proyecto Spec Kit",
+      "description": "Inicializa un nuevo proyecto Spec Kit en el espacio de trabajo"
+    },
+    "specKitConstitution": {
+      "name": "Crear constitución",
+      "description": "Crea la constitución del proyecto con principios de calidad de código, pruebas y mantenibilidad"
+    },
+    "specKitSpecify": {
+      "name": "Especificar característica",
+      "description": "Define qué construir y por qué - crea una especificación de característica"
+    },
+    "specKitPlan": {
+      "name": "Planificar implementación",
+      "description": "Convierte la especificación en un plan técnico con tareas"
+    },
+    "specKitTasks": {
+      "name": "Generar tareas",
+      "description": "Desglosa el plan en tareas implementables"
+    },
+    "specKitImplement": {
+      "name": "Implementar característica",
+      "description": "Implementa la característica siguiendo el plan y las tareas"
+    },
+    "specKitConverge": {
+      "name": "Converger implementación",
+      "description": "Verifica que la implementación coincide con la especificación e itera hasta converger"
+    },
+    "specKitBugAssess": {
+      "name": "Evaluar error",
+      "description": "Evalúa la causa de un error y crea un informe de error"
+    },
+    "specKitBugFix": {
+      "name": "Corregir error",
+      "description": "Implementa una corrección para el error evaluado"
+    },
+    "specKitBugTest": {
+      "name": "Probar corrección",
+      "description": "Verifica que la corrección resuelve el problema original"
+    },
+    "specKitAssessIntake": {
+      "name": "Recopilar idea",
+      "description": "Recopila información inicial sobre una idea para evaluar"
+    },
+    "specKitAssessResearch": {
+      "name": "Investigar idea",
+      "description": "Investiga la idea para recopilar evidencia"
+    },
+    "specKitAssessDefine": {
+      "name": "Definir evaluación",
+      "description": "Define los criterios y alcance de la evaluación"
+    },
+    "specKitAssessShape": {
+      "name": "Dar forma a la evaluación",
+      "description": "Da forma a la evaluación con evidencia y análisis"
+    },
+    "specKitAssessDecide": {
+      "name": "Decidir sobre idea",
+      "description": "Toma una decisión de continuar, clarificar o descartar la idea"
+    },
+    "specKitExtensionAdd": {
+      "name": "Agregar extensión",
+      "description": "Agrega una extensión de Spec Kit (bug, assess, etc.)"
+    },
+    "specKitWorkflowRun": {
+      "name": "Ejecutar flujo de trabajo",
+      "description": "Ejecuta un flujo de trabajo de Spec Kit"
+    }
+  }
+}

@@ -1,0 +1,3 @@
+- insert:
+    - id: spec-kit
+      name: '@local/spec-kit'

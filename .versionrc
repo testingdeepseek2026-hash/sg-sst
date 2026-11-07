@@ -1,0 +1,36 @@
+{
+  "types": [
+    { "type": "feat", "section": "✨ Features" },
+    { "type": "fix", "section": "🐛 Bug Fixes" },
+    { "type": "docs", "section": "📝 Documentation" },
+    { "type": "style", "section": "🎨 Styles" },
+    { "type": "refactor", "section": "♻️ Refactoring" },
+    { "type": "perf", "section": "⚡ Performance" },
+    { "type": "test", "section": "✅ Tests" },
+    { "type": "chore", "section": "🔧 Chores" },
+    { "type": "build", "section": "🏗️ Build" },
+    { "type": "ci", "section": "🤖 CI/CD" },
+    { "type": "revert", "section": "⏪ Reverts" }
+  ],
+  "commitUrlFormat": "https://github.com/{{ORG}}/{{REPO}}/commit/{{HASH}}",
+  "compareUrlFormat": "https://github.com/{{ORG}}/{{REPO}}/compare/{{PREVIOUS_TAG}}...{{CURRENT_TAG}}",
+  "issueUrlFormat": "https://github.com/{{ORG}}/{{REPO}}/issues/{{ID}}",
+  "bumpFiles": [
+    "package.json",
+    "server/package.json",
+    "web/package.json"
+  ],
+  "scripts": {
+    "prebump": "pnpm lint && pnpm typecheck && pnpm test",
+    "postbump": "git push --follow-tags origin main",
+    "postchangelog": "git add CHANGELOG.md"
+  },
+  "skip": {
+    "bump": false,
+    "changelog": false,
+    "commit": false,
+    "tag": false
+  },
+  "releaseCommitMessageFormat": "chore(release): {{currentTag}}",
+  "changelogHeader": "# Changelog\n\nAll notable changes to this project will be documented in this file.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\nand this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n"
+}
