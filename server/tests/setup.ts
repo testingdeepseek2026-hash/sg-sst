@@ -1,5 +1,7 @@
-import { vi } from 'vitest';
 import { DatabaseSync } from 'node:sqlite';
+
+import { vi } from 'vitest';
+
 import { runMigrations } from '../src/lib/db.js';
 
 vi.mock('node:sqlite', () => process.getBuiltinModule('node:sqlite'));

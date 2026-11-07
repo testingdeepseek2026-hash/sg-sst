@@ -1,5 +1,6 @@
 // Web test setup
 import { vi } from 'vitest';
+
 import '@testing-library/jest-dom';
 import React from 'react';
 
@@ -64,8 +65,9 @@ Object.defineProperty(window, 'sessionStorage', { value: sessionStorageMock });
 global.fetch = vi.fn();
 
 // Custom render with providers
-import { render, RenderOptions } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+
+import { render, RenderOptions } from '@testing-library/react';
 
 interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   initialPath?: string;

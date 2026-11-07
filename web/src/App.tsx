@@ -3,19 +3,19 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 
 import Layout from './components/Layout';
 import { api } from './lib/api';
-import Incidentes from './pages/Incidentes';
-import Inspecciones from './pages/Inspecciones';
-import Altura from './pages/Altura';
-import Documentos from './pages/Documentos';
 import Acciones from './pages/Acciones';
-import Auditorias from './pages/Auditorias';
 import Alertas from './pages/Alertas';
+import Altura from './pages/Altura';
+import Auditorias from './pages/Auditorias';
 import Dashboard from './pages/Dashboard';
+import Documentos from './pages/Documentos';
 import Empresa from './pages/Empresa';
 import Estandares from './pages/Estandares';
 import Hazards from './pages/Hazards';
 import Importar from './pages/Importar';
+import Incidentes from './pages/Incidentes';
 import Indicadores from './pages/Indicadores';
+import Inspecciones from './pages/Inspecciones';
 import Login from './pages/Login';
 import Planes from './pages/Planes';
 import Politica from './pages/Politica';

@@ -1,8 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import PDFDocument from 'pdfkit';
-import { z } from 'zod';
 
-import { getCorrectiveActions } from '../services/actions.js';
 import { getCompany } from '../services/companies.js';
 import { getDocuments } from '../services/documents.js';
 import { getHazardAssessments } from '../services/hazards.js';
@@ -12,7 +10,6 @@ import { getAnnualPlan } from '../services/plans.js';
 import { getActivePolicy, getPolicies, getObjectives } from '../services/policies.js';
 import { getStandards, stdCumplimiento } from '../services/standards.js';
 import * as UsersService from '../services/users.js';
-import { getWorkers } from '../services/workers.js';
 
 function pdfHandler(
   reply: any,

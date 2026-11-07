@@ -8,7 +8,6 @@ import {
   crearCertificado,
   updateCert,
   deleteCert,
-  getVencimientosProximos as getCertVencimientos,
   calcularVencimientoAlturas,
   validarCertificadoAlturas
 } from '../services/workers_certs.js';
@@ -19,7 +18,6 @@ import {
   updateEpp,
   deleteEpp,
   firmarEntregaEpp,
-  getVencimientosProximos as getEppVencimientos,
   getEppSinFirmar,
   getWorkerVencimientos,
   EPP_ITEMS_COMUNES
@@ -29,8 +27,7 @@ import {
   getExamById,
   createExam,
   updateExam,
-  deleteExam,
-  getVencimientosProximos as getExamVencimientos
+  deleteExam
 } from '../services/workers_exams.js';
 
 const examSchema = z.object({
@@ -76,7 +73,7 @@ const workersItemsRoutes: FastifyPluginAsync = async (fastify) => {
   // ===== EXÁMENES MÉDICOS =====
   
   // GET /workers/:wid/exams - listar exámenes de un trabajador (sin datos sensibles por defecto)
-  fastify.get('/workers/:wid/exams', async (request, reply) => {
+  fastify.get('/workers/:wid/exams', async (request) => {
     const { wid } = request.params as { wid: string };
     const userId = (request as any).userId as string | undefined;
     const me = userId ? UsersService.getUserById(fastify.db, userId) : undefined;
@@ -85,9 +82,9 @@ const workersItemsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // GET /workers/exams/ingreso - verificar si tiene examen de ingreso
-  fastify.get('/workers/exams/ingreso', async (request, reply) => {
+  fastify.get('/workers/exams/ingreso', async (request, _reply) => {
     const wid = (request as any).userId; // worker autenticado consulta el suyo
-    if (!wid) return reply.code(401).send({ error: 'No autenticado' });
+    if (!wid) return _reply.code(401).send({ error: 'No autenticado' });
     const exam = fastify.db.prepare('SELECT * FROM worker_exams WHERE worker_id = ? AND tipo = ? ORDER BY fecha DESC LIMIT 1').get(wid, 'ingreso');
     return { tiene_examen_ingreso: !!exam, examen: exam ? { id: exam.id, fecha: exam.fecha, vencimiento: exam.vencimiento } : null };
   });

@@ -3,9 +3,6 @@ import { z } from 'zod';
 
 import * as UsersService from '../services/users.js';
 import { getWorkers, getWorkerById, createWorker, updateWorker, deleteWorker } from '../services/workers.js';
-import { getCertsByWorker, crearCertificado, deleteCert } from '../services/workers_certs.js';
-import { getEppByWorker, createEpp, deleteEpp } from '../services/workers_epp.js';
-import { getExamsByWorker, createExam, deleteExam } from '../services/workers_exams.js';
 
 const workerSchema = z.object({
   tipo_documento: z.string().default('CC'),

@@ -1,5 +1,4 @@
 import { FastifyPluginAsync } from 'fastify';
-import { z } from 'zod';
 
 import { createTransporter } from '../lib/email.js';
 import { buildAlertEmailHtml, buildAlertEmailText, sendAlertEmail } from '../lib/email.js';

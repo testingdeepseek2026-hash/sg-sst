@@ -74,7 +74,7 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
     const uid = (request as any).userId;
     const me = UsersService.getUserById(fastify.db, uid!);
     if (!me || me.rol !== 'administrador') return reply.code(403).send({ error: 'Solo administrador' });
-    return UsersService.getAllUsers(fastify.db).map(({ password_hash, ...u }) => u);
+    return UsersService.getAllUsers(fastify.db).map(({ password_hash: _password_hash, ...u }) => u);
   });
 
   fastify.put('/users/:id', async (request, reply) => {
@@ -91,7 +91,7 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
       usuario_id: uid, usuario_email: me.email, accion: 'editar', entidad: 'users', entidad_id: id,
       valores_anteriores: prev, valores_nuevos: patch.data
     });
-    const { password_hash, ...u } = updated;
+    const { password_hash: _password_hash, ...u } = updated;
     return u;
   });
 
