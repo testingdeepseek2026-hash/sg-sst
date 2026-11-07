@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+
 import { getAnnualPlan, createAnnualPlan, updateAnnualPlan, deleteAnnualPlan, getTrainingSchedule, createTrainingSchedule, updateTrainingSchedule, deleteTrainingSchedule } from '../services/plans.js';
 import * as UsersService from '../services/users.js';
 

@@ -1,17 +1,8 @@
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { api } from './lib/api';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+
 import Layout from './components/Layout';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Empresa from './pages/Empresa';
-import Usuarios from './pages/Usuarios';
-import Roles from './pages/Roles';
-import Trabajadores from './pages/Trabajadores';
-import Hazards from './pages/Hazards';
-import Estandares from './pages/Estandares';
-import Planes from './pages/Planes';
-import Indicadores from './pages/Indicadores';
+import { api } from './lib/api';
 import Incidentes from './pages/Incidentes';
 import Inspecciones from './pages/Inspecciones';
 import Altura from './pages/Altura';
@@ -19,8 +10,18 @@ import Documentos from './pages/Documentos';
 import Acciones from './pages/Acciones';
 import Auditorias from './pages/Auditorias';
 import Alertas from './pages/Alertas';
+import Dashboard from './pages/Dashboard';
+import Empresa from './pages/Empresa';
+import Estandares from './pages/Estandares';
+import Hazards from './pages/Hazards';
 import Importar from './pages/Importar';
+import Indicadores from './pages/Indicadores';
+import Login from './pages/Login';
+import Planes from './pages/Planes';
 import Politica from './pages/Politica';
+import Roles from './pages/Roles';
+import Trabajadores from './pages/Trabajadores';
+import Usuarios from './pages/Usuarios';
 
 const PUBLIC_PAGES = ['/login'];
 

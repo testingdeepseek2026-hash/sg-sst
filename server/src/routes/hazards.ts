@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+
 import { getHazardCatalog, getHazardCatalogByCategory, createHazardCatalogItem, getHazardAssessments, createHazardAssessment, updateHazardAssessment, deleteHazardAssessment } from '../services/hazards.js';
 import * as UsersService from '../services/users.js';
 

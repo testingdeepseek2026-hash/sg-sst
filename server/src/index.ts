@@ -1,38 +1,42 @@
-import Fastify from 'fastify';
-import cors from '@fastify/cors';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
 import cookie from '@fastify/cookie';
+import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import staticPlugin from '@fastify/static';
-import { join } from 'node:path';
-import { existsSync } from 'node:fs';
-import { openDb, runMigrations, DB_PATH } from './lib/db.js';
-import { genId, nowISO } from './lib/utils.js';
-import { seedAll } from './seed/index.js';
+import Fastify from 'fastify';
+
+import { DB_PATH, openDb, runMigrations } from './lib/db.js';
 import { startAlertScheduler } from './lib/scheduler.js';
-import './types.js';
+import alertsRoutes from './routes/alerts.js';
 import companiesRoutes from './routes/companies.js';
-import usersRoutes from './routes/users.js';
+import {
+  actionsRoutes,
+  auditsRoutes,
+  documentsRoutes,
+} from './routes/documents_actions_audits_alerts.js';
+import exportRoutes from './routes/export.js';
+import hazardsRoutes from './routes/hazards.js';
+import importRoutes from './routes/import.js';
+import incidentsRoutes from './routes/incidents.js';
+import indicatorsRoutes from './routes/indicators.js';
+import inspectionsRoutes, { alturaRoutes } from './routes/inspections.js';
+import plansRoutes from './routes/plans.js';
+import policiesRoutes from './routes/policies.js';
 import rolesRoutes from './routes/roles.js';
+import standardsRoutes from './routes/standards.js';
+import usersRoutes from './routes/users.js';
 import workersRoutes from './routes/workers.js';
 import workersItemsRoutes from './routes/workers_items.js';
-import hazardsRoutes from './routes/hazards.js';
-import standardsRoutes from './routes/standards.js';
-import plansRoutes from './routes/plans.js';
-import indicatorsRoutes from './routes/indicators.js';
-import incidentsRoutes from './routes/incidents.js';
-import inspectionsRoutes from './routes/inspections.js';
-import { alturaRoutes } from './routes/inspections.js';
-import { documentsRoutes, actionsRoutes, auditsRoutes } from './routes/documents_actions_audits_alerts.js';
-import alertsRoutes from './routes/alerts.js';
-import exportRoutes from './routes/export.js';
-import importRoutes from './routes/import.js';
-import policiesRoutes from './routes/policies.js';
+import { seedAll } from './seed/index.js';
+import './types.js';
 
 const app = Fastify({ logger: true });
 
 await app.register(cors, {
   origin: ['http://localhost:5173', 'http://localhost:4000'],
-  credentials: true
+  credentials: true,
 });
 await app.register(cookie, { secret: process.env.SESSION_SECRET ?? 'sg-sst-dev-secret-change-me' });
 await app.register(multipart, { limits: { fields: 50, files: 20, fileSize: 10 * 1024 * 1024 } });

@@ -1,8 +1,9 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { generateAlerts, getAlerts, getAlertStats, getPendingAlertsForSending, markAsSent, deleteAlert } from '../services/alerts.js';
+
 import { createTransporter } from '../lib/email.js';
 import { buildAlertEmailHtml, buildAlertEmailText, sendAlertEmail } from '../lib/email.js';
+import { generateAlerts, getAlerts, getAlertStats, getPendingAlertsForSending, markAsSent, deleteAlert } from '../services/alerts.js';
 import * as UsersService from '../services/users.js';
 
 const alertsRoutes: FastifyPluginAsync = async (fastify) => {

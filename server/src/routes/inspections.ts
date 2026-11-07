@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+
 import { getInspections, getInspectionById, createInspection, updateInspection, deleteInspection } from '../services/inspections.js';
 import { getAlturaPermits, createAlturaPermit, updateAlturaPermit, deleteAlturaPermit } from '../services/inspections.js';
 import { getATS, createATS, deleteATS } from '../services/inspections.js';

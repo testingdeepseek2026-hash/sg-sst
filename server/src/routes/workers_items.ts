@@ -1,13 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import {
-  getExamsByWorker,
-  getExamById,
-  createExam,
-  updateExam,
-  deleteExam,
-  getVencimientosProximos as getExamVencimientos
-} from '../services/workers_exams.js';
+
+import * as UsersService from '../services/users.js';
 import {
   getCertsByWorker,
   getCertById,
@@ -30,7 +24,14 @@ import {
   getWorkerVencimientos,
   EPP_ITEMS_COMUNES
 } from '../services/workers_epp.js';
-import * as UsersService from '../services/users.js';
+import {
+  getExamsByWorker,
+  getExamById,
+  createExam,
+  updateExam,
+  deleteExam,
+  getVencimientosProximos as getExamVencimientos
+} from '../services/workers_exams.js';
 
 const examSchema = z.object({
   worker_id: z.string(),

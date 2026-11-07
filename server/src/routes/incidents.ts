@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+
 import { getIncidents, getIncidentById, createIncident, updateIncident, deleteIncident } from '../services/incidents.js';
 import * as UsersService from '../services/users.js';
 

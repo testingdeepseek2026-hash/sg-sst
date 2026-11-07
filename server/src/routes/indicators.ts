@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+
 import { getIndicators, createIndicator, updateIndicator, deleteIndicator } from '../services/indicators.js';
 import * as UsersService from '../services/users.js';
 

@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
+
 import { FastifyInstance, FastifyRequest } from 'fastify';
 
 declare module 'fastify' {

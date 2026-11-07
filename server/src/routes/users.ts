@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto';
+
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+
 import * as UsersService from '../services/users.js';
-import { createHash } from 'node:crypto';
 
 const bodySchema = z.object({
   email: z.string().email(),

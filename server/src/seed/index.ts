@@ -1,15 +1,17 @@
 import { DatabaseSync } from 'node:sqlite';
+
 import { getCompany, estandarSetPorRiesgo } from '../services/companies.js';
-import * as UsersService from '../services/users.js';
-import { createRole } from '../services/roles.js';
-import { createWorker, getWorkerByDocumento } from '../services/workers.js';
-import { createStandard } from '../services/standards.js';
 import { createHazardCatalogItem } from '../services/hazards.js';
-import { hazardCatalogSeed } from './hazard-catalog-seed.js';
 import { createPolicy, createObjective, getActivePolicy } from '../services/policies.js';
-import { createExam } from '../services/workers_exams.js';
+import { createRole } from '../services/roles.js';
+import { createStandard } from '../services/standards.js';
+import * as UsersService from '../services/users.js';
+import { createWorker, getWorkerByDocumento } from '../services/workers.js';
 import { crearCertificado } from '../services/workers_certs.js';
 import { createEpp } from '../services/workers_epp.js';
+import { createExam } from '../services/workers_exams.js';
+
+import { hazardCatalogSeed } from './hazard-catalog-seed.js';
 
 export async function seedAll(db: DatabaseSync) {
   // Empresa por defecto (riesgo V, 3 trabajadores, estandar_set 32)

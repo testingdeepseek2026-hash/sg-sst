@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
+
 import { openDb, runMigrations } from '../lib/db.js';
 
 async function main() {

@@ -1,5 +1,7 @@
 import { CronJob } from 'cron';
+
 import { generateAlerts, getPendingAlertsForSending, markAsSent, Alert } from '../services/alerts.js';
+
 import { createTransporter } from './email.js';
 
 interface AlertWithEmail extends Alert {

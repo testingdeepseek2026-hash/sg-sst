@@ -1,12 +1,12 @@
 /** @type {import('eslint').Linter.FlatConfig[]} */
+import tsParser from '@typescript-eslint/parser';
+import importPlugin from 'eslint-plugin-import';
+import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import reactRefreshPlugin from 'eslint-plugin-react-refresh';
-import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
-import importPlugin from 'eslint-plugin-import';
-import typescriptEslint from 'typescript-eslint';
 import globals from 'globals';
-import tsParser from '@typescript-eslint/parser';
+import typescriptEslint from 'typescript-eslint';
 
 export default [
   {
@@ -89,10 +89,7 @@ export default [
       // Custom rules
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
 
       // Import ordering
       'import/order': [
@@ -152,12 +149,21 @@ export default [
         ecmaFeatures: {
           jsx: true,
         },
+        projectService: false,
       },
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       'no-console': 'off',
       'import/order': 'off',
+    },
+  },
+  {
+    files: ['**/*config.ts', '**/*setup.{ts,tsx}', '**/tests/**/*.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+      },
     },
   },
 ];

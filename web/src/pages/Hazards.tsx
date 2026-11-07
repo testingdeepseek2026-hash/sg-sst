@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+
 import { api } from '../lib/api';
 
 type HazardCategory = 'alturas' | 'electrico' | 'herramientas' | 'escaleras' | 'ergonomia' | 'conduccion' | 'cielos_rasos' | 'confinados' | 'locativo' | 'otro';
