@@ -5,7 +5,7 @@
 | Herramienta | Versión | Instalación |
 |-------------|---------|-------------|
 | Node.js | 22.x | `nvm install 22` (ver `.nvmrc`) |
-| pnpm | 9.x | `corepack enable && corepack prepare pnpm@9 --activate` |
+| pnpm | 9.15.0 | `corepack enable && corepack prepare pnpm@9.15.0 --activate` |
 | Git | 2.x | Sistema |
 | SQLite | 3.x | Incluido en Node 22 (`node:sqlite`) |
 

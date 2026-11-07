@@ -39,9 +39,12 @@ describe('Política SST Page', () => {
     vi.clearAllMocks();
     vi.spyOn(window, 'prompt').mockReturnValue('Responsable SST');
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    (api.get as vi.Mock).mockImplementation((path: string) => Promise.resolve(
-      path === '/policies' ? mockPolicies : { ...mockPolicies[0], objectives: mockObjectives }
-    ));
+    (api.get as vi.Mock).mockResolvedValue(
+      mockPolicies.map(policy => ({
+        ...policy,
+        objectives: policy.id === 'p1' ? mockObjectives : [],
+      }))
+    );
     (api.post as vi.Mock).mockResolvedValue({});
     (api.put as vi.Mock).mockResolvedValue({});
     (api.delete as vi.Mock).mockResolvedValue(null);
@@ -67,6 +70,17 @@ describe('Política SST Page', () => {
     expect(await screen.findByText('Capacitar 100% trabajadores')).toBeInTheDocument();
     expect(await screen.findByText('EN PROCESO')).toBeInTheDocument();
     expect(await screen.findByText('CUMPLIDO')).toBeInTheDocument();
+  });
+
+  it('debe mostrar el estado vacío cuando no hay política vigente', async () => {
+    (api.get as vi.Mock).mockResolvedValue(
+      mockPolicies.map(policy => ({ ...policy, estado: 'borrador', objectives: [] }))
+    );
+    render(<Politica />);
+
+    expect(await screen.findByRole('heading', { name: 'Objetivos SST - Sin política vigente' })).toBeInTheDocument();
+    expect(screen.getByText('No hay política vigente.')).toBeInTheDocument();
+    expect(api.get).toHaveBeenCalledTimes(1);
   });
 
   it('debe listar histórico de políticas', async () => {
@@ -109,11 +123,13 @@ describe('Política SST Page', () => {
   });
 
   it('debe firmar política y ponerla vigente', async () => {
-    (api.get as vi.Mock).mockImplementation((path: string) => Promise.resolve(
-      path === '/policies'
-        ? [...mockPolicies, { id: 'p3', version: 3, titulo: 'Borrador', contenido: 'Borrador de política', estado: 'borrador' }]
-        : { ...mockPolicies[0], objectives: mockObjectives }
-    ));
+    (api.get as vi.Mock).mockResolvedValue([
+      ...mockPolicies.map(policy => ({
+        ...policy,
+        objectives: policy.id === 'p1' ? mockObjectives : [],
+      })),
+      { id: 'p3', version: 3, titulo: 'Borrador', contenido: 'Borrador de política', estado: 'borrador', objectives: [] },
+    ]);
     render(<Politica />);
     
     await screen.findByText('Política SST 2026');
@@ -225,11 +241,10 @@ describe('Política SST Page', () => {
       { id: 'p3', version: 2, titulo: 'Política SST 2026 (v2)', contenido: 'Nueva versión', estado: 'borrador', firmado_por: null, fecha_firma: null, fecha_divulgacion: null },
     ];
     
-    (api.get as vi.Mock).mockImplementation((path: string) => Promise.resolve(
-      path === '/policies'
-        ? policiesWithDraft
-        : { ...policiesWithDraft[0], objectives: mockObjectives }
-    ));
+    (api.get as vi.Mock).mockResolvedValue(policiesWithDraft.map(policy => ({
+      ...policy,
+      objectives: policy.id === 'p1' ? mockObjectives : [],
+    })));
     
     render(<Politica />);
     

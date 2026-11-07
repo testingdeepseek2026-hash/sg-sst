@@ -87,6 +87,17 @@ describe('API Client (lib/api)', () => {
     await expect(api.get('/test')).rejects.toThrow('No autenticado');
   });
 
+  it('debe rechazar errores HTTP y propagar el mensaje de la API', async () => {
+    (global.fetch as vi.Mock).mockResolvedValue({
+      ok: false,
+      status: 404,
+      headers: { get: () => 'application/json' },
+      json: () => Promise.resolve({ error: 'No hay política vigente' }),
+    });
+
+    await expect(api.get('/policies/active')).rejects.toThrow('No hay política vigente');
+  });
+
   it('debe manejar respuesta PDF', async () => {
     const pdfBuffer = new ArrayBuffer(100);
     (global.fetch as vi.Mock).mockResolvedValue({
@@ -139,6 +150,20 @@ describe('API Client (lib/api)', () => {
       // No Content-Type header para FormData (browser lo setea con boundary)
     }));
     expect(result).toEqual({ fileId: 'f1' });
+  });
+
+  it('debe rechazar errores HTTP al subir archivos', async () => {
+    (global.fetch as vi.Mock).mockResolvedValue({
+      ok: false,
+      status: 403,
+      headers: { get: () => 'application/json' },
+      json: () => Promise.resolve({ error: 'Solo administrador' }),
+    });
+
+    const formData = new FormData();
+    formData.append('file', new Blob(['test']), 'test.pdf');
+
+    await expect(api.postFile('/upload', formData)).rejects.toThrow('Solo administrador');
   });
 
   it('debe incluir credentials include en todas las requests', async () => {

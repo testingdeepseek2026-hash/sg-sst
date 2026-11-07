@@ -20,8 +20,11 @@ Estado técnico al cierre de la última sesión:
 - El setup de pruebas backend usa SQLite nativo. Se corrigieron fixtures y contratos obsoletos, además de defectos encontrados en actualización de exámenes, fechas de certificados, consultas de alertas y protección de datos médicos.
 - Pruebas focalizadas backend: 80/80 entre servicios de trabajadores/alertas y migraciones; 53/53 en rutas de políticas, peligros y trabajadores.
 - Suite completa backend: 193/193 pruebas pasan.
-- Suite frontend: 46/46 pruebas pasan en 7 archivos. Se alinearon los tests de Login, Dashboard, Estándares, Política, Peligros y Trabajadores con las respuestas JSON directas y las rutas/controles actuales; `npm run typecheck` de web pasa. Se retiró `tests/hooks/useAuth.test.ts`, que importaba un hook/contexto inexistentes y probaba una interfaz anterior. Los typechecks y builds de producción de servidor y web constan como exitosos en la validación técnica inicial.
-- `pnpm` no está disponible en PATH; ejecutar temporalmente `npm test`, `npm run typecheck` y `npm run build` desde `server` y `web`.
+- Instalación del workspace con `corepack pnpm install --frozen-lockfile`: pasa con Node 24.16.0 y pnpm 9.15.0; Node 22 es la versión objetivo de `.nvmrc` y CI, por el uso de `node:sqlite`. El lockfile raíz refleja los tres workspaces y las dependencias configuradas de lint/formato.
+- Suite frontend actual: 49/49 pruebas en 7 archivos. Se alinearon los tests de Login, Dashboard, Estándares, Política, Peligros y Trabajadores con las respuestas JSON directas y las rutas/controles actuales; se añadió cobertura para errores HTTP y para la vista de Política sin versión vigente. Se retiró `tests/hooks/useAuth.test.ts`, que importaba un hook/contexto inexistentes y probaba una interfaz anterior.
+- Typechecks de servidor y web, builds de producción de ambos workspaces y suite backend 193/193 pasan. `web/src/lib/api.ts` ahora propaga los estados HTTP no exitosos, incluidos errores de carga de archivos. Política toma la versión vigente de la lista de políticas para no depender de un 404 cuando no hay ninguna vigente.
+- Se recorrieron las 17 rutas principales; la vista Política se recargó en navegador y mostró el estado vacío esperado sin solicitar `/policies/active`. Permanecen advertencias conocidas de React Router y de `listen` en Fastify.
+- La configuración ya declara las dependencias de sus plugins Prettier/ESLint y excluye `**/dist/**` del lint. Aun así, el lint global sigue fallando con 258 errores y 500 advertencias, y `format:check` reporta 103 archivos sin formato. No se aplicó un reformateo masivo ni se corrigió deuda ajena a los cambios actuales; cerrar esta línea base sigue pendiente.
 - Sigue pendiente confirmar con la empresa clase de riesgo, número de trabajadores y demás datos; la clase V de la semilla es demostrativa y no debe usarse como dato real.
 - Existe una semilla de demostración que asigna clase de riesgo V. No asumir que esa clase corresponde a la empresa real; confirmar con el usuario y/o documentación de la ARL antes de configurar estándares o usar resultados como evidencia.
 - La PWA tiene configuración de caché, pero eso no demuestra operación sin conexión ni sincronización de formularios.
@@ -65,12 +68,13 @@ Las estimaciones son días-persona de desarrollo, no fechas calendario. No inclu
 
 **Estimación:** 3–6 días-persona.
 
-- [ ] Asegurar instalación reproducible con la versión de Node y pnpm documentadas.
+- [x] Asegurar instalación reproducible con la versión de Node y pnpm documentadas (`corepack pnpm install --frozen-lockfile`).
 - [x] Hacer que las migraciones se resuelvan correctamente desde desarrollo, pruebas y build de producción; cubrir columnas de alertas para bases existentes.
 - [x] Corregir el setup y mocks de pruebas para reflejar los contratos reales de API.
 - [x] Ejecutar y estabilizar pruebas unitarias, integración y componentes; registrar fallos restantes y su causa.
 - [x] Ejecutar typecheck y builds de frontend y servidor sin errores.
-- [ ] Revisar errores de consola/API y flujos principales, sin cambiar comportamiento no relacionado.
+- [x] Revisar errores de consola/API y flujos principales, sin cambiar comportamiento no relacionado.
+- [ ] Resolver la línea base de lint y formato antes de cerrar los controles de calidad de CI.
 
 **Aceptación:** instalación limpia, migraciones repetibles, typecheck/build exitosos y pruebas reproducibles con resultados documentados.
 
@@ -171,3 +175,4 @@ Con el código actual como punto de partida, el esfuerzo restante se estima prel
 | 2026-11-07 | Plan inicial y revisión preliminar | Código y módulos base presentes; suites de prueba backend/frontend fallan en la ejecución observada. Iniciar por Fase 0 y reproducir la línea base de Fase 1. |
 | 2026-11-07 | Estabilización técnica inicial | Migraciones compatibles, harness SQLite y defectos acotados de trabajadores/alertas corregidos; suite backend 193/193 y typecheck/build de ambos proyectos pasan. Frontend 64 fallos/9 éxitos: actualizar primero los mocks al JSON directo de `api.get`, luego alinear rutas/expectativas que correspondan a la interfaz actual. Instalar pnpm reproduciblemente y completar la Fase 1 después de validar la suite web. |
 | 2026-11-07 | Estabilización de pruebas frontend | Política 14/14, Peligros 5/5, Trabajadores 8/8; suite frontend completa 46/46 en 7 archivos y `npm run typecheck` web pasa. Se retiró el test huérfano `useAuth.test.ts` porque el hook/contexto importados no existen en el código actual. Fase 1 sigue abierta: instalar pnpm de forma reproducible y revisar errores de consola/API y flujos principales; no se repitió build en esta sesión. |
+| 2026-11-07 | Instalación, API y política | Instalación congelada pasa; pnpm 9.15.0 fijado en la guía, Node 22 en CI. Backend 193/193, frontend 49/49, typechecks y builds pasan. Errores HTTP se propagan y Política evita el 404 opcional; estado vacío comprobado en navegador. Se añadieron dependencias faltantes de las configuraciones Prettier/ESLint y se corrigió el ignore de `dist`; el lint aún reporta 258 errores/500 advertencias y Prettier 103 archivos pendientes, por lo que la Fase 1 sigue abierta. |

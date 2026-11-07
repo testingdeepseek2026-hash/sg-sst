@@ -12,7 +12,7 @@ export default [
   {
     ignores: [
       'node_modules/',
-      'dist/**',
+      '**/dist/**',
       'data/',
       '*.db',
       '*.db-shm',

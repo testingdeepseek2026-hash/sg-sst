@@ -74,15 +74,11 @@ export default function Politica() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [pols, active] = await Promise.all([
-        api.get('/policies'),
-        api.get('/policies/active').catch(() => null)
-      ]);
+      const pols = await api.get('/policies');
+      const active = pols.find((policy: any) => policy.estado === 'vigente') || null;
       setPolicies(pols);
       setActivePolicy(active);
-      if (active) {
-        setObjectives(active.objectives || []);
-      }
+      setObjectives(active?.objectives || []);
     } catch (err: any) {
       setError(err.message || 'Error cargando datos');
     } finally {
