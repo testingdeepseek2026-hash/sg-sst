@@ -18,6 +18,7 @@
 ## Opciones de Despliegue
 
 ### 1. VPS / VM Tradicional (Recomendado para microempresa)
+
 - **OS**: Ubuntu 22.04/24.04 LTS o Debian 12
 - **Node**: 22.x (via NodeSource o nvm)
 - **Process Manager**: PM2 o systemd
@@ -25,11 +26,13 @@
 - **SSL**: Let's Encrypt (Certbot)
 
 ### 2. Docker Compose (Producción)
+
 - Multi-stage builds para frontend + backend
 - Volúmenes persistentes para SQLite + backups
 - Health checks automáticos
 
 ### 3. Kubernetes (Escalabilidad futura)
+
 - StatefulSet para SQLite (o migrar a PostgreSQL)
 - Ingress + cert-manager
 
@@ -38,6 +41,7 @@
 ## Despliegue en VPS (Pasos Detallados)
 
 ### 1. Preparar Servidor
+
 ```bash
 # Actualizar sistema
 sudo apt update && sudo apt upgrade -y
@@ -59,6 +63,7 @@ corepack prepare pnpm@9 --activate
 ```
 
 ### 2. Clonar y Configurar
+
 ```bash
 # Usuario deploy (no root)
 sudo adduser --disabled-password --gecos "" deploy
@@ -78,6 +83,7 @@ cp .env.example .env
 ```
 
 ### 3. Variables de Entorno Producción (.env)
+
 ```bash
 # Server
 NODE_ENV=production
@@ -98,6 +104,7 @@ VITE_API_BASE=https://tudominio.com/api
 ```
 
 ### 4. Build de Producción
+
 ```bash
 # Build completo
 pnpm build
@@ -107,12 +114,13 @@ ls -la server/dist/ web/dist/
 ```
 
 ### 5. Configurar Nginx
+
 ```nginx
 # /etc/nginx/sites-available/sg-sst
 server {
     listen 80;
     server_name tudominio.com www.tudominio.com;
-    
+
     # Redirect HTTP to HTTPS (después de certbot)
     return 301 https://$server_name$request_uri;
 }
@@ -120,33 +128,33 @@ server {
 server {
     listen 443 ssl http2;
     server_name tudominio.com www.tudominio.com;
-    
+
     # SSL (certbot gestiona estos archivos)
     ssl_certificate /etc/letsencrypt/live/tudominio.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/tudominio.com/privkey.pem;
-    
+
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN";
     add_header X-Content-Type-Options "nosniff";
     add_header Referrer-Policy "strict-origin-when-cross-origin";
     add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;";
-    
+
     # Gzip
     gzip on;
     gzip_types text/plain application/json application/javascript text/css application/xml;
-    
+
     # Frontend (Vite build)
     location / {
         root /home/deploy/sg-sst/web/dist;
         try_files $uri $uri/ /index.html;
-        
+
         # Cache static assets
         location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
             expires 1y;
             add_header Cache-Control "public, immutable";
         }
     }
-    
+
     # API Backend
     location /api/ {
         proxy_pass http://127.0.0.1:4000;
@@ -158,16 +166,16 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
-        
+
         # Timeouts
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
-        
+
         # Cookies
         proxy_cookie_path / "/; Secure; HttpOnly; SameSite=Lax";
     }
-    
+
     # Health check
     location /health {
         proxy_pass http://127.0.0.1:4000/api/health;
@@ -184,6 +192,7 @@ sudo systemctl reload nginx
 ```
 
 ### 6. SSL con Let's Encrypt
+
 ```bash
 # Obtener certificado
 sudo certbot --nginx -d tudominio.com -d www.tudominio.com
@@ -193,6 +202,7 @@ sudo systemctl status certbot.timer
 ```
 
 ### 7. Process Manager (PM2)
+
 ```bash
 # Instalar PM2
 pnpm add -g pm2
@@ -234,6 +244,7 @@ pm2 startup systemd -u deploy --hp /home/deploy
 ```
 
 ### 8. Systemd Service (Alternativa a PM2)
+
 ```ini
 # /etc/systemd/system/sg-sst.service
 [Unit]
@@ -274,6 +285,7 @@ sudo systemctl status sg-sst
 ## Docker Compose (Producción)
 
 ### Dockerfile.server
+
 ```dockerfile
 # syntax=docker/dockerfile:1
 FROM node:22-alpine AS base
@@ -302,6 +314,7 @@ CMD ["node", "dist/index.js"]
 ```
 
 ### Dockerfile.web
+
 ```dockerfile
 # syntax=docker/dockerfile:1
 FROM node:22-alpine AS base
@@ -325,6 +338,7 @@ CMD ["nginx", "-g", "daemon off;"]
 ```
 
 ### docker-compose.yml
+
 ```yaml
 version: '3.8'
 
@@ -351,7 +365,7 @@ services:
       - sg-sst-backups:/backups
       - sg-sst-logs:/app/logs
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/api/health"]
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:4000/api/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -375,8 +389,8 @@ services:
     container_name: sg-sst-nginx
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     volumes:
       - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - ./certbot/conf:/etc/letsencrypt:ro
@@ -406,6 +420,7 @@ networks:
 ```
 
 ### nginx.prod.conf
+
 ```nginx
 events {
     worker_connections 1024;
@@ -415,36 +430,36 @@ http {
     upstream api_backend {
         server api:4000;
     }
-    
+
     upstream web_frontend {
         server web:80;
     }
-    
+
     server {
         listen 80;
         server_name tudominio.com www.tudominio.com;
-        
+
         location /.well-known/acme-challenge/ {
             root /var/www/certbot;
         }
-        
+
         location / {
             return 301 https://$host$request_uri;
         }
     }
-    
+
     server {
         listen 443 ssl http2;
         server_name tudominio.com www.tudominio.com;
-        
+
         ssl_certificate /etc/letsencrypt/live/tudominio.com/fullchain.pem;
         ssl_certificate_key /etc/letsencrypt/live/tudominio.com/privkey.pem;
-        
+
         # Security headers
         add_header X-Frame-Options "SAMEORIGIN";
         add_header X-Content-Type-Options "nosniff";
         add_header Referrer-Policy "strict-origin-when-cross-origin";
-        
+
         # Frontend
         location / {
             proxy_pass http://web_frontend;
@@ -453,7 +468,7 @@ http {
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
         }
-        
+
         # API
         location /api/ {
             proxy_pass http://api_backend;
@@ -469,6 +484,7 @@ http {
 ```
 
 ### Desplegar con Docker
+
 ```bash
 # Crear .env para docker-compose
 cat > .env << 'EOF'
@@ -496,6 +512,7 @@ docker compose ps
 ## Backup Automatizado
 
 ### Script de Backup (backup.sh)
+
 ```bash
 #!/bin/bash
 # /home/deploy/sg-sst/scripts/backup.sh
@@ -538,6 +555,7 @@ crontab -e
 ```
 
 ### Restore
+
 ```bash
 # Detener servicio
 sudo systemctl stop sg-sst  # o pm2 stop sg-sst-api
@@ -554,6 +572,7 @@ sudo systemctl start sg-sst
 ## Monitoreo y Logs
 
 ### Logs Centralizados
+
 ```bash
 # Journald (systemd)
 sudo journalctl -u sg-sst -f
@@ -567,6 +586,7 @@ sudo tail -f /var/log/nginx/error.log
 ```
 
 ### Health Checks
+
 ```bash
 # API
 curl -f http://localhost:4000/api/health
@@ -579,6 +599,7 @@ sqlite3 data/sg-sst.db "PRAGMA integrity_check;"
 ```
 
 ### Métricas Básicas (Prometheus + Node Exporter - Opcional)
+
 ```yaml
 # docker-compose.monitoring.yml
 services:
@@ -587,12 +608,12 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
-      - "9090:9090"
-  
+      - '9090:9090'
+
   node-exporter:
     image: prom/node-exporter
     ports:
-      - "9100:9100"
+      - '9100:9100'
 ```
 
 ---

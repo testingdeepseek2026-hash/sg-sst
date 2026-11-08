@@ -12,9 +12,20 @@ export function createDocument(db: any, input: any) {
     `INSERT INTO documents (id, codigo, nombre, version, tipo, archivo_url, fecha_emision,
       fecha_revision, retencion_anos, responsable, estado, creado_en)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
-  ).run(id, input.codigo, input.nombre, input.version ?? '1.0', input.tipo, input.archivo_url ?? null,
-    input.fecha_emision ?? nowISO(), input.fecha_revision ?? null, input.retencion_anos ?? 5,
-    input.responsable ?? null, input.estado ?? 'vigente', nowISO());
+  ).run(
+    id,
+    input.codigo,
+    input.nombre,
+    input.version ?? '1.0',
+    input.tipo,
+    input.archivo_url ?? null,
+    input.fecha_emision ?? nowISO(),
+    input.fecha_revision ?? null,
+    input.retencion_anos ?? 5,
+    input.responsable ?? null,
+    input.estado ?? 'vigente',
+    nowISO()
+  );
   return db.prepare('SELECT * FROM documents WHERE id = ?').get(id);
 }
 export function updateDocument(db: any, id: string, patch: any) {
@@ -22,7 +33,8 @@ export function updateDocument(db: any, id: string, patch: any) {
   const vals: any[] = [];
   for (const [k, v] of Object.entries(patch)) {
     if (v === undefined) continue;
-    sets.push(`${k} = ?`); vals.push(v);
+    sets.push(`${k} = ?`);
+    vals.push(v);
   }
   if (sets.length === 0) return getDocumentById(db, id);
   db.prepare(`UPDATE documents SET ${sets.join(', ')} WHERE id = ?`).run(...vals, id);

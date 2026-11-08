@@ -9,11 +9,13 @@ Este proyecto sigue el [Contributor Covenant](https://www.contributor-covenant.o
 ## Cómo Contribuir
 
 ### 1. Reportar Bugs
+
 - Usa la plantilla **Bug Report** en GitHub Issues
 - Incluye pasos para reproducir, comportamiento esperado vs actual, entorno
 - Etiqueta: `bug`, `triage`
 
 ### 2. Sugerir Funcionalidades
+
 - Usa la plantilla **Feature Request** en GitHub Issues
 - Describe el problema, solución propuesta, alternativas
 - Etiqueta: `enhancement`, `triage`
@@ -21,6 +23,7 @@ Este proyecto sigue el [Contributor Covenant](https://www.contributor-covenant.o
 ### 3. Contribuir Código
 
 #### Setup Local
+
 ```bash
 # Fork + Clone tu fork
 git clone https://github.com/TU-USUARIO/sg-sst.git
@@ -37,6 +40,7 @@ pnpm reset
 ```
 
 #### Flujo de Trabajo
+
 ```bash
 # 1. Actualizar develop
 git checkout develop
@@ -62,6 +66,7 @@ git push origin feat/descripcion-corta
 ```
 
 #### Convención de Commits (Obligatoria)
+
 Usamos **Conventional Commits** v1.0.0. El hook `commit-msg` valida automáticamente.
 
 ```
@@ -72,27 +77,29 @@ Usamos **Conventional Commits** v1.0.0. El hook `commit-msg` valida automáticam
 [footer opcional]
 ```
 
-| Tipo | Descripción | Ejemplo |
-|------|-------------|---------|
-| `feat` | Nueva funcionalidad | `feat(workers): agregar exportación Excel` |
-| `fix` | Corrección bug | `fix(hazards): ordenar evaluaciones por fecha` |
-| `docs` | Documentación | `docs(api): actualizar endpoints exámenes` |
-| `style` | Formato (sin lógica) | `style: formatear con prettier` |
-| `refactor` | Refactorización | `refactor(policies): extraer versionado` |
-| `perf` | Mejora rendimiento | `perf(alerts): optimizar query generateAlerts` |
-| `test` | Tests | `test(alerts): add unit tests generateAlerts` |
-| `chore` | Mantenimiento | `chore(deps): actualizar dependencias` |
-| `build` | Sistema build | `build: configurar docker multi-stage` |
-| `ci` | CI/CD | `ci: agregar job e2e en PR a main` |
-| `revert` | Revertir commit | `revert: feat(workers): exportación Excel` |
+| Tipo       | Descripción          | Ejemplo                                        |
+| ---------- | -------------------- | ---------------------------------------------- |
+| `feat`     | Nueva funcionalidad  | `feat(workers): agregar exportación Excel`     |
+| `fix`      | Corrección bug       | `fix(hazards): ordenar evaluaciones por fecha` |
+| `docs`     | Documentación        | `docs(api): actualizar endpoints exámenes`     |
+| `style`    | Formato (sin lógica) | `style: formatear con prettier`                |
+| `refactor` | Refactorización      | `refactor(policies): extraer versionado`       |
+| `perf`     | Mejora rendimiento   | `perf(alerts): optimizar query generateAlerts` |
+| `test`     | Tests                | `test(alerts): add unit tests generateAlerts`  |
+| `chore`    | Mantenimiento        | `chore(deps): actualizar dependencias`         |
+| `build`    | Sistema build        | `build: configurar docker multi-stage`         |
+| `ci`       | CI/CD                | `ci: agregar job e2e en PR a main`             |
+| `revert`   | Revertir commit      | `revert: feat(workers): exportación Excel`     |
 
 **Reglas**:
+
 - Subject: imperativo, minúscula, sin punto final, máx 72 chars
 - Scope: opcional, minúscula, kebab-case
 - Body: explica QUÉ y POR QUÉ, no CÓMO
 - Footer: `Closes #123`, `BREAKING CHANGE: ...`
 
 #### Pull Request Checklist
+
 Antes de crear PR, verifica:
 
 - [ ] Tests pasan (`pnpm test`)
@@ -106,12 +113,14 @@ Antes de crear PR, verifica:
 - [ ] CHANGELOG se generará automáticamente
 
 #### Code Review
+
 - Mínimo 1 approval requerido (CODEOWNERS)
 - Resolver todos los comentarios
 - CI debe estar verde
 - Squash & merge a `develop`
 
 ### 4. Mejorar Documentación
+
 - Docs en `/docs/` (Markdown)
 - README principal en root
 - Comentarios en código (JSDoc/TSDoc para funciones públicas)
@@ -120,6 +129,7 @@ Antes de crear PR, verifica:
 ## Estándares de Código
 
 ### TypeScript
+
 - **Strict mode** obligatorio (`strict: true`)
 - No `any` explícito (usa `unknown` + type guards)
 - Interfaces sobre types para objetos
@@ -141,6 +151,7 @@ type WorkerExam = {
 ```
 
 ### React (Frontend)
+
 - Functional components + hooks
 - Custom hooks para lógica reutilizable
 - Testing Library para tests (no enzyme)
@@ -156,11 +167,16 @@ interface ButtonProps {
 }
 
 export function Button({ variant, onClick, children }: ButtonProps) {
-  return <button className={`btn btn-${variant}`} onClick={onClick}>{children}</button>;
+  return (
+    <button className={`btn btn-${variant}`} onClick={onClick}>
+      {children}
+    </button>
+  );
 }
 ```
 
 ### Backend (Fastify)
+
 - Pure functions en services (sin side effects salvo DB)
 - Zod schemas para validación en routes
 - Errores de negocio como excepciones con mensaje claro
@@ -182,6 +198,7 @@ app.post('/policies', async (request, reply) => {
 ```
 
 ### Base de Datos
+
 - UUID v4 para PKs (`genId()` utility)
 - Fechas ISO 8601 en TEXT
 - Foreign keys habilitadas (`PRAGMA foreign_keys=ON`)
@@ -189,6 +206,7 @@ app.post('/policies', async (request, reply) => {
 - Soft delete con `activo` / `estado` en lugar de DELETE
 
 ### Testing
+
 - **Backend**: Unit (services) + Integration (Fastify inject)
 - **Frontend**: Component (Testing Library) + Hooks + API client
 - **E2E**: Playwright critical paths
@@ -223,6 +241,7 @@ pnpm release:major
 ```
 
 Esto:
+
 1. Calcula versión semántica basada en commits
 2. Genera/actualiza `CHANGELOG.md`
 3. Crea commit de release + tag `vX.Y.Z`
@@ -243,6 +262,7 @@ El hook `commit-msg` rechaza el commit. Corrige el mensaje y reintenta.
 `pnpm test:coverage` → abre `server/coverage/index.html` y `web/coverage/index.html`.
 
 **¿Cómo agrego una dependencia?**
+
 ```bash
 # Producción
 pnpm -w server add zod

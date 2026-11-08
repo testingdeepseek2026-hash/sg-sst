@@ -1,13 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { createTestDb } from '../../setup.js';
 import * as alertsService from '../../../src/services/alerts.js';
 import * as workersService from '../../../src/services/workers.js';
 import * as companiesService from '../../../src/services/companies.js';
 import * as usersService from '../../../src/services/users.js';
 import * as rolesService from '../../../src/services/roles.js';
-import * as inspectionsService from '../../../src/services/inspections.js';
-import * as plansService from '../../../src/services/plans.js';
-import * as documentsService from '../../../src/services/documents.js';
 
 describe('Alertas - Servicio', () => {
   let db: ReturnType<typeof createTestDb>;
@@ -66,7 +63,7 @@ describe('Alertas - Servicio', () => {
   describe('generateAlerts', () => {
     it('debe generar alertas para exámenes médicos próximos a vencer', () => {
       // Examen que vence en 5 días (alta prioridad)
-      const exam = db.prepare(`
+      db.prepare(`
         INSERT INTO worker_exams (id, worker_id, tipo, fecha, vencimiento, resultado, medico, entidad)
         VALUES (?, ?, 'periodico', '2026-01-15', '2026-06-20', 'apto', 'Dr. Test', 'Clínica')
       `).run('exam-1', workerId);
@@ -80,7 +77,7 @@ describe('Alertas - Servicio', () => {
     });
 
     it('debe generar alertas para exámenes vencidos (crítica)', () => {
-      const exam = db.prepare(`
+      db.prepare(`
         INSERT INTO worker_exams (id, worker_id, tipo, fecha, vencimiento, resultado)
         VALUES (?, ?, 'periodico', '2026-01-15', '2026-06-10', 'apto')
       `).run('exam-vencido', workerId);

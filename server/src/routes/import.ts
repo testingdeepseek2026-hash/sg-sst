@@ -1,11 +1,12 @@
 import ExcelJS from 'exceljs';
 import { FastifyPluginAsync } from 'fastify';
 
-const { Workbook } = ExcelJS;
 import { createHazardAssessment } from '../services/hazards.js';
 import { createIncident } from '../services/incidents.js';
 import * as UsersService from '../services/users.js';
 import { createWorker } from '../services/workers.js';
+
+const { Workbook } = ExcelJS;
 
 async function readFileBuffer(file: any): Promise<Buffer> {
   const chunks: Uint8Array[] = [];
@@ -24,7 +25,8 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
   async function handleImport(request: any, reply: any, factory: (db: any, row: any[]) => void) {
     const uid = request.userId;
     const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador') return reply.code(403).send({ error: 'Solo administrador' });
+    if (!me || me.rol !== 'administrador')
+      return reply.code(403).send({ error: 'Solo administrador' });
     const parts = await request.files();
     const files = Array.isArray(parts) ? parts : [parts];
     if (!files.length) return reply.code(400).send({ error: 'No se envió archivo' });
@@ -46,8 +48,11 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
       }
     });
     UsersService.auditLog(fastify.db, {
-      usuario_id: uid, usuario_email: me.email, accion: 'importar', entidad: 'importaciones',
-      valores_nuevos: { importados, errores: errores.length }
+      usuario_id: uid,
+      usuario_email: me.email,
+      accion: 'importar',
+      entidad: 'importaciones',
+      valores_nuevos: { importados, errores: errores.length },
     });
     return { importados, errores };
   }
@@ -57,10 +62,15 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
       const [tipo_doc, num_doc, nombres, apellidos, cargo, fecha_ing, estado, eps, arl] = vals;
       if (!num_doc) return;
       createWorker(db, {
-        tipo_documento: tipo_doc ?? 'CC', numero_documento: String(num_doc),
-        nombres: String(nombres ?? ''), apellidos: String(apellidos ?? ''), cargo: String(cargo ?? ''),
+        tipo_documento: tipo_doc ?? 'CC',
+        numero_documento: String(num_doc),
+        nombres: String(nombres ?? ''),
+        apellidos: String(apellidos ?? ''),
+        cargo: String(cargo ?? ''),
         fecha_ingreso: fecha_ing ?? new Date().toISOString().slice(0, 10),
-        estado: estado ?? 'activo', eps: eps ?? null, arl: arl ?? null
+        estado: estado ?? 'activo',
+        eps: eps ?? null,
+        arl: arl ?? null,
       });
     });
   });
@@ -70,8 +80,12 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
       const [cargo, area, peligro, tarea, valoracion, responsable] = vals;
       if (!peligro) return;
       createHazardAssessment(db, {
-        cargo_oficio: String(cargo ?? ''), area: area ?? null, peligro_texto: String(peligro),
-        tarea: tarea ?? null, valoracion_riesgo: valoracion ?? 'medio', responsable: responsable ?? null
+        cargo_oficio: String(cargo ?? ''),
+        area: area ?? null,
+        peligro_texto: String(peligro),
+        tarea: tarea ?? null,
+        valoracion_riesgo: valoracion ?? 'medio',
+        responsable: responsable ?? null,
       });
     });
   });
@@ -81,8 +95,10 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
       const [tipo, fecha, descripcion, estado] = vals;
       if (!fecha) return;
       createIncident(db, {
-        tipo: tipo ?? 'incidente', fecha_ocurrencia: String(fecha), descripcion: String(descripcion ?? ''),
-        estado: estado ?? 'abierto'
+        tipo: tipo ?? 'incidente',
+        fecha_ocurrencia: String(fecha),
+        descripcion: String(descripcion ?? ''),
+        estado: estado ?? 'abierto',
       });
     });
   });

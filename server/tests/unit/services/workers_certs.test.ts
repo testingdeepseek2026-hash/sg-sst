@@ -206,7 +206,6 @@ describe('Certificados - Servicio', () => {
 
   describe('getVencimientosProximos', () => {
     it('debe detectar certificados vencidos, por vencer y vigentes', () => {
-      const hoy = new Date().toISOString().slice(0, 10);
       const ayer = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
       const en15dias = new Date(Date.now() + 15 * 86400000).toISOString().slice(0, 10);
       const en60dias = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10);

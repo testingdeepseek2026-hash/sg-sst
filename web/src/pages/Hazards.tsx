@@ -1,8 +1,18 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { api } from '../lib/api';
 
-type HazardCategory = 'alturas' | 'electrico' | 'herramientas' | 'escaleras' | 'ergonomia' | 'conduccion' | 'cielos_rasos' | 'confinados' | 'locativo' | 'otro';
+type HazardCategory =
+  | 'alturas'
+  | 'electrico'
+  | 'herramientas'
+  | 'escaleras'
+  | 'ergonomia'
+  | 'conduccion'
+  | 'cielos_rasos'
+  | 'confinados'
+  | 'locativo'
+  | 'otro';
 type RiskLevel = 'bajo' | 'medio' | 'alto' | 'critico';
 
 interface HazardCatalogItem {
@@ -124,11 +134,11 @@ export default function Hazards() {
 
   const filteredCatalog = useMemo(() => {
     if (activeCategory === 'todas') return catalog;
-    return catalog.filter(item => item.categoria === activeCategory);
+    return catalog.filter((item) => item.categoria === activeCategory);
   }, [catalog, activeCategory]);
 
   const handleCatalogSelect = (item: HazardCatalogItem) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       modo: 'catalogo',
       peligro_id: item.id,
@@ -139,7 +149,7 @@ export default function Hazards() {
   };
 
   const handleCustomMode = () => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       modo: 'personalizado',
       peligro_id: null,
@@ -150,7 +160,7 @@ export default function Hazards() {
   };
 
   const handleInputChange = (field: keyof FormState, value: any) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -184,24 +194,44 @@ export default function Hazards() {
   };
 
   const getRiskBadge = (risk: RiskLevel) => {
-    const rl = RISK_LEVELS.find(r => r.value === risk);
-    return rl ? <span style={{ background: rl.color, color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold' }}>{rl.label}</span> : risk;
+    const rl = RISK_LEVELS.find((r) => r.value === risk);
+    return rl ? (
+      <span
+        style={{
+          background: rl.color,
+          color: '#fff',
+          padding: '2px 8px',
+          borderRadius: 12,
+          fontSize: 11,
+          fontWeight: 'bold',
+        }}
+      >
+        {rl.label}
+      </span>
+    ) : (
+      risk
+    );
   };
 
   return (
-    <div style={{ padding: 20, maxWidth: 1100, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div
+      style={{ padding: 20, maxWidth: 1100, fontFamily: 'system-ui, -apple-system, sans-serif' }}
+    >
       <header style={{ marginBottom: 20 }}>
-        <h1 style={{ margin: 0, color: '#0f766e', fontSize: 24 }}>Matriz de Peligros, Riesgos y Controles (GTC 45)</h1>
+        <h1 style={{ margin: 0, color: '#0f766e', fontSize: 24 }}>
+          Matriz de Peligros, Riesgos y Controles (GTC 45)
+        </h1>
         <p style={{ color: '#6b7280', fontSize: 13, marginTop: 4 }}>
-          Catálogo precargado del oficio instalación electrónica (CCTV, alarmas, control acceso, cableado estructurado).
-          Normativa: Decreto 1072/2015, Res. 4272/2021 (alturas), RETIE (eléctrico), GTC 45 (metodología).
+          Catálogo precargado del oficio instalación electrónica (CCTV, alarmas, control acceso,
+          cableado estructurado). Normativa: Decreto 1072/2015, Res. 4272/2021 (alturas), RETIE
+          (eléctrico), GTC 45 (metodología).
         </p>
       </header>
 
       <section style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           <span style={{ fontSize: 12, color: '#374151', fontWeight: 500 }}>Filtrar catálogo:</span>
-          {CATEGORIES.map(cat => (
+          {CATEGORIES.map((cat) => (
             <button
               key={cat.value}
               onClick={() => handleCategoryChange(cat.value)}
@@ -242,20 +272,51 @@ export default function Hazards() {
         </div>
       </section>
 
-      <form onSubmit={handleSubmit} style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          background: '#fff',
+          padding: 16,
+          borderRadius: 10,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+          marginBottom: 20,
+        }}
+      >
         <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #f3f4f6' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: '#374151' }}>
+          <label
+            htmlFor="hazards-modo-catalogo"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 16,
+              fontSize: 13,
+              color: '#374151',
+            }}
+          >
             <input
+              id="hazards-modo-catalogo"
               type="radio"
               name="modo"
               checked={form.modo === 'catalogo'}
               onChange={() => {}}
               style={{ accentColor: '#0f766e' }}
             />
-            <strong>📋 Seleccionar del catálogo</strong> ({filteredCatalog.length} ítems en esta categoría)
+            <strong>📋 Seleccionar del catálogo</strong> ({filteredCatalog.length} ítems en esta
+            categoría)
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151', marginLeft: 24 }}>
+          <label
+            htmlFor="hazards-modo-personalizado"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 13,
+              color: '#374151',
+              marginLeft: 24,
+            }}
+          >
             <input
+              id="hazards-modo-personalizado"
               type="radio"
               name="modo"
               checked={form.modo === 'personalizado'}
@@ -268,15 +329,28 @@ export default function Hazards() {
 
         {form.modo === 'catalogo' && filteredCatalog.length > 0 && (
           <div style={{ marginBottom: 12 }}>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>
+            <label
+              htmlFor="hazards-catalogo-select"
+              style={{
+                display: 'block',
+                fontSize: 12,
+                color: '#6b7280',
+                marginBottom: 4,
+                fontWeight: 500,
+              }}
+            >
               Peligro del catálogo (autollenará campos sugeridos)
             </label>
             <select
+              id="hazards-catalogo-select"
               value={form.peligro_id || ''}
               onChange={(e) => {
                 const id = e.target.value;
-                if (!id) { handleCustomMode(); return; }
-                const item = filteredCatalog.find(i => i.id === id);
+                if (!id) {
+                  handleCustomMode();
+                  return;
+                }
+                const item = filteredCatalog.find((i) => i.id === id);
                 if (item) handleCatalogSelect(item);
               }}
               style={{
@@ -290,7 +364,7 @@ export default function Hazards() {
               }}
             >
               <option value="">— Buscar y seleccionar un peligro —</option>
-              {filteredCatalog.map(item => (
+              {filteredCatalog.map((item) => (
                 <option key={item.id} value={item.id}>
                   [{item.codigo}] {item.nombre} — {item.riesgo_por_defecto.toUpperCase()}
                 </option>
@@ -299,78 +373,219 @@ export default function Hazards() {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: 12,
+          }}
+        >
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>Cargo / Oficio *</label>
+            <label
+              htmlFor="hazards-cargo"
+              style={{
+                display: 'block',
+                fontSize: 12,
+                color: '#6b7280',
+                marginBottom: 4,
+                fontWeight: 500,
+              }}
+            >
+              Cargo / Oficio *
+            </label>
             <input
+              id="hazards-cargo"
               value={form.cargo_oficio}
               onChange={(e) => handleInputChange('cargo_oficio', e.target.value)}
               placeholder="Ej: Técnico Instalador CCTV"
               required
-              style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13 }}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                fontSize: 13,
+              }}
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>Área / Ubicación</label>
+            <label
+              htmlFor="hazards-area"
+              style={{
+                display: 'block',
+                fontSize: 12,
+                color: '#6b7280',
+                marginBottom: 4,
+                fontWeight: 500,
+              }}
+            >
+              Área / Ubicación
+            </label>
             <input
+              id="hazards-area"
               value={form.area}
               onChange={(e) => handleInputChange('area', e.target.value)}
               placeholder="Ej: Fachada, Sala de servidores, Poste"
-              style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13 }}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                fontSize: 13,
+              }}
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>Peligro *</label>
+            <label
+              htmlFor="hazards-peligro"
+              style={{
+                display: 'block',
+                fontSize: 12,
+                color: '#6b7280',
+                marginBottom: 4,
+                fontWeight: 500,
+              }}
+            >
+              Peligro *
+            </label>
             <input
+              id="hazards-peligro"
               value={form.peligro_texto}
               onChange={(e) => handleInputChange('peligro_texto', e.target.value)}
-              placeholder={form.modo === 'catalogo' ? 'Se autollenará al seleccionar del catálogo' : 'Describa el peligro'}
+              placeholder={
+                form.modo === 'catalogo'
+                  ? 'Se autollenará al seleccionar del catálogo'
+                  : 'Describa el peligro'
+              }
               required
-              style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, background: form.modo === 'catalogo' && form.peligro_id ? '#f0fdf4' : '#fff' }}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                fontSize: 13,
+                background: form.modo === 'catalogo' && form.peligro_id ? '#f0fdf4' : '#fff',
+              }}
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>Tarea / Actividad</label>
+            <label
+              htmlFor="hazards-tarea"
+              style={{
+                display: 'block',
+                fontSize: 12,
+                color: '#6b7280',
+                marginBottom: 4,
+                fontWeight: 500,
+              }}
+            >
+              Tarea / Actividad
+            </label>
             <input
+              id="hazards-tarea"
               value={form.tarea}
               onChange={(e) => handleInputChange('tarea', e.target.value)}
               placeholder="Ej: Instalación cámara en fachada 3er piso"
-              style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13 }}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                fontSize: 13,
+              }}
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>Consecuencia</label>
+            <label
+              htmlFor="hazards-consecuencia"
+              style={{
+                display: 'block',
+                fontSize: 12,
+                color: '#6b7280',
+                marginBottom: 4,
+                fontWeight: 500,
+              }}
+            >
+              Consecuencia
+            </label>
             <input
+              id="hazards-consecuencia"
               value={form.consecuencia}
               onChange={(e) => handleInputChange('consecuencia', e.target.value)}
               placeholder="Ej: Caída a diferente nivel, electrocución, corte"
-              style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13 }}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                fontSize: 13,
+              }}
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>Probabilidad</label>
+            <label
+              htmlFor="hazards-probabilidad"
+              style={{
+                display: 'block',
+                fontSize: 12,
+                color: '#6b7280',
+                marginBottom: 4,
+                fontWeight: 500,
+              }}
+            >
+              Probabilidad
+            </label>
             <input
+              id="hazards-probabilidad"
               value={form.probabilidad}
               onChange={(e) => handleInputChange('probabilidad', e.target.value)}
               placeholder="Ej: Frecuente, Ocasional, Remota"
-              style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13 }}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                fontSize: 13,
+              }}
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>Valoración de Riesgo *</label>
+            <label
+              htmlFor="hazards-valoracion"
+              style={{
+                display: 'block',
+                fontSize: 12,
+                color: '#6b7280',
+                marginBottom: 4,
+                fontWeight: 500,
+              }}
+            >
+              Valoración de Riesgo *
+            </label>
             <select
+              id="hazards-valoracion"
               value={form.valoracion_riesgo}
               onChange={(e) => handleInputChange('valoracion_riesgo', e.target.value as RiskLevel)}
-              style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13 }}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                fontSize: 13,
+              }}
             >
-              {RISK_LEVELS.map(r => (
-                <option key={r.value} value={r.value} style={{ background: r.color, color: '#fff' }}>
+              {RISK_LEVELS.map((r) => (
+                <option
+                  key={r.value}
+                  value={r.value}
+                  style={{ background: r.color, color: '#fff' }}
+                >
                   {r.label}
                 </option>
               ))}
@@ -378,23 +593,65 @@ export default function Hazards() {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>Responsable</label>
+            <label
+              htmlFor="hazards-responsable"
+              style={{
+                display: 'block',
+                fontSize: 12,
+                color: '#6b7280',
+                marginBottom: 4,
+                fontWeight: 500,
+              }}
+            >
+              Responsable
+            </label>
             <input
+              id="hazards-responsable"
               value={form.responsable}
               onChange={(e) => handleInputChange('responsable', e.target.value)}
               placeholder="Ej: Juan Pérez / Jefe de obra"
-              style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13 }}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                fontSize: 13,
+              }}
             />
           </div>
 
           <div style={{ gridColumn: '1 / -1' }}>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4, fontWeight: 500 }}>Controles sugeridos / implementados</label>
+            <label
+              htmlFor="hazards-controles"
+              style={{
+                display: 'block',
+                fontSize: 12,
+                color: '#6b7280',
+                marginBottom: 4,
+                fontWeight: 500,
+              }}
+            >
+              Controles sugeridos / implementados
+            </label>
             <textarea
+              id="hazards-controles"
               value={form.controles}
               onChange={(e) => handleInputChange('controles', e.target.value)}
               rows={3}
-              placeholder={form.modo === 'catalogo' && form.controles ? 'Control sugerido del catálogo (editable)' : 'Ej: Arnés certificado + línea de vida + anclaje + plan rescate + capacitación 4272/2021'}
-              style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', resize: 'vertical' }}
+              placeholder={
+                form.modo === 'catalogo' && form.controles
+                  ? 'Control sugerido del catálogo (editable)'
+                  : 'Ej: Arnés certificado + línea de vida + anclaje + plan rescate + capacitación 4272/2021'
+              }
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                fontSize: 12,
+                fontFamily: 'inherit',
+                resize: 'vertical',
+              }}
             />
           </div>
         </div>
@@ -415,84 +672,90 @@ export default function Hazards() {
               transition: 'background 0.15s',
             }}
           >
-            {loading ? 'Guardando...' : '➕ Agregar fila a la matriz'}
+            {loading ? 'Guardando...' : '💾 Guardar evaluación'}
           </button>
         </div>
       </form>
 
       <section>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <span style={{ fontSize: 12, color: '#6b7280' }}>Total registros: <strong>{assessments.length}</strong></span>
-        </div>
-        <div style={{ overflowX: 'auto', background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+        <h2 style={{ color: '#0f766e', fontSize: 16, marginBottom: 12 }}>
+          Matriz de evaluaciones registradas
+        </h2>
+        <div style={{ overflowX: 'auto' }}>
+          <table
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              background: '#fff',
+              borderRadius: 8,
+              overflow: 'hidden',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+            }}
+          >
             <thead>
               <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-                <th style={{ padding: '10px 12px', fontSize: 11, color: '#374151', fontWeight: 600, whiteSpace: 'nowrap' }}>Cargo / Oficio</th>
-                <th style={{ padding: '10px 12px', fontSize: 11, color: '#374151', fontWeight: 600, whiteSpace: 'nowrap' }}>Área</th>
-                <th style={{ padding: '10px 12px', fontSize: 11, color: '#374151', fontWeight: 600, whiteSpace: 'nowrap' }}>Peligro</th>
-                <th style={{ padding: '10px 12px', fontSize: 11, color: '#374151', fontWeight: 600, whiteSpace: 'nowrap' }}>Tarea</th>
-                <th style={{ padding: '10px 12px', fontSize: 11, color: '#374151', fontWeight: 600, whiteSpace: 'nowrap' }}>Consecuencia</th>
-                <th style={{ padding: '10px 12px', fontSize: 11, color: '#374151', fontWeight: 600, whiteSpace: 'nowrap' }}>Probabilidad</th>
-                <th style={{ padding: '10px 12px', fontSize: 11, color: '#374151', fontWeight: 600, whiteSpace: 'nowrap' }}>Valoración</th>
-                <th style={{ padding: '10px 12px', fontSize: 11, color: '#374151', fontWeight: 600, whiteSpace: 'nowrap' }}>Controles</th>
-                <th style={{ padding: '10px 12px', fontSize: 11, color: '#374151', fontWeight: 600, whiteSpace: 'nowrap' }}>Responsable</th>
-                <th style={{ padding: '10px 12px', fontSize: 11, color: '#374151', fontWeight: 600, whiteSpace: 'nowrap' }}>Fecha</th>
+                <th style={{ padding: 10, fontSize: 11, color: '#374151' }}>Fecha</th>
+                <th style={{ padding: 10, fontSize: 11, color: '#374151' }}>Cargo / Oficio</th>
+                <th style={{ padding: 10, fontSize: 11, color: '#374151' }}>Área</th>
+                <th style={{ padding: 10, fontSize: 11, color: '#374151' }}>Peligro</th>
+                <th style={{ padding: 10, fontSize: 11, color: '#374151' }}>Tarea</th>
+                <th style={{ padding: 10, fontSize: 11, color: '#374151' }}>Consecuencia</th>
+                <th style={{ padding: 10, fontSize: 11, color: '#374151' }}>Prob.</th>
+                <th style={{ padding: 10, fontSize: 11, color: '#374151' }}>Riesgo</th>
+                <th style={{ padding: 10, fontSize: 11, color: '#374151' }}>Responsable</th>
+                <th style={{ padding: 10, fontSize: 11, color: '#374151' }}>Estado</th>
               </tr>
             </thead>
             <tbody>
-              {assessments.map((row) => (
-                <tr key={row.id} style={{ borderBottom: '1px solid #f3f4f6', transition: 'background 0.15s' }}>
-                  <td style={{ padding: '10px 12px', fontSize: 12, color: '#1f2937', fontWeight: 500 }}>{row.cargo_oficio}</td>
-                  <td style={{ padding: '10px 12px', fontSize: 12, color: '#4b5563' }}>{row.area || '—'}</td>
-                  <td style={{ padding: '10px 12px', fontSize: 12, color: '#1f2937', maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.peligro_texto || ''}>{row.peligro_texto || '—'}</td>
-                  <td style={{ padding: '10px 12px', fontSize: 12, color: '#4b5563', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.tarea || ''}>{row.tarea || '—'}</td>
-                  <td style={{ padding: '10px 12px', fontSize: 12, color: '#4b5563', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.consecuencia || ''}>{row.consecuencia || '—'}</td>
-                  <td style={{ padding: '10px 12px', fontSize: 12, color: '#4b5563' }}>{row.probabilidad || '—'}</td>
-                  <td style={{ padding: '10px 12px', fontSize: 12 }}>{getRiskBadge(row.valoracion_riesgo)}</td>
-                  <td style={{ padding: '10px 12px', fontSize: 11, color: '#4b5563', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.controles || ''}>{row.controles || '—'}</td>
-                  <td style={{ padding: '10px 12px', fontSize: 12, color: '#4b5563' }}>{row.responsable || '—'}</td>
-                  <td style={{ padding: '10px 12px', fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap' }}>
-                    {row.fecha ? new Date(row.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
-                  </td>
-                </tr>
-              ))}
-              {assessments.length === 0 && (
+              {assessments.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ padding: 30, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
-                    No hay registros en la matriz. Agregue el primer peligro usando el formulario superior.
+                  <td colSpan={10} style={{ padding: 24, textAlign: 'center', color: '#6b7280' }}>
+                    No hay evaluaciones registradas. Use el formulario arriba para crear la primera.
                   </td>
                 </tr>
+              ) : (
+                assessments.map((a) => (
+                  <tr key={a.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: 10, fontSize: 11 }}>{a.fecha}</td>
+                    <td style={{ padding: 10, fontSize: 11 }}>{a.cargo_oficio}</td>
+                    <td style={{ padding: 10, fontSize: 11 }}>{a.area || '-'}</td>
+                    <td style={{ padding: 10, fontSize: 11 }}>{a.peligro_texto}</td>
+                    <td style={{ padding: 10, fontSize: 11 }}>{a.tarea || '-'}</td>
+                    <td style={{ padding: 10, fontSize: 11 }}>{a.consecuencia || '-'}</td>
+                    <td style={{ padding: 10, fontSize: 11 }}>{a.probabilidad || '-'}</td>
+                    <td style={{ padding: 10 }}>{getRiskBadge(a.valoracion_riesgo)}</td>
+                    <td style={{ padding: 10, fontSize: 11 }}>{a.responsable || '-'}</td>
+                    <td style={{ padding: 10 }}>
+                      <span
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: 12,
+                          fontSize: 10,
+                          fontWeight: 500,
+                          background:
+                            a.estado === 'vigente'
+                              ? '#dcfce7'
+                              : a.estado === 'revisado'
+                                ? '#e0e7ff'
+                                : '#fee2e2',
+                          color:
+                            a.estado === 'vigente'
+                              ? '#166534'
+                              : a.estado === 'revisado'
+                                ? '#3730a3'
+                                : '#991b1b',
+                        }}
+                      >
+                        {a.estado}
+                      </span>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
       </section>
-
-      <details style={{ marginTop: 24, padding: 16, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#0f766e', fontSize: 13 }}>📚 Ver categorías del catálogo y normativa aplicable</summary>
-        <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12, fontSize: 12 }}>
-          {CATEGORIES.map(cat => (
-            <div key={cat.value} style={{ background: '#fff', padding: 10, borderRadius: 6, border: '1px solid #e5e7eb' }}>
-              <div style={{ fontWeight: 600, color: '#0f766e', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                {cat.icon} {cat.label}
-              </div>
-              <div style={{ color: '#6b7280', lineHeight: 1.5 }}>
-                {cat.value === 'alturas' && 'Res. 4272/2021: trabajo > 1.5m, arnés, línea de vida, anclaje certificado, plan rescate, permiso, vigía'}
-                {cat.value === 'electrico' && 'RETIE, NFPA 70E: LOTO, EPP arco eléctrico, multímetro CAT III/IV, puesta a tierra, procedimientos escritos'}
-                {cat.value === 'herramientas' && 'Inspección previa, herramienta adecuada, EPP (ojos, manos, oído), sujeción en altura, mantenimiento'}
-                {cat.value === 'escaleras' && 'Ángulo 75°, apoyo firme, antideslizantes, no últimos 2 peldaños, dieléctrica cerca electricidad'}
-                {cat.value === 'ergonomia' && 'Levantamiento correcto, rotación tareas, pausas activas, herramientas ergonómicas, iluminación'}
-                {cat.value === 'conduccion' && 'Licencia vigente, conducción defensiva, revisión vehículo, carga asegurada, plan ruta, no celular'}
-                {cat.value === 'cielos_rasos' && 'Tableros de paso, pisar solo vigas, iluminación, arnés si >2m, vigía en acceso, plan rescate'}
-                {cat.value === 'confinados' && 'Permiso ingreso, evaluación atmósfera (O2, CO, H2S, LEL), vigía, comunicación, ventilación, rescate'}
-                {cat.value === 'locativo' && 'Pisos limpios/secos, iluminación ≥200-500 lux, salidas libres, señalización fotoluminiscente, simulacros'}
-                {cat.value === 'otro' && 'Ruido >85dB (protección auditiva), fibra óptica (protección ocular), clima adverso (suspender alturas)'}
-              </div>
-            </div>
-          ))}
-        </div>
-      </details>
     </div>
   );
 }

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - Complete development best practices stack implementation
 - ESLint 9 Flat Config with TypeScript/React strict rules
 - Prettier 3 with organized imports plugin
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - EditorConfig, .nvmrc (Node 22), updated .gitignore
 
 ### Changed
+
 - Root package.json: Added all devDependencies and comprehensive scripts
 - Server package.json: Added test:watch, test:coverage, typecheck scripts
 - Web package.json: Added test, test:watch, test:coverage, test:e2e, typecheck, lint scripts
@@ -34,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2026-01-15
 
 ### Added
+
 - Initial SG-SST implementation for microempresa instalaciones electrónicas
 - Backend: Fastify 5 + TypeScript + SQLite (node:sqlite)
 - Frontend: React 18 + TypeScript + Vite 6 + PWA
@@ -53,19 +56,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Release Notes Format
 
 ### Added
+
 - New features
 
 ### Changed
+
 - Changes in existing functionality
 
 ### Deprecated
+
 - Soon-to-be removed features
 
 ### Removed
+
 - Removed features
 
 ### Fixed
+
 - Bug fixes
 
 ### Security
+
 - Vulnerability fixes

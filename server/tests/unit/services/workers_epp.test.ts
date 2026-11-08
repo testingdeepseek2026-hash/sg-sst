@@ -149,7 +149,6 @@ describe('EPP (Elementos de Protección Personal) - Servicio', () => {
 
   describe('getVencimientosProximos', () => {
     it('debe detectar EPPs vencidos, por vencer y vigentes', () => {
-      const hoy = new Date().toISOString().slice(0, 10);
       const ayer = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
       const en15dias = new Date(Date.now() + 15 * 86400000).toISOString().slice(0, 10);
       const en60dias = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10);
@@ -213,9 +212,7 @@ describe('EPP (Elementos de Protección Personal) - Servicio', () => {
 
   describe('getWorkerVencimientos (unificado)', () => {
     it('debe unificar exams, certs y epp ordenados por prioridad', () => {
-      const hoy = new Date().toISOString().slice(0, 10);
       const ayer = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-      const en15dias = new Date(Date.now() + 15 * 86400000).toISOString().slice(0, 10);
 
       // Examen vencido
       eppService.createEpp(db, { worker_id: workerId, item: 'Casco', fecha_entrega: '2025-01-01', fecha_vencimiento: ayer });

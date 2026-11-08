@@ -2,12 +2,12 @@
 
 ## Requisitos Previos
 
-| Herramienta | Versión | Instalación |
-|-------------|---------|-------------|
-| Node.js | 22.x | `nvm install 22` (ver `.nvmrc`) |
-| pnpm | 9.15.0 | `corepack enable && corepack prepare pnpm@9.15.0 --activate` |
-| Git | 2.x | Sistema |
-| SQLite | 3.x | Incluido en Node 22 (`node:sqlite`) |
+| Herramienta | Versión | Instalación                                                  |
+| ----------- | ------- | ------------------------------------------------------------ |
+| Node.js     | 22.x    | `nvm install 22` (ver `.nvmrc`)                              |
+| pnpm        | 9.15.0  | `corepack enable && corepack prepare pnpm@9.15.0 --activate` |
+| Git         | 2.x     | Sistema                                                      |
+| SQLite      | 3.x     | Incluido en Node 22 (`node:sqlite`)                          |
 
 ## Setup Inicial
 
@@ -78,6 +78,7 @@ pnpm release:major       # Major version
 ## Variables de Entorno
 
 ### Root (.env)
+
 ```bash
 # Server
 PORT=4000
@@ -97,12 +98,14 @@ VITE_API_BASE=/api
 ```
 
 ### Server (.env en server/ - opcional, hereda del root)
+
 ```bash
 # Sobrescribe valores del root si necesario
 PORT=4001
 ```
 
 ### Web (.env en web/ - opcional)
+
 ```bash
 VITE_API_BASE=http://localhost:4000/api
 ```
@@ -110,6 +113,7 @@ VITE_API_BASE=http://localhost:4000/api
 ## Workflow Git
 
 ### Convención de Commits (Conventional Commits)
+
 ```
 <type>(<scope>): <subject>
 
@@ -119,6 +123,7 @@ VITE_API_BASE=http://localhost:4000/api
 ```
 
 **Tipos válidos**:
+
 - `feat`: Nueva funcionalidad
 - `fix`: Corrección de bug
 - `docs`: Documentación
@@ -132,6 +137,7 @@ VITE_API_BASE=http://localhost:4000/api
 - `revert`: Revertir commit
 
 **Ejemplos**:
+
 ```
 feat(workers): agregar validación vigencia certificado alturas 3 años
 fix(hazards): corregir ordenación evaluaciones IPERC por fecha
@@ -142,6 +148,7 @@ chore(deps): actualizar dependencias desarrollo
 ```
 
 ### Flujo de Ramas
+
 ```
 main (protegida, deploy automático)
   ↑
@@ -151,6 +158,7 @@ feature/* | fix/* | docs/* | refactor/*
 ```
 
 ### Pull Request Process
+
 1. Crear rama desde `develop`: `git checkout -b feat/nueva-funcionalidad`
 2. Commits atómicos siguiendo Conventional Commits
 3. Push y crear PR hacia `develop`
@@ -160,6 +168,7 @@ feature/* | fix/* | docs/* | refactor/*
 7. Release: PR `develop` → `main` trigger `standard-version`
 
 ### Git Hooks (Husky)
+
 - **pre-commit**: `lint-staged` (ESLint + Prettier en archivos staged)
 - **commit-msg**: `commitlint` (valida Conventional Commits)
 
@@ -171,6 +180,7 @@ git commit --no-verify -m "fix: hotfix crítico"
 ## Testing Strategy
 
 ### Backend (Vitest + node:sqlite en memoria)
+
 ```bash
 # Tests unitarios services
 pnpm -w server run test
@@ -186,6 +196,7 @@ pnpm -w server run test:coverage
 **Cobertura objetivo**: 80% services, 60% routes
 
 ### Frontend (Vitest + Testing Library + jsdom)
+
 ```bash
 pnpm -w web run test
 pnpm -w web run test:coverage
@@ -195,6 +206,7 @@ pnpm -w web run test:coverage
 **Cobertura objetivo**: 60% components/hooks/utils
 
 ### E2E (Playwright)
+
 ```bash
 # Requiere servidor corriendo
 pnpm -w web run dev &
@@ -207,6 +219,7 @@ pnpm -w web run test:e2e -- --ui
 ## Debugging
 
 ### Backend (VS Code)
+
 ```json
 // .vscode/launch.json
 {
@@ -225,6 +238,7 @@ pnpm -w web run test:e2e -- --ui
 ```
 
 ### Frontend (VS Code + Vite)
+
 ```json
 {
   "type": "chrome",
@@ -236,6 +250,7 @@ pnpm -w web run test:e2e -- --ui
 ```
 
 ### Logs
+
 - Backend: `pnpm dev:api` → consola con pretty-print (Fastify logger)
 - Frontend: DevTools Console + Vite HMR overlay
 - SQLite: `DEBUG=sqlite* pnpm dev:api` (verbose)
@@ -258,13 +273,13 @@ pnpm reset
 
 ## Problemas Comunes
 
-| Problema | Solución |
-|----------|----------|
-| `pnpm install` falla | `pnpm store prune && pnpm install` |
-| Puerto 4000/5173 ocupado | Cambiar `PORT` en .env o matar proceso |
-| DB locked | Verificar que no hay otro proceso `tsx watch` |
-| Tests fallan por timeout | Aumentar `testTimeout` en vitest.config.ts |
-| Husky no ejecuta | `pnpm prepare` (reinstala hooks) |
+| Problema                    | Solución                                                 |
+| --------------------------- | -------------------------------------------------------- |
+| `pnpm install` falla        | `pnpm store prune && pnpm install`                       |
+| Puerto 4000/5173 ocupado    | Cambiar `PORT` en .env o matar proceso                   |
+| DB locked                   | Verificar que no hay otro proceso `tsx watch`            |
+| Tests fallan por timeout    | Aumentar `testTimeout` en vitest.config.ts               |
+| Husky no ejecuta            | `pnpm prepare` (reinstala hooks)                         |
 | TypeScript errors en import | Verificar `tsconfig.json` paths y `package.json` exports |
 
 ## Extensiones VS Code Recomendadas
@@ -274,7 +289,7 @@ pnpm reset
 [
   "dbaeumer.vscode-eslint",
   "esbenp.prettier-vscode",
-  "bradlc.vscode-tailwindcss",  // si usas tailwind
+  "bradlc.vscode-tailwindcss", // si usas tailwind
   "formulahendry.auto-rename-tag",
   "christian-kohler.path-intellisense",
   "usernamehw.errorlens",

@@ -4,7 +4,7 @@ let cachedTransporter: nodemailer.Transporter | null = null;
 
 export function createTransporter(): nodemailer.Transporter | null {
   if (cachedTransporter) return cachedTransporter;
-  
+
   const host = process.env.SMTP_HOST;
   const port = parseInt(process.env.SMTP_PORT ?? '587', 10);
   const user = process.env.SMTP_USER;
@@ -13,22 +13,22 @@ export function createTransporter(): nodemailer.Transporter | null {
     console.log('[ALERTAS] SMTP no configurado. Modo simulación activado.');
     return null;
   }
-  
+
   try {
     cachedTransporter = nodemailer.createTransport({
       host,
       port,
       secure: port === 465,
       auth: { user, pass },
-      tls: { rejectUnauthorized: false }
+      tls: { rejectUnauthorized: false },
     });
-    
+
     // Verificar conexión
     cachedTransporter.verify((err) => {
       if (err) console.error('[ALERTAS] Error verificando SMTP:', err.message);
       else console.log('[ALERTAS] SMTP conectado correctamente');
     });
-    
+
     return cachedTransporter;
   } catch (err: any) {
     console.error('[ALERTAS] Error creando transporter:', err.message);
@@ -52,14 +52,14 @@ export async function sendAlertEmail(
     console.log('========================');
     return { success: true };
   }
-  
+
   try {
     await transporter.sendMail({
       from: process.env.SMTP_FROM ?? 'SG-SST Alertas <alertas@empresa.com>',
       to,
       subject,
       html,
-      text
+      text,
     });
     return { success: true };
   } catch (err: any) {
@@ -68,22 +68,24 @@ export async function sendAlertEmail(
   }
 }
 
-export function buildAlertEmailHtml(alerts: Array<{
-  tipo: string;
-  entidad: string;
-  fecha_vencimiento: string;
-  prioridad: string;
-  worker_nombre?: string;
-  worker_apellido?: string;
-  item_nombre?: string;
-  detalle?: string;
-}>): string {
+export function buildAlertEmailHtml(
+  alerts: Array<{
+    tipo: string;
+    entidad: string;
+    fecha_vencimiento: string;
+    prioridad: string;
+    worker_nombre?: string;
+    worker_apellido?: string;
+    item_nombre?: string;
+    detalle?: string;
+  }>
+): string {
   const prioridadColors: Record<string, string> = {
     critica: '#dc2626',
     alta: '#ea580c',
-    media: '#f59e0b'
+    media: '#f59e0b',
   };
-  
+
   const tipoLabels: Record<string, string> = {
     examen: '🩺 Examen Médico',
     certificado: '📜 Certificado',
@@ -91,10 +93,12 @@ export function buildAlertEmailHtml(alerts: Array<{
     curso_50h: '📚 Curso 50h',
     inspeccion: '🔍 Inspección',
     plan: '📅 Plan Anual',
-    documento: '📄 Documento'
+    documento: '📄 Documento',
   };
-  
-  const rows = alerts.map(a => `
+
+  const rows = alerts
+    .map(
+      (a) => `
     <tr style="border-bottom: 1px solid #e5e7eb;">
       <td style="padding: 10px; font-size: 13px;">${tipoLabels[a.tipo] || a.tipo}</td>
       <td style="padding: 10px; font-size: 13px;">${a.worker_nombre ? `${a.worker_nombre} ${a.worker_apellido}` : a.item_nombre || a.entidad}</td>
@@ -106,8 +110,10 @@ export function buildAlertEmailHtml(alerts: Array<{
       </td>
       <td style="padding: 10px; font-size: 12px; color: #6b7280;">${a.detalle || '—'}</td>
     </tr>
-  `).join('');
-  
+  `
+    )
+    .join('');
+
   return `
 <!DOCTYPE html>
 <html>
@@ -178,16 +184,18 @@ export function buildAlertEmailHtml(alerts: Array<{
   `.trim();
 }
 
-export function buildAlertEmailText(alerts: Array<{
-  tipo: string;
-  entidad: string;
-  fecha_vencimiento: string;
-  prioridad: string;
-  worker_nombre?: string;
-  worker_apellido?: string;
-  item_nombre?: string;
-  detalle?: string;
-}>): string {
+export function buildAlertEmailText(
+  alerts: Array<{
+    tipo: string;
+    entidad: string;
+    fecha_vencimiento: string;
+    prioridad: string;
+    worker_nombre?: string;
+    worker_apellido?: string;
+    item_nombre?: string;
+    detalle?: string;
+  }>
+): string {
   const tipoLabels: Record<string, string> = {
     examen: 'Examen Médico',
     certificado: 'Certificado',
@@ -195,25 +203,25 @@ export function buildAlertEmailText(alerts: Array<{
     curso_50h: 'Curso 50h',
     inspeccion: 'Inspección',
     plan: 'Plan Anual',
-    documento: 'Documento'
+    documento: 'Documento',
   };
-  
+
   let text = `ALERTAS SG-SST - VENCIMIENTOS PRÓXIMOS\n`;
   text += `==========================================\n\n`;
   text += `Se detectaron ${alerts.length} alerta(s) con vencimientos próximos o vencidos:\n\n`;
-  
+
   for (const a of alerts) {
     text += `• ${tipoLabels[a.tipo] || a.tipo}: ${a.worker_nombre ? `${a.worker_nombre} ${a.worker_apellido}` : a.item_nombre || a.entidad}\n`;
     text += `  Vence: ${a.fecha_vencimiento} | Prioridad: ${a.prioridad.toUpperCase()}\n`;
     if (a.detalle) text += `  Detalle: ${a.detalle}\n`;
     text += `\n`;
   }
-  
+
   text += `------------------------------------------\n`;
   text += `Prioridades: Crítica (vencido) | Alta (≤7 días) | Media (≤30 días)\n\n`;
   text += `Acciones: Programar exámenes | Renovar certificados alturas (3 años) | Actualizar licencia SST/curso 50h | Ejecutar inspecciones | Revisar documentos\n\n`;
   text += `SG-SST - Sistema de Gestión SST - Colombia\n`;
   text += `Datos protegidos bajo Ley 1581/2012. No contiene información médica sensible.\n`;
-  
+
   return text;
 }

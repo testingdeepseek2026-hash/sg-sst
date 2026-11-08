@@ -28,12 +28,12 @@ export class DatabaseSync {
   exec(sql: string): void {
     // Handle PRAGMA
     if (sql.includes('PRAGMA foreign_keys')) return;
-    
+
     // Handle CREATE TABLE
     const createMatch = sql.match(/CREATE TABLE\s+(?:IF NOT EXISTS\s+)?(\w+)\s*\(([^)]+)\)/i);
     if (createMatch) {
       const tableName = createMatch[1];
-      const columns = createMatch[2].split(',').map(c => c.trim().split(/\s+/)[0]);
+      const columns = createMatch[2].split(',').map((c) => c.trim().split(/\s+/)[0]);
       this.db.set(tableName, []);
       this.autoIncrement.set(tableName, 1);
       this.schema.set(tableName, columns);
@@ -44,19 +44,21 @@ export class DatabaseSync {
     const insertMatch = sql.match(/INSERT INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/i);
     if (insertMatch) {
       const tableName = insertMatch[1];
-      const cols = insertMatch[2].split(',').map(c => c.trim());
-      const values = insertMatch[3].split(',').map(v => v.trim().replace(/^'|'$/g, ''));
-      
+      const cols = insertMatch[2].split(',').map((c) => c.trim());
+      const values = insertMatch[3].split(',').map((v) => v.trim().replace(/^'|'$/g, ''));
+
       const row: any = {};
-      cols.forEach((col, i) => { row[col] = values[i]; });
-      
+      cols.forEach((col, i) => {
+        row[col] = values[i];
+      });
+
       // Handle auto-increment id
       if (!row.id && this.autoIncrement.has(tableName)) {
         const nextId = this.autoIncrement.get(tableName)!;
         row.id = `test-${nextId}`;
         this.autoIncrement.set(tableName, nextId + 1);
       }
-      
+
       const table = this.db.get(tableName) || [];
       table.push(row);
       this.db.set(tableName, table);
@@ -67,10 +69,8 @@ export class DatabaseSync {
     const deleteMatch = sql.match(/DELETE FROM\s+(\w+)(?:\s+WHERE\s+(.+))?/i);
     if (deleteMatch) {
       const tableName = deleteMatch[1];
-      const table = this.db.get(tableName) || [];
       if (deleteMatch[2]) {
         // Simple WHERE clause handling
-        const where = deleteMatch[2].trim();
         // For simplicity, just clear all if there's a where clause in tests
         this.db.set(tableName, []);
       } else {
@@ -88,34 +88,36 @@ export class DatabaseSync {
         const insertMatch = sql.match(/INSERT INTO\s+(\w+)/i);
         const updateMatch = sql.match(/UPDATE\s+(\w+)/i);
         const deleteMatch = sql.match(/DELETE FROM\s+(\w+)/i);
-        
+
         if (insertMatch) {
           const tableName = insertMatch[1];
           const table = self.db.get(tableName) || [];
           const colsMatch = sql.match(/\(([^)]+)\)\s*VALUES/);
-          const cols = colsMatch ? colsMatch[1].split(',').map(c => c.trim()) : [];
-          
+          const cols = colsMatch ? colsMatch[1].split(',').map((c) => c.trim()) : [];
+
           const row: any = {};
-          cols.forEach((col, i) => { row[col] = params[i]; });
-          
+          cols.forEach((col, i) => {
+            row[col] = params[i];
+          });
+
           if (!row.id && self.autoIncrement.has(tableName)) {
             const nextId = self.autoIncrement.get(tableName)!;
             row.id = `test-${nextId}`;
             self.autoIncrement.set(tableName, nextId + 1);
           }
-          
+
           table.push(row);
           self.db.set(tableName, table);
           return { changes: 1, lastInsertRowid: row.id };
         }
-        
+
         if (updateMatch) {
           const tableName = updateMatch[1];
           const table = self.db.get(tableName) || [];
           // Simplified: just return changes
           return { changes: table.length };
         }
-        
+
         if (deleteMatch) {
           const tableName = deleteMatch[1];
           const table = self.db.get(tableName) || [];
@@ -123,11 +125,11 @@ export class DatabaseSync {
           self.db.set(tableName, []);
           return { changes: count };
         }
-        
+
         return { changes: 0 };
       },
-      
-      get(...params: any[]) {
+
+      get(..._params: any[]) {
         const selectMatch = sql.match(/SELECT\s+(.+)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?/i);
         if (selectMatch) {
           const tableName = selectMatch[2];
@@ -140,7 +142,7 @@ export class DatabaseSync {
         }
         return undefined;
       },
-      
+
       all(...params: any[]) {
         const selectMatch = sql.match(/SELECT\s+(.+)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?/i);
         if (selectMatch) {
@@ -150,7 +152,7 @@ export class DatabaseSync {
             // WHERE clause - simplified filtering
             const where = selectMatch[3];
             // Very basic where parsing for tests
-            return table.filter(row => {
+            return table.filter((row) => {
               // Check simple conditions like "worker_id = ?"
               const condMatch = where.match(/(\w+)\s*=\s*\?/);
               if (condMatch) {
@@ -164,9 +166,9 @@ export class DatabaseSync {
         }
         return [];
       },
-      
-      iterate(...params: any[]) {
-        return this.all(...params)[Symbol.iterator]();
+
+      iterate(..._params: any[]) {
+        return this.all(..._params)[Symbol.iterator]();
       },
     };
   }

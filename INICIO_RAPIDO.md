@@ -44,10 +44,10 @@ pnpm run dev
 
 ## 🔑 Credenciales de Acceso (Datos semilla)
 
-| Usuario | Contraseña | Rol |
-|---------|------------|-----|
-| `admin@sg-sst.local` | `Admin1234!` | administrador |
-| `trabajador@sg-sst.local` | `Trab1234!` | trabajador |
+| Usuario                   | Contraseña   | Rol           |
+| ------------------------- | ------------ | ------------- |
+| `admin@sg-sst.local`      | `Admin1234!` | administrador |
+| `trabajador@sg-sst.local` | `Trab1234!`  | trabajador    |
 
 ---
 
@@ -113,12 +113,14 @@ export FRONTEND_URL=https://tu-dominio.com
 ## 🐛 Si sigue sin funcionar...
 
 1. **Verificar backend está corriendo:**
+
    ```bash
    curl http://localhost:4000/api/health
    # Debería retornar: {"status":"ok","db":"connected","version":"1.0.0"}
    ```
 
 2. **Verificar login:**
+
    ```bash
    curl -X POST http://localhost:4000/api/users/login \
      -H "Content-Type: application/json" \

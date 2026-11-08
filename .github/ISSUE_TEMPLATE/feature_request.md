@@ -7,25 +7,33 @@ assignees: ''
 ---
 
 ## 💡 Descripción de la funcionalidad
+
 <!-- Descripción clara y concisa de la funcionalidad deseada -->
 
 ## 🎯 Problema que resuelve
+
 <!-- Qué problema resuelve esta funcionalidad? Por qué es necesaria? -->
 
 ## 💭 Solución propuesta
+
 <!-- Describe la solución que tienes en mente -->
 
 ## 🔄 Alternativas consideradas
+
 <!-- Otras soluciones o funcionalidades que has considerado -->
 
 ## 📋 Criterios de aceptación
+
 <!-- Lista de criterios que deben cumplirse para considerar la feature completa -->
+
 - [ ] Criterio 1
 - [ ] Criterio 2
 - [ ] Criterio 3
 
 ## 🏷️ Área afectada
+
 <!-- Marca con una `x` las áreas afectadas -->
+
 - [ ] 🔐 Autenticación / Autorización
 - [ ] 👥 Gestión de usuarios / trabajadores
 - [ ] 📊 Dashboard / Indicadores
@@ -42,10 +50,13 @@ assignees: ''
 - [ ] 📚 Documentación
 
 ## 📝 Contexto adicional
+
 <!-- Cualquier otro contexto, mockups, referencias, etc. -->
 
 ## ✅ Checklist de implementación
+
 <!-- Para uso del equipo de desarrollo -->
+
 - [ ] Diseño técnico aprobado
 - [ ] Tests unitarios escritos
 - [ ] Tests de integración escritos

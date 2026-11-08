@@ -34,20 +34,43 @@ export default function Layout({ user, onLogout, children }: LayoutProps) {
 
   return (
     <div style={{ display: 'flex', height: '100vh' }}>
-      <aside style={{
-        width: open ? 240 : 64,
-        background: '#0f766e',
-        color: '#fff',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: 12,
-        gap: 8,
-        transition: 'width 0.2s'
-      }}>
-        <div style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, minHeight: 40 }}>
+      <aside
+        style={{
+          width: open ? 240 : 64,
+          background: '#0f766e',
+          color: '#fff',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: 12,
+          gap: 8,
+          transition: 'width 0.2s',
+        }}
+      >
+        <div
+          style={{
+            fontWeight: 'bold',
+            fontSize: 18,
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            minHeight: 40,
+          }}
+        >
           SG-SST
         </div>
-        <button onClick={() => setOpen(!open)} style={{ background: 'transparent', border: 'none', color: '#fff', textAlign: 'left', width: '100%', padding: 8, cursor: 'pointer' }}>
+        <button
+          onClick={() => setOpen(!open)}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: '#fff',
+            textAlign: 'left',
+            width: '100%',
+            padding: 8,
+            cursor: 'pointer',
+          }}
+        >
           {open ? '◀' : '▶'}
         </button>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -56,7 +79,7 @@ export default function Layout({ user, onLogout, children }: LayoutProps) {
               key={m.to}
               to={m.to}
               end={m.to === '/dashboard'}
-              className={({ isActive }) => isActive ? 'active' : ''}
+              className={({ isActive }) => (isActive ? 'active' : '')}
               style={({ isActive }) => ({
                 display: 'flex',
                 alignItems: 'center',
@@ -71,18 +94,49 @@ export default function Layout({ user, onLogout, children }: LayoutProps) {
                 cursor: 'pointer',
                 fontSize: 14,
                 justifyContent: open ? 'flex-start' : 'center',
-                textDecoration: 'none'
+                textDecoration: 'none',
               })}
             >
-              <span style={{ fontSize: 18, minWidth: open ? 24 : 0, textAlign: open ? 'left' : 'center' }}>{m.icon}</span>
+              <span
+                style={{
+                  fontSize: 18,
+                  minWidth: open ? 24 : 0,
+                  textAlign: open ? 'left' : 'center',
+                }}
+              >
+                {m.icon}
+              </span>
               {open && <span>{m.label}</span>}
             </NavLink>
           ))}
         </nav>
-        <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.3)', fontSize: 12, opacity: 0.8 }}>
+        <div
+          style={{
+            marginTop: 'auto',
+            paddingTop: 12,
+            borderTop: '1px solid rgba(255,255,255,0.3)',
+            fontSize: 12,
+            opacity: 0.8,
+          }}
+        >
           {user.nombre} ({user.rol})
         </div>
-        <button onClick={onLogout} style={{ marginTop: 8, background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', padding: 8, borderRadius: 6, width: '100%', cursor: 'pointer', fontSize: 13 }}>Cerrar sesión</button>
+        <button
+          onClick={onLogout}
+          style={{
+            marginTop: 8,
+            background: 'rgba(255,255,255,0.15)',
+            border: 'none',
+            color: '#fff',
+            padding: 8,
+            borderRadius: 6,
+            width: '100%',
+            cursor: 'pointer',
+            fontSize: 13,
+          }}
+        >
+          Cerrar sesión
+        </button>
       </aside>
       <main style={{ flex: 1, padding: 24, overflow: 'auto' }}>{children}</main>
     </div>

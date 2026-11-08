@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createTestDb, cleanDb } from '../../setup.js';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { createTestDb } from '../../setup.js';
 import * as standardsService from '../../../src/services/standards.js';
 
 describe('Estándares (Normativa) - Servicio', () => {

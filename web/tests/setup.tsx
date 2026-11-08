@@ -1,8 +1,10 @@
 // Web test setup
-import { vi } from 'vitest';
-
 import '@testing-library/jest-dom';
 import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
+
+import { render, RenderOptions } from '@testing-library/react';
+import { vi } from 'vitest';
 
 // Mock console methods to reduce noise
 global.console = {
@@ -17,7 +19,7 @@ global.console = {
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -64,28 +66,71 @@ Object.defineProperty(window, 'sessionStorage', { value: sessionStorageMock });
 // Mock fetch
 global.fetch = vi.fn();
 
-// Custom render with providers
-import { BrowserRouter } from 'react-router-dom';
-
-import { render, RenderOptions } from '@testing-library/react';
-
 interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   initialPath?: string;
 }
 
 const customRender = (ui: React.ReactElement, options: CustomRenderOptions = {}) => {
   const { initialPath = '/', ...renderOptions } = options;
-  
+
   const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <BrowserRouter initialEntries={[initialPath]}>
-      {children}
-    </BrowserRouter>
+    <BrowserRouter initialEntries={[initialPath]}>{children}</BrowserRouter>
   );
 
   return render(ui, { wrapper, ...renderOptions });
 };
 
-export * from '@testing-library/react';
+export {
+  act,
+  cleanup,
+  findAllByAltText,
+  findAllByLabelText,
+  findAllByPlaceholderText,
+  findAllByRole,
+  findAllByTestId,
+  findAllByText,
+  findAllByTitle,
+  findByAltText,
+  findByLabelText,
+  findByPlaceholderText,
+  findByRole,
+  findByTestId,
+  findByText,
+  findByTitle,
+  fireEvent,
+  getAllByAltText,
+  getAllByLabelText,
+  getAllByPlaceholderText,
+  getAllByRole,
+  getAllByTestId,
+  getAllByText,
+  getAllByTitle,
+  getByAltText,
+  getByLabelText,
+  getByPlaceholderText,
+  getByRole,
+  getByTestId,
+  getByText,
+  getByTitle,
+  queries,
+  queryAllByAltText,
+  queryAllByLabelText,
+  queryAllByPlaceholderText,
+  queryAllByRole,
+  queryAllByTestId,
+  queryAllByText,
+  queryAllByTitle,
+  queryByAltText,
+  queryByLabelText,
+  queryByPlaceholderText,
+  queryByRole,
+  queryByTestId,
+  queryByText,
+  queryByTitle,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 export { customRender as render };
 
 // Test utilities
@@ -102,7 +147,7 @@ export const testUtils = {
 
   // Wait for async operations
   waitFor: (fn: () => Promise<void> | void) => {
-    return new Promise(resolve => setTimeout(() => resolve(fn()), 0));
+    return new Promise((resolve) => setTimeout(() => resolve(fn()), 0));
   },
 };
 
@@ -112,9 +157,10 @@ expect.extend({
     const pass = received !== null && document.body.contains(received);
     return {
       pass,
-      message: () => pass
-        ? 'expected element not to be in the document'
-        : 'expected element to be in the document',
+      message: () =>
+        pass
+          ? 'expected element not to be in the document'
+          : 'expected element to be in the document',
     };
   },
 
@@ -126,14 +172,13 @@ expect.extend({
       };
     }
     const text = received.textContent || '';
-    const pass = typeof expected === 'string' 
-      ? text.includes(expected) 
-      : expected.test(text);
+    const pass = typeof expected === 'string' ? text.includes(expected) : expected.test(text);
     return {
       pass,
-      message: () => pass
-        ? `expected element not to have text content matching ${expected}`
-        : `expected element to have text content matching ${expected}, got "${text}"`,
+      message: () =>
+        pass
+          ? `expected element not to have text content matching ${expected}`
+          : `expected element to have text content matching ${expected}, got "${text}"`,
     };
   },
 });

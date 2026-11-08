@@ -8,10 +8,10 @@
 
 ## 1. Cuentas de prueba (semilla)
 
-| Rol | Correo | Contraseña |
-|-----|--------|------------|
-| Administrador (responsable SG-SST) | admin@sg-sst.local | Admin1234! |
-| Trabajador | trabajador@sg-sst.local | Trab1234! |
+| Rol                                | Correo                  | Contraseña |
+| ---------------------------------- | ----------------------- | ---------- |
+| Administrador (responsable SG-SST) | admin@sg-sst.local      | Admin1234! |
+| Trabajador                         | trabajador@sg-sst.local | Trab1234!  |
 
 Cambiar contraseñas en producción.
 
@@ -52,6 +52,7 @@ Página **Alertas**: lista exámenes médicos, certificados (alturas, eléctrico
 ## 5. Importación desde Excel
 
 Página **Importar Excel**: plantilla con primera fila de encabezados.
+
 - Trabajadores: tipo_documento, numero_documento, nombres, apellidos, cargo, fecha_ingreso, estado, eps, arl
 - Riesgos: cargo, area, peligro, tarea, valoracion, responsable
 - Incidentes: tipo, fecha_ocurrencia, descripcion, estado
@@ -63,10 +64,12 @@ Comparta sus archivos Excel para afinar el mapeo.
 ## 6. Despliegue en su PC personal (Windows)
 
 ### Requisitos
+
 - Node.js ≥ 22 (ya instalado: v24.16.0).
 - Puerto 4000 libre.
 
 ### Estructura
+
 ```
 C:\Users\PC\sg-sst\
   server/   (API Node + SQLite + build)
@@ -76,11 +79,13 @@ C:\Users\PC\sg-sst\
 ```
 
 ### Ejecutar
+
 1. Abrir PowerShell en `C:\Users\PC\sg-sst\server`.
 2. `.\runserver.bat` (inicia API en `http://127.0.0.1:4000`).
 3. Abrir el navegador en esa URL. El frontend es una PWA: se puede "instalar" desde el navegador y usar en celular.
 
 ### Variables de entorno (opcional, editar `server\runserver.bat`)
+
 - `PORT` (puerto, default 4000)
 - `HOST` (default 127.0.0.1; poner 0.0.0.0 para acceder desde otros dispositivos de la red)
 - `SESSION_SECRET` (secreto de sesión)
@@ -94,18 +99,23 @@ C:\Users\PC\sg-sst\
 La base de datos es un único archivo SQLite: `server/data/sg-sst.db`.
 
 ### Respaldo automático (recomendado)
+
 Crear una tarea programada de Windows que copie el archivo diario:
+
 ```
 robocopy "C:\Users\PC\sg-sst\server\data" "C:\Users\PC\sg-sst\backups" sg-sst.db /MIR /MT
 ```
+
 O usar `restic`/`7zip` con cifrado (AES-256) porque el archivo contiene **datos de salud sensibles** (exámenes médicos, restricciones).
 
 ### Recomendaciones de seguridad
+
 - No exponer el puerto 4000 a Internet sin proxy inverso (nginx/Caddy) con HTTPS.
 - Los datos médicos se almacenan en la misma DB; restringir acceso al archivo `sg-sst.db` y a las carpetas `data/` y `backups/`.
 - Bitácora de cambios en tabla `audit_logs` (quién, qué, cuándo).
 
 ### Restaurar
+
 Detener el servidor, reemplazar `server/data/sg-sst.db` por el respaldo y reiniciar.
 
 ---
@@ -113,9 +123,11 @@ Detener el servidor, reemplazar `server/data/sg-sst.db` por el respaldo y reinic
 ## 8. Pruebas básicas
 
 Desde `C:\Users\PC\sg-sst\server`:
+
 ```
 npm run test
 ```
+
 Ejecuta una prueba de humo sobre SQLite (abrir, insertar, consultar).
 
 ---

@@ -14,14 +14,17 @@ pnpm run dev
 ## 📋 PASOS DETALLADOS:
 
 ### 1. Abrir PowerShell como Administrador
+
 - Win + X → "Windows PowerShell ( Administrador )"
 
 ### 2. Navegar al proyecto
+
 ```powershell
 cd "C:\Users\PC\sg-sst"
 ```
 
 ### 3. Ejecutar el servidor
+
 ```powershell
 # Método 1: Con variables de entorno
 $env:SEED="true"
@@ -32,10 +35,12 @@ SEED=true pnpm run dev
 ```
 
 ### 4. Cuando veas estos mensajes, abre el navegador:
+
 - **Frontend:** http://localhost:5173
 - **Health Check:** http://localhost:4000/api/health
 
 ### 5. Inicia sesión con:
+
 - **Email:** `admin@sg-sst.local`
 - **Password:** `Admin1234!`
 
@@ -59,13 +64,17 @@ pnpm run dev
 ## ❓ Problemas comunes
 
 ### Error: "pnpm no se reconoce"
+
 Solución: Reinicia PowerShell y ejecuta:
+
 ```powershell
 npm install -g pnpm
 ```
 
 ### Error: "Puerto en uso"
+
 Solución: Mata procesos en los puertos:
+
 ```powershell
 netstat -ano | findstr ":5173"
 netstat -ano | findstr ":4000"
@@ -74,7 +83,9 @@ taskkill /PID <numero> /F
 ```
 
 ### Error: "Base de datos vacía"
+
 Asegúrate de ver en consola:
+
 ```
 Semilla cargada.
 ```

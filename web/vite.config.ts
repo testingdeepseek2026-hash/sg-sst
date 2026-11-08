@@ -7,7 +7,7 @@ export default {
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\/.*/, /^\/uploads\/.*/]
+        navigateFallbackDenylist: [/^\/api\/.*/, /^\/uploads\/.*/],
       },
       manifest: {
         name: 'SG-SST Microempresa',
@@ -20,11 +20,21 @@ export default {
         lang: 'es',
         dir: 'ltr',
         icons: [
-          { src: '/icon-192.svg', sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
-          { src: '/icon-512.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
-        ]
-      }
-    })
+          {
+            src: '/icon-192.svg',
+            sizes: '192x192',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
+          },
+          {
+            src: '/icon-512.svg',
+            sizes: '512x512',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
+          },
+        ],
+      },
+    }),
   ],
   resolve: {
     alias: [
@@ -32,18 +42,18 @@ export default {
       { find: /^@\/components/, replacement: '/src/components' },
       { find: /^@\/pages/, replacement: '/src/pages' },
       { find: /^@\/lib/, replacement: '/src/lib' },
-      { find: /^@\/hooks/, replacement: '/src/hooks' }
-    ]
+      { find: /^@\/hooks/, replacement: '/src/hooks' },
+    ],
   },
   build: {
     outDir: '../server/dist/public',
-    emptyOutDir: false
+    emptyOutDir: false,
   },
   server: {
     port: 5173,
     proxy: {
       '/api': 'http://localhost:4000',
-      '/uploads': 'http://localhost:4000'
-    }
-  }
-}
+      '/uploads': 'http://localhost:4000',
+    },
+  },
+};

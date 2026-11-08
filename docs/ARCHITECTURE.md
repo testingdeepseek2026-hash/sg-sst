@@ -61,6 +61,7 @@ SG-SST (Sistema de Gestión de Seguridad y Salud en el Trabajo) es una aplicaci�
 ## Stack Tecnológico
 
 ### Frontend (web/)
+
 - **React 18** - UI Library con Concurrent Features
 - **TypeScript 5.7** - Tipado estricto
 - **Vite 6** - Build tool y dev server ultrarrápido
@@ -70,6 +71,7 @@ SG-SST (Sistema de Gestión de Seguridad y Salud en el Trabajo) es una aplicaci�
 - **CSS Modules / Variables CSS** - Estilos sin dependencias externas
 
 ### Backend (server/)
+
 - **Fastify 5** - Framework web alto rendimiento, schema validation
 - **TypeScript 5.7** - Tipado estricto
 - **node:sqlite** - Base de datos embebida, API síncrona nativa (Node 22+)
@@ -80,6 +82,7 @@ SG-SST (Sistema de Gestión de Seguridad y Salud en el Trabajo) es una aplicaci�
 - **Cron** - Scheduler de alertas automáticas
 
 ### Herramientas de Desarrollo
+
 - **pnpm 9** - Package manager rápido, disk-efficient
 - **ESLint 9 (Flat Config)** - Linting TypeScript/React estricto
 - **Prettier 3** - Formateo consistente
@@ -95,31 +98,38 @@ SG-SST (Sistema de Gestión de Seguridad y Salud en el Trabajo) es una aplicaci�
 ## Decisiones Técnicas Clave
 
 ### 1. SQLite con node:sqlite (API Síncrona)
+
 - **Por qué**: Node 22+ incluye `node:sqlite` nativo sin dependencias nativas (no node-gyp, no compilación).
 - **Ventajas**: Zero-config, embebido, backup simple (copiar archivo), ACID completo, WAL mode.
 - **Trade-offs**: No escalable horizontalmente (single-writer), pero ideal para microempresa (<50 users concurrentes).
 
 ### 2. Autenticación JWT en Cookies httpOnly
+
 - **Por qué**: Evita XSS (no accesible desde JS), CSRF mitigado con SameSite=Lax + validación de origen.
 - **Implementación**: Cookie firmada con secret, payload mínimo (userId, email), refresh token rotation opcional.
 
 ### 3. Monorepo con pnpm Workspaces
+
 - **Estructura**: `server/`, `web/` como workspaces independientes, config compartida en root.
 - **Ventajas**: Install único, hoisting inteligente, scripts cross-workspace, type-checking compartido.
 
 ### 4. TypeScript Strict Mode en Todo el Proyecto
+
 - `strict: true`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`
 - Elimina categorías enteras de bugs en tiempo de compilación.
 
 ### 5. Conventional Commits + standard-version
+
 - Historial de commits semántico, CHANGELOG generado automáticamente, versionado semántico automático.
 
 ### 6. Testing Strategy
+
 - **Backend**: Unit (services) + Integration (Fastify inject) + Migration/Seed tests. Coverage 80% services.
 - **Frontend**: Component (Testing Library) + Hook tests + API client tests. Coverage 60%.
 - **E2E**: Playwright critical paths (login → dashboard → CRUD modules).
 
 ### 7. PWA (Progressive Web App)
+
 - Service Worker con Workbox (vite-plugin-pwa)
 - Offline-first para consultas de catálogos, estándares, políticas
 - Installable en móvil/desktop
@@ -198,12 +208,14 @@ sg-sst/
 ## Patrones de Diseño Utilizados
 
 ### Backend
+
 - **Repository Pattern implícito**: Services encapsulan acceso a DB, routes solo orquestan.
 - **Pure Functions**: Services son funciones puras (db, input) → output, facilita testing.
 - **Zod Schemas**: Validación en routes, types inferidos en services.
 - **Error Handling**: Errores de negocio como excepciones con mensajes claros, HTTP status codes apropiados.
 
 ### Frontend
+
 - **Container/Presentational**: Pages (containers) + Components (presentational).
 - **Custom Hooks**: `useAuth`, `useApi` para lógica reutilizable.
 - **React Context**: Auth state global.
@@ -212,16 +224,16 @@ sg-sst/
 
 ## Seguridad
 
-| Capa | Medida |
-|------|--------|
-| Transporte | HTTPS obligatorio en producción, HSTS |
-| Autenticación | JWT en cookie httpOnly, SameSite=Lax, Secure |
-| Autorización | Roles (admin, responsable_sst, supervisor, worker), middleware por ruta |
+| Capa            | Medida                                                                    |
+| --------------- | ------------------------------------------------------------------------- |
+| Transporte      | HTTPS obligatorio en producción, HSTS                                     |
+| Autenticación   | JWT en cookie httpOnly, SameSite=Lax, Secure                              |
+| Autorización    | Roles (admin, responsable_sst, supervisor, worker), middleware por ruta   |
 | Datos Sensibles | Ley 1581/2012 - Consentimiento médico obligatorio, ofuscación en listados |
-| Validación | Zod en todos los endpoints (body, query, params) |
-| Headers | Helmet-like (CSP, X-Frame-Options, etc. via Fastify plugins) |
-| Rate Limiting | Fastify rate-limit plugin (configurable) |
-| Dependencias | Dependabot + audit en CI, lockfile committed |
+| Validación      | Zod en todos los endpoints (body, query, params)                          |
+| Headers         | Helmet-like (CSP, X-Frame-Options, etc. via Fastify plugins)              |
+| Rate Limiting   | Fastify rate-limit plugin (configurable)                                  |
+| Dependencias    | Dependabot + audit en CI, lockfile committed                              |
 
 ## Escalabilidad y Límites
 

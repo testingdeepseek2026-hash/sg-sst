@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import Layout from './components/Layout';
 import { api } from './lib/api';
@@ -26,7 +26,12 @@ import Usuarios from './pages/Usuarios';
 const PUBLIC_PAGES = ['/login'];
 
 function App() {
-  const [user, setUser] = useState<{ id: string; email: string; nombre: string; rol: string } | null>(null);
+  const [user, setUser] = useState<{
+    id: string;
+    email: string;
+    nombre: string;
+    rol: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
@@ -47,9 +52,9 @@ function App() {
   // Manejo de redirección con useEffect para evitar problemas de renderizado
   useEffect(() => {
     if (loading) return;
-    
+
     const isAuth = !!user;
-    
+
     if (!isAuth && !PUBLIC_PAGES.includes(location.pathname)) {
       navigate('/login', { replace: true });
     } else if (isAuth && location.pathname === '/login') {
@@ -57,22 +62,41 @@ function App() {
     }
   }, [loading, user, location.pathname, navigate]);
 
-  if (loading) return <div style={{display:'flex',height:'100vh',alignItems:'center',justifyContent:'center',background:'#f3f4f6'}}><div style={{fontSize:18,color:'#0f766e'}}>Cargando SG-SST…</div></div>;
+  if (loading)
+    return (
+      <div
+        style={{
+          display: 'flex',
+          height: '100vh',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#f3f4f6',
+        }}
+      >
+        <div style={{ fontSize: 18, color: '#0f766e' }}>Cargando SG-SST…</div>
+      </div>
+    );
 
   const isAuth = !!user;
-  
+
   // Si no está autenticado y es una página pública, mostrar login
   if (!isAuth && PUBLIC_PAGES.includes(location.pathname)) {
     return <Login onLogin={(u) => setUser(u)} />;
   }
-  
+
   // Si no está autenticado y no es una página pública, mostrar login (el useEffect se encargará de redirigir)
   if (!isAuth) {
     return <Login onLogin={(u) => setUser(u)} />;
   }
 
   return (
-    <Layout user={user} onLogout={() => { setUser(null); api.post('/users/logout'); }}>
+    <Layout
+      user={user}
+      onLogout={() => {
+        setUser(null);
+        api.post('/users/logout');
+      }}
+    >
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />

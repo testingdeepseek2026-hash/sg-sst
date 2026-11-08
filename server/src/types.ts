@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 
-import { FastifyInstance, FastifyRequest } from 'fastify';
+import { FastifyInstance as _FastifyInstance, FastifyRequest as _FastifyRequest } from 'fastify';
 
 declare module 'fastify' {
   interface FastifyInstance {

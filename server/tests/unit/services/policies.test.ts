@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { createTestDb } from '../../setup.js';
 import * as policiesService from '../../../src/services/policies.js';
 

@@ -17,7 +17,7 @@ export function openDb() {
 export function runMigrations(db: DatabaseSync) {
   const migrationPaths = [
     path.join(import.meta.dirname, 'migrations', '001_initial.sql'),
-    path.join(import.meta.dirname, '..', 'migrations', '001_initial.sql')
+    path.join(import.meta.dirname, '..', 'migrations', '001_initial.sql'),
   ];
   const migrationPath = migrationPaths.find((candidate) => fs.existsSync(candidate));
   if (!migrationPath) {
@@ -28,11 +28,13 @@ export function runMigrations(db: DatabaseSync) {
 
   const alertColumns = db.prepare('PRAGMA table_info(alerts)').all() as { name: string }[];
   if (!alertColumns.some(({ name }) => name === 'prioridad')) {
-    db.exec("ALTER TABLE alerts ADD COLUMN prioridad TEXT NOT NULL DEFAULT 'media' CHECK (prioridad IN ('critica','alta','media'))");
+    db.exec(
+      "ALTER TABLE alerts ADD COLUMN prioridad TEXT NOT NULL DEFAULT 'media' CHECK (prioridad IN ('critica','alta','media'))"
+    );
   }
   if (!alertColumns.some(({ name }) => name === 'enviado_en')) {
     db.exec('ALTER TABLE alerts ADD COLUMN enviado_en TEXT');
   }
 }
 
-export { DB_PATH, DATA_DIR };
+export { DATA_DIR, DB_PATH };

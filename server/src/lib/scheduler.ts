@@ -1,6 +1,11 @@
 import { CronJob } from 'cron';
 
-import { generateAlerts, getPendingAlertsForSending, markAsSent, Alert } from '../services/alerts.js';
+import {
+  Alert,
+  generateAlerts,
+  getPendingAlertsForSending,
+  markAsSent,
+} from '../services/alerts.js';
 
 import { createTransporter } from './email.js';
 
@@ -18,9 +23,9 @@ export function startAlertScheduler(db: any): void {
     console.log('[SCHEDULER] Alertas deshabilitadas (NODE_ENV=test o ALERTS_ENABLED!=true)');
     return;
   }
-  
+
   const transporter = createTransporter();
-  
+
   // Job diario: 07:00 America/Bogota
   dailyJob = new CronJob(
     '0 7 * * *',
@@ -38,7 +43,7 @@ export function startAlertScheduler(db: any): void {
     true,
     'America/Bogota'
   );
-  
+
   // Job semanal: Lunes 08:00 - Resumen semanal
   weeklyJob = new CronJob(
     '0 8 * * 1',
@@ -54,13 +59,21 @@ export function startAlertScheduler(db: any): void {
     true,
     'America/Bogota'
   );
-  
-  console.log('[SCHEDULER] Alertas programadas: Diario 07:00, Semanal Lunes 08:00 (America/Bogota)');
+
+  console.log(
+    '[SCHEDULER] Alertas programadas: Diario 07:00, Semanal Lunes 08:00 (America/Bogota)'
+  );
 }
 
 export function stopAlertScheduler(): void {
-  if (dailyJob) { dailyJob.stop(); dailyJob = null; }
-  if (weeklyJob) { weeklyJob.stop(); weeklyJob = null; }
+  if (dailyJob) {
+    dailyJob.stop();
+    dailyJob = null;
+  }
+  if (weeklyJob) {
+    weeklyJob.stop();
+    weeklyJob = null;
+  }
   console.log('[SCHEDULER] Scheduler detenido');
 }
 
@@ -70,60 +83,83 @@ async function sendPendingAlerts(db: any, transporter: any): Promise<void> {
     console.log('[SCHEDULER] No hay alertas pendientes para enviar');
     return;
   }
-  
+
   // Agrupar por email del trabajador
   const byEmail = new Map<string, AlertWithEmail[]>();
   for (const a of pending) {
     // Buscar email del trabajador asociado
     let email = a.company_email;
-    if (a.entidad === 'worker_exams' || a.entidad === 'worker_certs' || a.entidad === 'worker_epp') {
-      const worker = db.prepare('SELECT email FROM workers WHERE id = (SELECT worker_id FROM ?? WHERE id = ?)').get(a.entidad, a.entidad_id) as { email: string | null } | undefined;
+    if (
+      a.entidad === 'worker_exams' ||
+      a.entidad === 'worker_certs' ||
+      a.entidad === 'worker_epp'
+    ) {
+      const worker = db
+        .prepare('SELECT email FROM workers WHERE id = (SELECT worker_id FROM ?? WHERE id = ?)')
+        .get(a.entidad, a.entidad_id) as { email: string | null } | undefined;
       if (worker?.email) email = worker.email;
     } else if (a.entidad === 'roles') {
-      const role = db.prepare('SELECT u.email FROM roles r JOIN users u ON u.id = r.usuario_id WHERE r.id = ?').get(a.entidad_id) as { email: string | null } | undefined;
+      const role = db
+        .prepare('SELECT u.email FROM roles r JOIN users u ON u.id = r.usuario_id WHERE r.id = ?')
+        .get(a.entidad_id) as { email: string | null } | undefined;
       if (role?.email) email = role.email;
     }
-    
+
     if (!email) continue;
     if (!byEmail.has(email)) byEmail.set(email, []);
     byEmail.get(email)!.push(a);
   }
-  
+
   const { buildAlertEmailHtml, buildAlertEmailText } = await import('./email.js');
-  
+
   let enviadas = 0;
   let errores = 0;
-  
+
   for (const [email, alertas] of byEmail) {
     const html = buildAlertEmailHtml(alertas);
     const text = buildAlertEmailText(alertas);
-    
-    const result = await import('./email.js').then(m => m.sendAlertEmail(transporter, email, `⚠️ SG-SST: ${alertas.length} alerta(s) de vencimiento`, html, text));
+
+    const result = await import('./email.js').then((m) =>
+      m.sendAlertEmail(
+        transporter,
+        email,
+        `⚠️ SG-SST: ${alertas.length} alerta(s) de vencimiento`,
+        html,
+        text
+      )
+    );
     if (result.success) {
       enviadas++;
-      markAsSent(db, alertas.map(a => a.id));
+      markAsSent(
+        db,
+        alertas.map((a) => a.id)
+      );
     } else {
       errores++;
       console.error(`[SCHEDULER] Error enviando a ${email}:`, result.error);
     }
   }
-  
+
   console.log(`[SCHEDULER] Enviados: ${enviadas}, Errores: ${errores}`);
 }
 
 async function sendWeeklySummary(db: any, transporter: any): Promise<void> {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (!adminEmail) return;
-  
-  const stats = db.prepare(`
+
+  const stats = db
+    .prepare(
+      `
     SELECT 
       COUNT(*) as total,
       SUM(CASE WHEN enviado = 0 THEN 1 ELSE 0 END) as pendientes,
       SUM(CASE WHEN enviado = 1 THEN 1 ELSE 0 END) as enviadas,
       SUM(CASE WHEN date(fecha_vencimiento) < date('now') AND enviado = 0 THEN 1 ELSE 0 END) as vencidas
     FROM alerts
-  `).get() as any;
-  
+  `
+    )
+    .get() as any;
+
   const html = `
 <!DOCTYPE html>
 <html>
@@ -132,7 +168,7 @@ async function sendWeeklySummary(db: any, transporter: any): Promise<void> {
   <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden;">
     <div style="background: #0f766e; color: white; padding: 20px; text-align: center;">
       <h1 style="margin: 0;">📊 Resumen Semanal SG-SST</h1>
-      <p style="margin: 8px 0 0; opacity: 0.9;">Semana ${new Date().toISOString().slice(0,10)}</p>
+      <p style="margin: 8px 0 0; opacity: 0.9;">Semana ${new Date().toISOString().slice(0, 10)}</p>
     </div>
     <div style="padding: 24px;">
       <table style="width: 100%; border-collapse: collapse;">
@@ -148,6 +184,14 @@ async function sendWeeklySummary(db: any, transporter: any): Promise<void> {
   </div>
 </body>
 </html>`;
-  
-  await import('./email.js').then(m => m.sendAlertEmail(transporter, adminEmail, '📊 Resumen Semanal SG-SST', html, `Resumen semanal SG-SST: Total ${stats.total}, Pendientes ${stats.pendientes}, Enviadas ${stats.enviadas}, Vencidas ${stats.vencidas}`));
+
+  await import('./email.js').then((m) =>
+    m.sendAlertEmail(
+      transporter,
+      adminEmail,
+      '📊 Resumen Semanal SG-SST',
+      html,
+      `Resumen semanal SG-SST: Total ${stats.total}, Pendientes ${stats.pendientes}, Enviadas ${stats.enviadas}, Vencidas ${stats.vencidas}`
+    )
+  );
 }

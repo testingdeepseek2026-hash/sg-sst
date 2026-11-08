@@ -1,65 +1,65 @@
 version: 2
 updates:
   # Enable version updates for npm dependencies
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "America/Bogota"
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'America/Bogota'
     open-pull-requests-limit: 10
     reviewers:
-      - "sg-sst-team"
+      - 'sg-sst-team'
     assignees:
-      - "sg-sst-team"
+      - 'sg-sst-team'
     labels:
-      - "dependencies"
-      - "npm"
+      - 'dependencies'
+      - 'npm'
     commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
+      prefix: 'chore(deps)'
+      include: 'scope'
     groups:
       development-dependencies:
         patterns:
-          - "@types/*"
-          - "eslint*"
-          - "prettier*"
-          - "typescript*"
-          - "vitest*"
-          - "playwright*"
-          - "@testing-library/*"
+          - '@types/*'
+          - 'eslint*'
+          - 'prettier*'
+          - 'typescript*'
+          - 'vitest*'
+          - 'playwright*'
+          - '@testing-library/*'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       production-dependencies:
         patterns:
-          - "react*"
-          - "fastify*"
-          - "zod*"
-          - "pdfkit*"
-          - "exceljs*"
-          - "nodemailer*"
+          - 'react*'
+          - 'fastify*'
+          - 'zod*'
+          - 'pdfkit*'
+          - 'exceljs*'
+          - 'nodemailer*'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
 
   # Enable version updates for GitHub Actions
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "America/Bogota"
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'America/Bogota'
     open-pull-requests-limit: 5
     reviewers:
-      - "sg-sst-team"
+      - 'sg-sst-team'
     assignees:
-      - "sg-sst-team"
+      - 'sg-sst-team'
     labels:
-      - "dependencies"
-      - "github-actions"
+      - 'dependencies'
+      - 'github-actions'
     commit-message:
-      prefix: "chore(ci)"
-      include: "scope"
+      prefix: 'chore(ci)'
+      include: 'scope'

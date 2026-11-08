@@ -23,7 +23,9 @@ export function createTestDb(): DatabaseSync {
 }
 
 export function cleanDb(db: DatabaseSync): void {
-  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all() as { name: string }[];
+  const tables = db
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+    .all() as { name: string }[];
   db.exec('PRAGMA foreign_keys = OFF;');
   for (const { name } of tables.reverse()) {
     db.prepare(`DELETE FROM "${name}"`).run();
@@ -40,18 +42,20 @@ expect.extend({
     const pass = !Number.isNaN(new Date(received).getTime());
     return {
       pass,
-      message: () => pass
-        ? `expected ${received} not to be a valid date`
-        : `expected ${received} to be a valid date`,
+      message: () =>
+        pass
+          ? `expected ${received} not to be a valid date`
+          : `expected ${received} to be a valid date`,
     };
   },
   toBeValidUUID(received: string) {
     const pass = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(received);
     return {
       pass,
-      message: () => pass
-        ? `expected ${received} not to be a valid UUID`
-        : `expected ${received} to be a valid UUID`,
+      message: () =>
+        pass
+          ? `expected ${received} not to be a valid UUID`
+          : `expected ${received} to be a valid UUID`,
     };
   },
 });

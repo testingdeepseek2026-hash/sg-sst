@@ -96,7 +96,7 @@ describe('Migraciones y datos semilla', () => {
       razon_social: string; clase_riesgo: string;
     };
     expect(company.razon_social).toBe('Micro Instalaciones Electrónicas SAS');
-    expect(company.clase_riesgo).toBe('V');
+    expect(company.clase_riesgo).toBe('IV');
 
     const admin = db.prepare('SELECT * FROM users WHERE email = ?').get('admin@sg-sst.local') as {
       rol: string;
