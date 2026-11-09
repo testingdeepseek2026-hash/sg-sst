@@ -87,14 +87,14 @@ jobs:
         run: pnpm -w web run test:coverage
 
       - name: Upload Server Coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           files: ./server/coverage/lcov.info
           flags: server
           name: server-coverage
 
       - name: Upload Web Coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           files: ./web/coverage/lcov.info
           flags: web
