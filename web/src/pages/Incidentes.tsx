@@ -52,7 +52,7 @@ const TIPO_LABELS: Record<string, string> = {
 
 const ESTADO_LABELS: Record<string, string> = {
   abierto: 'Abierto',
-  investigando: 'En investigaci\u00f3n',
+  investigando: 'En investigación',
   cerrado: 'Cerrado',
 };
 
@@ -82,7 +82,7 @@ const addBusinessDays = (date: Date, days: number): Date => {
 };
 
 const formatDate = (dateStr: string | null) => {
-  if (!dateStr) return '\u2014';
+  if (!dateStr) return '—';
   return new Date(dateStr).toLocaleDateString('es-CO');
 };
 
@@ -95,11 +95,11 @@ const getDeadlineStatus = (deadlineStr: string | null, completed: boolean) => {
   deadline.setHours(0, 0, 0, 0);
   const diff = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   if (diff < 0)
-    return { label: `Vencida (${Math.abs(diff)} d\u00edas)`, color: '#dc2626', bg: '#fee2e2' };
+    return { label: `Vencida (${Math.abs(diff)} días)`, color: '#dc2626', bg: '#fee2e2' };
   if (diff === 0) return { label: 'Vence hoy', color: '#f59e0b', bg: '#fef3c7' };
   if (diff <= 3)
-    return { label: `Por vencer (${diff} d\u00edas)`, color: '#f59e0b', bg: '#fef3c7' };
-  return { label: `${diff} d\u00edas`, color: '#16a34a', bg: '#dcfce7' };
+    return { label: `Por vencer (${diff} días)`, color: '#f59e0b', bg: '#fef3c7' };
+  return { label: `${diff} días`, color: '#16a34a', bg: '#dcfce7' };
 };
 
 const getArlDeadline = (fechaOcurrencia: string) => {
@@ -144,6 +144,7 @@ export default function Incidentes() {
   const [actions, setActions] = useState<CorrectiveAction[]>([]);
   const [actionForm, setActionForm] = useState(INITIAL_ACTION);
   const [editingAction, setEditingAction] = useState<CorrectiveAction | null>(null);
+  const [creatingAction, setCreatingAction] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -199,11 +200,13 @@ export default function Incidentes() {
     setLoading(true);
     setMessage(null);
     try {
+      // Sin trabajador seleccionado se debe enviar null: la columna tiene clave foránea a workers.
+      const payload = { ...form, trabajador_id: form.trabajador_id || null };
       if (selectedIncident) {
-        await api.put(`/incidents/${selectedIncident.id}`, form);
+        await api.put(`/incidents/${selectedIncident.id}`, payload);
         _showMessage('success', 'Incidente actualizado correctamente');
       } else {
-        await api.post('/incidents', form);
+        await api.post('/incidents', payload);
         _showMessage('success', 'Incidente registrado correctamente');
         setForm(INITIAL_FORM);
       }
@@ -223,16 +226,17 @@ export default function Incidentes() {
       const payload = { ...actionForm, incident_id: selectedIncident!.id };
       if (editingAction) {
         await (api.put as (path: string, body?: any) => Promise<any>)(`/incidents/${selectedIncident!.id}/actions/${editingAction.id}`, payload);
-        _showMessage('success', 'Acci\u00f3n actualizada correctamente');
+        _showMessage('success', 'Acción actualizada correctamente');
       } else {
         await (api.post as (path: string, body?: any) => Promise<any>)(`/incidents/${selectedIncident!.id}/actions`, payload);
-        _showMessage('success', 'Acci\u00f3n registrada correctamente');
+        _showMessage('success', 'Acción registrada correctamente');
       }
       setActionForm(INITIAL_ACTION);
       setEditingAction(null);
+      setCreatingAction(false);
       loadIncidentDetails(selectedIncident!.id);
     } catch (err: any) {
-      _showMessage('error', err.message || 'Error guardando acci\u00f3n');
+      _showMessage('error', err.message || 'Error guardando acción');
     } finally {
       setLoading(false);
     }
@@ -246,17 +250,17 @@ export default function Incidentes() {
       });
       loadIncidentDetails(selectedIncident!.id);
     } catch (err: any) {
-      _showMessage('error', err.message || 'Error completando acci\u00f3n');
+      _showMessage('error', err.message || 'Error completando acción');
     }
   };
 
   const handleDeleteAction = async (actionId: string) => {
-    if (!confirm('Eliminar esta acci\u00f3n correctiva?')) return;
+    if (!confirm('Eliminar esta acción correctiva?')) return;
     try {
       await (api.del as (path: string) => Promise<any>)(`/incidents/${selectedIncident!.id}/actions/${actionId}`);
       loadIncidentDetails(selectedIncident!.id);
     } catch (err: any) {
-      _showMessage('error', err.message || 'Error eliminando acci\u00f3n');
+      _showMessage('error', err.message || 'Error eliminando acción');
     }
   };
 
@@ -295,7 +299,7 @@ export default function Incidentes() {
         }}
       >
         <h1 style={{ margin: 0, color: '#0f766e' }}>
-          Reporte e Investigaci\u00f3n de Incidentes y Accidentes de Trabajo
+          Reporte e Investigación de Incidentes y Accidentes de Trabajo
         </h1>
         <button
           onClick={newIncident}
@@ -330,10 +334,10 @@ export default function Incidentes() {
 
       <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: 16 }}>
         {[
-          { id: 'registro', label: '\ud83d\udcdd Registro' },
-          { id: 'investigacion', label: '\ud83d\udd0d Investigaci\u00f3n' },
-          { id: 'acciones', label: '\u2705 Acciones Correctivas' },
-          { id: 'seguimiento', label: '\ud83d\udcca Seguimiento' },
+          { id: 'registro', label: ' Registro' },
+          { id: 'investigacion', label: ' Investigación' },
+          { id: 'acciones', label: '✅ Acciones Correctivas' },
+          { id: 'seguimiento', label: ' Seguimiento' },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -398,8 +402,8 @@ export default function Incidentes() {
                   }}
                   required
                 >
-                  <option value="incidente">Incidente (sin lesi\u00f3n)</option>
-                  <option value="accidente">Accidente de trabajo (con lesi\u00f3n)</option>
+                  <option value="incidente">Incidente (sin lesión)</option>
+                  <option value="accidente">Accidente de trabajo (con lesión)</option>
                   <option value="enfermedad_laboral">Enfermedad laboral</option>
                 </select>
               </div>
@@ -435,7 +439,7 @@ export default function Incidentes() {
                   id="inc-lugar"
                   value={form.lugar}
                   onChange={(e) => handleInputChange('lugar', e.target.value)}
-                  placeholder="Ej: Planta 2, Fachada norte, Veh\u00edculo placa XXX"
+                  placeholder="Ej: Planta 2, Fachada norte, Vehículo placa XXX"
                   style={{
                     width: '100%',
                     padding: 8,
@@ -462,7 +466,7 @@ export default function Incidentes() {
                     borderRadius: 6,
                   }}
                 >
-                  <option value="">\u2014 Seleccionar \u2014</option>
+                  <option value="">— Seleccionar —</option>
                   {workers.map((w) => (
                     <option key={w.id} value={w.id}>
                       {w.nombres} {w.apellidos} ({w.numero_documento})
@@ -475,13 +479,13 @@ export default function Incidentes() {
                   htmlFor="inc-desc"
                   style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
                 >
-                  Descripci\u00f3n del suceso *
+                  Descripción del suceso *
                 </label>
                 <textarea
                   id="inc-desc"
                   value={form.descripcion}
                   onChange={(e) => handleInputChange('descripcion', e.target.value)}
-                  placeholder="Describa qu\u00e9 ocurri\u00f3, c\u00f3mo ocurri\u00f3, condiciones del entorno..."
+                  placeholder="Describa qué ocurrió, cómo ocurrió, condiciones del entorno..."
                   rows={3}
                   style={{
                     width: '100%',
@@ -499,7 +503,7 @@ export default function Incidentes() {
                   htmlFor="inc-lesiones"
                   style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
                 >
-                  Lesiones / Afectaci\u00f3n a la salud
+                  Lesiones / Afectación a la salud
                 </label>
                 <textarea
                   id="inc-lesiones"
@@ -522,14 +526,14 @@ export default function Incidentes() {
                   htmlFor="inc-causa"
                   style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
                 >
-                  An\u00e1lisis de causa ra\u00edz (m\u00e9todo 5 porqu\u00e9s, \u00e1rbol de
+                  Análisis de causa raíz (método 5 porqués, árbol de
                   causas, etc.)
                 </label>
                 <textarea
                   id="inc-causa"
                   value={form.causa_raiz}
                   onChange={(e) => handleInputChange('causa_raiz', e.target.value)}
-                  placeholder="Describa el an\u00e1lisis de causa ra\u00edz realizado..."
+                  placeholder="Describa el análisis de causa raíz realizado..."
                   rows={3}
                   style={{
                     width: '100%',
@@ -575,7 +579,7 @@ export default function Incidentes() {
                   id="inc-investigador"
                   value={form.investigador}
                   onChange={(e) => handleInputChange('investigador', e.target.value)}
-                  placeholder="Nombre del responsable de la investigaci\u00f3n"
+                  placeholder="Nombre del responsable de la investigación"
                   style={{
                     width: '100%',
                     padding: 8,
@@ -589,7 +593,7 @@ export default function Incidentes() {
                   htmlFor="inc-dias"
                   style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
                 >
-                  D\u00edas perdidos / incapacidad
+                  Días perdidos / incapacidad
                 </label>
                 <input
                   id="inc-dias"
@@ -623,7 +627,7 @@ export default function Incidentes() {
                     onChange={(e) => handleInputChange('reporte_arl', e.target.checked)}
                   />
                   <span>
-                    Reporte a ARL (plazo legal: 2 d\u00edas h\u00e1biles - Decreto 1072/2015 Art.
+                    Reporte a ARL (plazo legal: 2 días hábiles - Decreto 1072/2015 Art.
                     2.2.4.6.22)
                   </span>
                 </label>
@@ -643,7 +647,7 @@ export default function Incidentes() {
                     checked={form.reporte_eps}
                     onChange={(e) => handleInputChange('reporte_eps', e.target.checked)}
                   />
-                  <span>Reporte a EPS (atenci\u00f3n m\u00e9dica inmediata)</span>
+                  <span>Reporte a EPS (atención médica inmediata)</span>
                 </label>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
@@ -724,12 +728,12 @@ export default function Incidentes() {
               <ul style={{ margin: '8px 0 0 20px' }}>
                 <li>
                   <strong>ARL:</strong> Reporte dentro de los{' '}
-                  <strong>2 d\u00edas h\u00e1biles</strong> siguientes al accidente (Art.
+                  <strong>2 días hábiles</strong> siguientes al accidente (Art.
                   2.2.4.6.22).
                 </li>
                 <li>
-                  <strong>EPS:</strong> Atenci\u00f3n m\u00e9dica inmediata y reporte
-                  simult\u00e1neo.
+                  <strong>EPS:</strong> Atención médica inmediata y reporte
+                  simultáneo.
                 </li>
                 <li>
                   <strong>Ministerio del Trabajo:</strong> Accidentes graves y mortales dentro de
@@ -737,26 +741,26 @@ export default function Incidentes() {
                 </li>
                 <li>
                   <strong>Enfermedades laborales:</strong> Reporte a ARL y EPS dentro de{' '}
-                  <strong>2 d\u00edas h\u00e1biles</strong> tras diagn\u00f3stico.
+                  <strong>2 días hábiles</strong> tras diagnóstico.
                 </li>
               </ul>
               <p style={{ marginTop: 8, fontSize: 11, color: '#6b7280' }}>
-                Los d\u00edas h\u00e1biles excluyen s\u00e1bados, domingos y festivos. El plazo
-                inicia al d\u00eda siguiente de la ocurrencia.
+                Los días hábiles excluyen sábados, domingos y festivos. El plazo
+                inicia al día siguiente de la ocurrencia.
               </p>
             </div>
           </details>
         </div>
       )}
 
-      {/* TAB 2: INVESTIGACI\u00d3N */}
+      {/* TAB 2: INVESTIGACIÓN */}
       {activeTab === 'investigacion' && (
         <div>
           {!selectedIncident ? (
             <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>
               <p>
-                Seleccione un incidente de la lista o cree uno nuevo en la pesta\u00f1a{' '}
-                <strong>Registro</strong> para iniciar la investigaci\u00f3n.
+                Seleccione un incidente de la lista o cree uno nuevo en la pestaña{' '}
+                <strong>Registro</strong> para iniciar la investigación.
               </p>
             </div>
           ) : (
@@ -784,7 +788,7 @@ export default function Incidentes() {
                     {selectedIncident.trabajador_id
                       ? `Trabajador: ${selectedIncident.trabajador_id}`
                       : 'Sin trabajador asignado'}{' '}
-                    \u00b7 {formatDate(selectedIncident.fecha_ocurrencia)}
+                    · {formatDate(selectedIncident.fecha_ocurrencia)}
                   </p>
                 </div>
                 <span
@@ -916,7 +920,7 @@ export default function Incidentes() {
                       }}
                     >
                       <option value="abierto">Abierto</option>
-                      <option value="investigando">En investigaci\u00f3n</option>
+                      <option value="investigando">En investigación</option>
                       <option value="cerrado">Cerrado</option>
                     </select>
                   </div>
@@ -925,7 +929,7 @@ export default function Incidentes() {
                       htmlFor="inc-descripcion"
                       style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
                     >
-                      Descripci\u00f3n
+                      Descripción
                     </label>
                     <textarea
                       id="inc-descripcion"
@@ -970,7 +974,7 @@ export default function Incidentes() {
                       htmlFor="inc-causa"
                       style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
                     >
-                      An\u00e1lisis de causa ra\u00edz
+                      Análisis de causa raíz
                     </label>
                     <textarea
                       id="inc-causa"
@@ -1033,7 +1037,7 @@ export default function Incidentes() {
                       htmlFor="inc-dias"
                       style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
                     >
-                      D\u00edas perdidos
+                      Días perdidos
                     </label>
                     <input
                       id="inc-dias"
@@ -1074,7 +1078,7 @@ export default function Incidentes() {
                         checked={form.reporte_arl}
                         onChange={(e) => handleInputChange('reporte_arl', e.target.checked)}
                       />
-                      <span>Reporte ARL (2 d\u00edas h\u00e1biles)</span>
+                      <span>Reporte ARL (2 días hábiles)</span>
                     </label>
                     <label
                       style={{
@@ -1130,7 +1134,7 @@ export default function Incidentes() {
                         fontWeight: 'bold',
                       }}
                     >
-                      {loading ? 'Guardando...' : '\ud83d\udcc8 Guardar cambios'}
+                      {loading ? 'Guardando...' : ' Guardar cambios'}
                     </button>
                   </div>
                 </div>
@@ -1168,12 +1172,12 @@ export default function Incidentes() {
                       <div
                         style={{ fontSize: 11, color: '#991b1b', fontWeight: 600, marginBottom: 4 }}
                       >
-                        \ud83d\udccb Reporte ARL (Decreto 1072/2015 Art. 2.2.4.6.22)
+                         Reporte ARL (Decreto 1072/2015 Art. 2.2.4.6.22)
                       </div>
                       <div style={{ fontSize: 18, fontWeight: 'bold', color: '#dc2626' }}>
                         {getArlDeadlineDisplay(selectedIncident)?.deadline
                           ? formatDate(getArlDeadlineDisplay(selectedIncident)!.deadline)
-                          : '\u2014'}
+                          : '—'}
                       </div>
                       <div
                         style={{
@@ -1185,7 +1189,7 @@ export default function Incidentes() {
                         {getArlDeadlineDisplay(selectedIncident)?.status.label}
                       </div>
                       <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
-                        Plazo: 2 d\u00edas h\u00e1biles desde ocurrencia (
+                        Plazo: 2 días hábiles desde ocurrencia (
                         {formatDate(selectedIncident.fecha_ocurrencia)})
                       </div>
                       <div style={{ marginTop: 8 }}>
@@ -1220,14 +1224,14 @@ export default function Incidentes() {
                       <div
                         style={{ fontSize: 11, color: '#166534', fontWeight: 600, marginBottom: 4 }}
                       >
-                        \ud83c\udfe5 Reporte EPS (Atenci\u00f3n m\u00e9dica inmediata)
+                         Reporte EPS (Atención médica inmediata)
                       </div>
                       <div style={{ fontSize: 12, color: '#16a34a', marginBottom: 4 }}>
-                        Inmediato / D\u00eda de ocurrencia
+                        Inmediato / Día de ocurrencia
                       </div>
                       <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8 }}>
-                        El trabajador debe ser remitido a la EPS de inmediato para atenci\u00f3n
-                        m\u00e9dica.
+                        El trabajador debe ser remitido a la EPS de inmediato para atención
+                        médica.
                       </div>
                       <label
                         style={{
@@ -1259,14 +1263,14 @@ export default function Incidentes() {
                       <div
                         style={{ fontSize: 11, color: '#92400e', fontWeight: 600, marginBottom: 4 }}
                       >
-                        \u26a0\ufe0f Reporte MinTrabajo (Decreto 1072/2015 Art. 2.2.4.6.23)
+                        ⚠️ Reporte MinTrabajo (Decreto 1072/2015 Art. 2.2.4.6.23)
                       </div>
                       <div style={{ fontSize: 12, color: '#f59e0b', marginBottom: 4 }}>
                         24 horas (accidentes graves/mortales)
                       </div>
                       <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8 }}>
-                        Solo para accidentes graves (hospitalizaci\u00f3n \u003e24h,
-                        amputaci\u00f3n, p\u00e9rdida conciencia, etc.) o mortales.
+                        Solo para accidentes graves (hospitalización mayor a 24 h,
+                        amputación, pérdida conciencia, etc.) o mortales.
                       </div>
                       <label
                         style={{
@@ -1304,7 +1308,7 @@ export default function Incidentes() {
           {!selectedIncident ? (
             <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>
               <p>
-                Seleccione un incidente en la pesta\u00f1a <strong>Investigaci\u00f3n</strong> para
+                Seleccione un incidente en la pestaña <strong>Investigación</strong> para
                 gestionar sus acciones correctivas.
               </p>
             </div>
@@ -1324,6 +1328,7 @@ export default function Incidentes() {
                 <button
                   onClick={() => {
                     setEditingAction(null);
+                    setCreatingAction(true);
                     setActionForm({
                       ...INITIAL_ACTION,
                       incident_id: selectedIncident!.id,
@@ -1340,7 +1345,7 @@ export default function Incidentes() {
                     cursor: 'pointer',
                   }}
                 >
-                  + Nueva Acci\u00f3n
+                  + Nueva Acción
                 </button>
               </div>
 
@@ -1359,7 +1364,7 @@ export default function Incidentes() {
                 </div>
               )}
 
-              {editingAction && (
+              {(editingAction || creatingAction) && (
                 <div
                   style={{
                     background: '#fff',
@@ -1370,7 +1375,7 @@ export default function Incidentes() {
                   }}
                 >
                   <h4 style={{ margin: '0 0 12px', color: '#0f766e' }}>
-                    Editar Acci\u00f3n Correctiva
+                    Editar Acción Correctiva
                   </h4>
                   <form
                     onSubmit={handleActionSubmit}
@@ -1390,7 +1395,7 @@ export default function Incidentes() {
                           marginBottom: 4,
                         }}
                       >
-                        Descripci\u00f3n de la acci\u00f3n *
+                        Descripción de la acción *
                       </label>
                       <textarea
                         id="action-descripcion"
@@ -1399,7 +1404,7 @@ export default function Incidentes() {
                           setActionForm({ ...actionForm, descripcion: e.target.value })
                         }
                         rows={3}
-                        placeholder="Describa la acci\u00f3n correctiva/preventiva a implementar..."
+                        placeholder="Describa la acción correctiva/preventiva a implementar..."
                         style={{
                           width: '100%',
                           padding: 8,
@@ -1449,7 +1454,7 @@ export default function Incidentes() {
                           marginBottom: 4,
                         }}
                       >
-                        Fecha l\u00edmite *
+                        Fecha límite *
                       </label>
                       <input
                         id="action-fecha"
@@ -1537,6 +1542,7 @@ export default function Incidentes() {
                         type="button"
                         onClick={() => {
                           setEditingAction(null);
+                          setCreatingAction(false);
                           setActionForm(INITIAL_ACTION);
                         }}
                         style={{
@@ -1561,7 +1567,7 @@ export default function Incidentes() {
                           fontWeight: 'bold',
                         }}
                       >
-                        {loading ? 'Guardando...' : '\ud83d\udcc8 Guardar Acci\u00f3n'}
+                        {loading ? 'Guardando...' : ' Guardar Acción'}
                       </button>
                     </div>
                   </form>
@@ -1581,10 +1587,10 @@ export default function Incidentes() {
                 >
                   <thead>
                     <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acci\u00f3n</th>
+                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acción</th>
                       <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Responsable</th>
                       <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>
-                        Fecha l\u00edmite
+                        Fecha límite
                       </th>
                       <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Estado</th>
                       <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Evidencia</th>
@@ -1598,8 +1604,8 @@ export default function Incidentes() {
                           colSpan={6}
                           style={{ padding: 30, textAlign: 'center', color: '#6b7280' }}
                         >
-                          No hay acciones correctivas registradas. Haga clic en \u201cNueva
-                          Acci\u00f3n\u201d para agregar la primera.
+                          No hay acciones correctivas registradas. Haga clic en “Nueva
+                          Acción” para agregar la primera.
                         </td>
                       </tr>
                     ) : (
@@ -1675,7 +1681,7 @@ export default function Incidentes() {
                                   Ver
                                 </a>
                               ) : (
-                                <span style={{ fontSize: 11, color: '#9ca3af' }}>\u2014</span>
+                                <span style={{ fontSize: 11, color: '#9ca3af' }}>—</span>
                               )}
                             </td>
                             <td style={{ padding: 10, display: 'flex', gap: 6 }}>
@@ -1698,6 +1704,7 @@ export default function Incidentes() {
                               <button
                                 onClick={() => {
                                   setEditingAction(a);
+                                  setCreatingAction(false);
                                   setActionForm({ ...INITIAL_ACTION, ...a });
                                 }}
                                 style={{
@@ -1724,7 +1731,7 @@ export default function Incidentes() {
                                   cursor: 'pointer',
                                 }}
                               >
-                                \ud83d\uddcf\ufe0f
+                                ️
                               </button>
                             </td>
                           </tr>
@@ -1790,7 +1797,7 @@ export default function Incidentes() {
                   letterSpacing: '0.05em',
                 }}
               >
-                En Investigaci\u00f3n
+                En Investigación
               </div>
               <div style={{ fontSize: 28, fontWeight: 'bold', color: '#f59e0b' }}>
                 {incidents.filter((i) => i.estado === 'investigando').length}
@@ -1859,13 +1866,13 @@ export default function Incidentes() {
                 <tr style={{ background: '#fef2f2', textAlign: 'left' }}>
                   <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Fecha</th>
                   <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Tipo</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Descripci\u00f3n</th>
+                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Descripción</th>
                   <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Estado</th>
                   <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>ARL</th>
                   <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>EPS</th>
                   <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>MinTrabajo</th>
                   <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>
-                    D\u00edas Perdidos
+                    Días Perdidos
                   </th>
                   <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Acciones</th>
                 </tr>
@@ -1905,13 +1912,13 @@ export default function Incidentes() {
                       </span>
                     </td>
                     <td style={{ padding: 10, textAlign: 'center' }}>
-                      {x.reporte_arl ? '\u2705' : '\u274c'}
+                      {x.reporte_arl ? '✅' : '❌'}
                     </td>
                     <td style={{ padding: 10, textAlign: 'center' }}>
-                      {x.reporte_eps ? '\u2705' : '\u274c'}
+                      {x.reporte_eps ? '✅' : '❌'}
                     </td>
                     <td style={{ padding: 10, textAlign: 'center' }}>
-                      {x.reporte_mintrabajo ? '\u2705' : '\u274c'}
+                      {x.reporte_mintrabajo ? '✅' : '❌'}
                     </td>
                     <td style={{ padding: 10, textAlign: 'center', fontWeight: 500 }}>
                       {x.dias_perdidos}
@@ -1940,7 +1947,7 @@ export default function Incidentes() {
                 {incidents.length === 0 && (
                   <tr>
                     <td colSpan={9} style={{ padding: 30, textAlign: 'center', color: '#6b7280' }}>
-                      No hay incidentes registrados. Use la pesta\u00f1a \u201cRegistro\u201d para
+                      No hay incidentes registrados. Use la pestaña “Registro” para
                       crear el primero.
                     </td>
                   </tr>

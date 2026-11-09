@@ -852,7 +852,7 @@ textarea {
 
 .actions-table {
   width: 100%;
-  min-width: 980px;
+  min-width: min(980px, 100%);
   border-collapse: collapse;
 }
 
@@ -1126,7 +1126,7 @@ textarea {
 
 .contratistas-table {
   width: 100%;
-  min-width: 860px;
+  min-width: min(860px, 100%);
   border-collapse: collapse;
   font-size: 0.8125rem;
 }
@@ -1451,7 +1451,7 @@ textarea {
 }
 
 .workers-desktop-table {
-  min-width: 760px;
+  min-width: min(760px, 100%);
 }
 
 .workers-mobile-list,
