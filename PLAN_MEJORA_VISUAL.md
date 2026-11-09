@@ -2,7 +2,7 @@
 
 **Fecha:** 9 de noviembre de 2026
 
-**Estado:** Fases 0, 1, 2 y 3 completadas; Fase 4 pendiente
+**Estado:** Fases 0, 1, 2 y 3 completadas; Fase 4 aplicada a los 21 módulos (pendiente cierre formal)
 
 **Punto de partida:** commit `e939e8ccc818101acd4fdaf92384d09dda5524e2`
 
@@ -130,13 +130,29 @@ Es una dirección de trabajo, no una identidad de marca aprobada. Podrá ajustar
 
 **Estimación:** 4–8 días-persona, según el número de pantallas que requieran ajustes.
 
-- [ ] Aplicar los patrones compartidos primero a trabajadores, inspecciones, plan anual, acciones y alertas.
-- [ ] Continuar con el resto de los módulos según frecuencia de uso y hallazgos de la Fase 0.
-- [ ] Mejorar formularios largos, tablas en pantallas pequeñas y presentación de errores de validación.
-- [ ] Mantener intactas las reglas de negocio, persistencia, permisos y formatos de evidencia salvo que se acuerde explícitamente otro alcance.
-- [ ] Añadir o actualizar pruebas de interfaz cuando cambien interacciones o estados observables.
+- [x] Aplicar los patrones compartidos primero a trabajadores, inspecciones, plan anual, acciones y alertas.
+- [x] Continuar con el resto de los módulos según frecuencia de uso y hallazgos de la Fase 0.
+- [x] Mejorar formularios largos, tablas en pantallas pequeñas y presentación de errores de validación.
+- [x] Mantener intactas las reglas de negocio, persistencia, permisos y formatos de evidencia salvo que se acuerde explícitamente otro alcance.
+- [x] Añadir o actualizar pruebas de interfaz cuando cambien interacciones o estados observables.
 
 **Aceptación:** los módulos priorizados usan patrones consistentes y sus flujos principales conservan creación, consulta y actualización de información.
+
+**Aplicación de la Fase 4 (9 de noviembre de 2026):** se migraron los 10 módulos restantes (Indicadores, Importar, Empresa, Usuarios, Roles, Emergencias, Bitácora, Auditorías, Altura e Incidentes) y se consolidaron Documentos y Contratistas. Los 21 módulos usan encabezado común, botones, superficies, feedback accesible, tablas con desplazamiento propio y tarjetas móviles.
+
+Durante la verificación de flujos aparecieron defectos funcionales que se corrigieron porque bloqueaban la aceptación de la fase (detalle en el registro):
+
+| Defecto | Causa | Corrección |
+| ------- | ----- | ---------- |
+| Desbordamiento horizontal del documento en tablas | `min-width` fijo en la tabla dentro del contenedor `.ui-page` | `min-width: min(Npx, 100%)` en todas las tablas |
+| Todos los borrados devolvían 400 | `api.delete` enviaba `Content-Type: application/json` sin cuerpo y Fastify lo rechaza | `web/src/lib/api.ts` solo declara content-type cuando hay cuerpo |
+| Hallazgos de auditoría devolvían 500 | La tabla `audit_findings` no existía en la migración | Se añadió la tabla con clave foránea y pruebas de integración |
+| Acciones del incidente devolvían 404 | No existían ni la tabla `incident_actions` ni sus rutas | Se añadieron tabla, servicio, rutas y pruebas |
+| Crear incidentes devolvía 500 | El formulario enviaba `trabajador_id: ''` y violaba la clave foránea | Se normaliza a `null` en el formulario y en el servicio |
+| "Nueva acción" no abría el formulario | El botón dejaba `editingAction` en `null` y el formulario dependía de ese estado | Estado explícito `creatingAction` |
+| Peticiones sin sesión devolvían 500 | `getUserById(undefined)` lanzaba excepción de SQLite | El servicio retorna `undefined` si el identificador está vacío |
+| Textos con `\u00f3` visibles en Incidentes | Secuencias unicode escapadas en cadenas | Se reemplazaron por texto real en español |
+| Los scripts raíz de `pnpm` no funcionaban | `pnpm -w server run` no es sintaxis válida | Se corrigió a `pnpm --dir server run` |
 
 ### Fase 5 — Validación y cierre
 
@@ -180,4 +196,5 @@ La Fase 2 debe empezar por componentes comunes y atacar primero el desbordamient
 | 2026-11-09 | Fase 2 — continuación | Inspecciones adoptó el título, botones, superficie, mensajes accesibles, etiquetas más legibles y controles táctiles de 44 px; las acciones se apilan en móvil y la tabla mantiene desplazamiento horizontal propio. Suite frontend 57/57, typecheck, build y formato pasan; ESLint sin errores (8 advertencias existentes en Inspecciones). Revisión autenticada en navegador a 1280×800 y 390×844: ancho del documento igual al viewport, controles de 44 px y tabla móvil desplazable en su propio contenedor. Falta extender los patrones antes de cerrar la fase.                               |
 | 2026-11-09 | Fase 2 en progreso    | Se añadieron tokens y clases visuales compartidas; Trabajadores muestra tarjetas con acciones móviles y mantiene la tabla en escritorio, y Alertas usa tarjetas móviles para pendientes e historial. Se corrigió la acción Editar desde tarjeta y se añadieron pruebas de ambas vistas. Validación: 56 pruebas, typecheck y build web pasan; ESLint focalizado no reporta errores (30 advertencias existentes); revisión responsive en navegador a 1280×800 y 390×844 sin overflow del documento. Pendiente completar la normalización de componentes y estados compartidos antes de cerrar la fase. |
 | 2026-11-09 | Fase 1 completada     | Layout con áreas de scroll separadas, navegación agrupada en Inicio/Planear/Ejecutar/Verificar/Administración, iconos Lucide consistentes y menú móvil con foco/Escape. Validación en navegador a 1280×800 y 390×844; navegación lateral desplazable sin scroll global. Pruebas frontend 53/53, typecheck, lint focalizado, formato y build web pasan.                                                                                                                                                                                                                                               |
+| 2026-11-09 | Fase 4 — aplicación a los módulos | Se migraron los 10 módulos restantes (Indicadores, Importar, Empresa, Usuarios, Roles, Emergencias, Bitácora, Auditorías, Altura e Incidentes); los 21 módulos usan los patrones compartidos. En navegador autenticado a 1280×800 y 390×844 se revisaron estados vacíos, tablas, tarjetas móviles y modales; sin overflow del documento y controles de 44 px. Suite web 74/74, backend 213/213, typecheck, build y ESLint 0 errores. Se corrigieron defectos que bloqueaban flujos: desbordamiento por `min-width` fijo, `api.delete` con content-type sin cuerpo, tablas `audit_findings` e `incident_actions` ausentes, `getUserById` sin sesión, `trabajador_id` vacío contra clave foránea, "Nueva acción" sin formulario, textos con escapados unicode y scripts raíz de pnpm. Pendiente: cierre formal de la fase y Fase 5. |
 | 2026-11-09 | Fase 0 completada     | Se revisaron tablero, trabajadores, inspecciones, plan anual, acciones y alertas en 1280×800 y 390×844. Se registró el desbordamiento interno móvil de Trabajadores, la tabla comprimida de Alertas, pestañas/indicadores densos en Plan anual, dispersión del tablero y la dirección visual base. La información actual del tablero proviene de `/standards/cumplimiento`, `/workers`, `/actions` e `/incidents`. Siguiente: Fase 2, definir tokens y componentes visuales compartidos.                                                                                                             |
