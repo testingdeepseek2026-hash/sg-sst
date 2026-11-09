@@ -22,12 +22,23 @@ async function request(path: string, opts: RequestInit = {}): Promise<any> {
     'Content-Type': 'application/json',
     ...((opts.headers as Record<string, string> | undefined) ?? {}),
   };
+  const responseType = (opts as any).responseType;
   const res = await fetch(`${API_BASE}${path}`, { ...opts, headers, credentials: 'include' });
+  
+  if (responseType === 'blob') {
+    if (!res.ok) throw new Error(`Error ${res.status}`);
+    return res.blob();
+  }
+  if (responseType === 'arrayBuffer') {
+    if (!res.ok) throw new Error(`Error ${res.status}`);
+    return res.arrayBuffer();
+  }
+  
   return handleResponse(res);
 }
 
 export const api = {
-  get: (path: string) => request(path, { method: 'GET' }),
+  get: (path: string, opts?: { responseType?: 'blob' | 'arrayBuffer' }) => request(path, { method: 'GET', ...(opts ? { responseType: opts.responseType } : {}) }),
   post: (path: string, body?: any) =>
     request(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
   put: (path: string, body?: any) => request(path, { method: 'PUT', body: JSON.stringify(body) }),
