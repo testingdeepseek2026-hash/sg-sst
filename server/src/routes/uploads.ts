@@ -1,6 +1,13 @@
+import { writeFile, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+
 import { FastifyPluginAsync } from 'fastify';
-import * as UsersService from '../services/users.js';
+
+import { genId } from '../lib/utils.js';
 import { saveUploadedFile } from '../services/uploads.js';
+import * as UsersService from '../services/users.js';
+
+const UPLOAD_DIR = join(process.cwd(), 'uploads');
 
 const uploadsRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /api/uploads - Subir archivo (imagen, PDF, etc.)
@@ -78,9 +85,3 @@ const uploadsRoutes: FastifyPluginAsync = async (fastify) => {
 };
 
 export default uploadsRoutes;
-
-// Need to import these
-import { genId } from '../lib/utils.js';
-import { writeFile, mkdir } from 'node:fs/promises';
-import { join, extname } from 'node:path';
-const UPLOAD_DIR = join(process.cwd(), 'uploads');

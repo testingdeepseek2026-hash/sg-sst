@@ -26,6 +26,27 @@ export function runMigrations(db: DatabaseSync) {
   const sql = fs.readFileSync(migrationPath, 'utf8');
   db.exec(sql);
 
+  // Migración incremental: agregar columnas SMTP a companies si no existen
+  const companyColumns = db.prepare('PRAGMA table_info(companies)').all() as { name: string }[];
+  if (!companyColumns.some(({ name }) => name === 'smtp_host')) {
+    db.exec('ALTER TABLE companies ADD COLUMN smtp_host TEXT');
+  }
+  if (!companyColumns.some(({ name }) => name === 'smtp_port')) {
+    db.exec('ALTER TABLE companies ADD COLUMN smtp_port INTEGER');
+  }
+  if (!companyColumns.some(({ name }) => name === 'smtp_user')) {
+    db.exec('ALTER TABLE companies ADD COLUMN smtp_user TEXT');
+  }
+  if (!companyColumns.some(({ name }) => name === 'smtp_pass')) {
+    db.exec('ALTER TABLE companies ADD COLUMN smtp_pass TEXT');
+  }
+  if (!companyColumns.some(({ name }) => name === 'smtp_from')) {
+    db.exec('ALTER TABLE companies ADD COLUMN smtp_from TEXT');
+  }
+  if (!companyColumns.some(({ name }) => name === 'alerts_enabled')) {
+    db.exec('ALTER TABLE companies ADD COLUMN alerts_enabled INTEGER NOT NULL DEFAULT 0');
+  }
+
   const alertColumns = db.prepare('PRAGMA table_info(alerts)').all() as { name: string }[];
   if (!alertColumns.some(({ name }) => name === 'prioridad')) {
     db.exec(

@@ -325,6 +325,9 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Download template endpoint
   fastify.get('/import/template/:type', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const { type } = request.params as { type: string };
     
     const wb = new Workbook();

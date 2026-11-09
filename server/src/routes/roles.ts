@@ -23,9 +23,22 @@ const roleSchema = z.object({
 });
 
 const rolesRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/roles', async () => getRoles(fastify.db));
-  fastify.get('/roles/vencimientos', async () => getRoleVencimientos(fastify.db));
+  fastify.get('/roles', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return getRoles(fastify.db);
+  });
+  fastify.get('/roles/vencimientos', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return getRoleVencimientos(fastify.db);
+  });
   fastify.get('/roles/:id', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const r = getRoleById(fastify.db, (request.params as any).id);
     if (!r) return reply.code(404).send({ error: 'Rol no encontrado' });
     return r;

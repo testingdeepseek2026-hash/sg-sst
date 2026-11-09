@@ -41,8 +41,16 @@ const inspSchema = z.object({
 });
 
 const inspectionsRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/inspections', async () => getInspections(fastify.db));
+  fastify.get('/inspections', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return getInspections(fastify.db);
+  });
   fastify.get('/inspections/:id', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const insp = getInspectionById(fastify.db, (request.params as any).id);
     if (!insp) return reply.code(404).send({ error: 'Inspección no encontrada' });
     return insp;
@@ -117,7 +125,12 @@ const alturaSchema = z.object({
 });
 
 const alturaRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/altura/permits', async () => getAlturaPermits(fastify.db));
+  fastify.get('/altura/permits', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return getAlturaPermits(fastify.db);
+  });
   fastify.post('/altura/permits', async (request, reply) => {
     const uid = (request as any).userId;
     const me = UsersService.getUserById(fastify.db, uid!);
@@ -170,7 +183,12 @@ const alturaRoutes: FastifyPluginAsync = async (fastify) => {
     });
     return { ok: true };
   });
-  fastify.get('/altura/ats', async () => getATS(fastify.db));
+  fastify.get('/altura/ats', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return getATS(fastify.db);
+  });
   fastify.post('/altura/ats', async (request, reply) => {
     const uid = (request as any).userId;
     const me = UsersService.getUserById(fastify.db, uid!);

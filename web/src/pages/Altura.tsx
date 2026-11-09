@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { api } from '@/lib/api';
 import { SignaturePad } from '@/components/SignaturePad';
+import { api } from '@/lib/api';
 
 const ESTADO_PERMIT_COLORS: Record<string, { bg: string; text: string }> = {
   pendiente: { bg: '#fef3c7', text: '#92400e' },
@@ -284,7 +284,7 @@ export default function Altura() {
     }
   };
 
-  const showToast = (msg: string, isError = false) => {
+  const _showToast = (msg: string, isError = false) => {
     setMessage({ type: isError ? 'error' : 'success', text: msg });
     setTimeout(() => setMessage(null), 4000);
   };
@@ -381,7 +381,7 @@ export default function Altura() {
 
               {/* Fotos */}
               <div>
-                <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>📷 Evidencia fotográfica (condiciones, equipos, anclajes)</label>
+                <label htmlFor="permit-photo-input" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>📷 Evidencia fotográfica (condiciones, equipos, anclajes)</label>
                 <input type="file" accept="image/*" multiple onChange={e => handleFileChange(e, 'permit')} style={{ display: 'none' }} id="permit-photo-input" />
                 <button type="button" onClick={() => document.getElementById('permit-photo-input')?.click()} style={{ padding: '8px 16px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: 6, cursor: 'pointer', fontSize: 13, marginBottom: 8 }}>📷 Agregar fotos</button>
                 {permitForm.fotos.length > 0 && (
@@ -399,7 +399,7 @@ export default function Altura() {
               {/* Firmas */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>✍️ Firma Solicitante</label>
+                  <label htmlFor="permit-firma-solicitante" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>✍️ Firma Solicitante</label>
                   {permitForm.firma_solicitante_url ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <img src={permitForm.firma_solicitante_url} alt="Firma solicitante" style={{ maxHeight: 50, border: '1px solid #d1d5db', borderRadius: 4 }} />
@@ -410,7 +410,7 @@ export default function Altura() {
                   )}
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>✍️ Firma Responsable Seguridad / Vigía</label>
+                  <label htmlFor="permit-firma-responsable" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>✍️ Firma Responsable Seguridad / Vigía</label>
                   {permitForm.firma_responsable_url ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <img src={permitForm.firma_responsable_url} alt="Firma responsable" style={{ maxHeight: 50, border: '1px solid #d1d5db', borderRadius: 4 }} />

@@ -61,12 +61,22 @@ const categoryParamSchema = z.enum([
 ]);
 
 const hazardsRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/hazards/catalog', async (request) => {
+  fastify.get('/hazards/catalog', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const { categoria } = request.query as { categoria?: string };
     if (categoria && categoryParamSchema.safeParse(categoria).success) {
       return getHazardCatalogByCategory(fastify.db, categoria as any);
     }
     return getHazardCatalog(fastify.db);
+  });
+
+  fastify.get('/hazards/assessments', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return getHazardAssessments(fastify.db);
   });
 
   fastify.post('/hazards/catalog', async (request, reply) => {
@@ -87,8 +97,6 @@ const hazardsRoutes: FastifyPluginAsync = async (fastify) => {
     });
     return item;
   });
-
-  fastify.get('/hazards/assessments', async () => getHazardAssessments(fastify.db));
 
   fastify.post('/hazards/assessments', async (request, reply) => {
     const uid = (request as any).userId;

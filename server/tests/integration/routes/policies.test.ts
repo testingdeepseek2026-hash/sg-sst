@@ -81,13 +81,13 @@ describe('Políticas - Rutas API (Integración)', () => {
       expect(body[2].estado).toBe('borrador');
     });
 
-    it('permite consultar políticas sin autenticar', async () => {
+    it('requiere autenticación para consultar políticas', async () => {
       const res = await app.inject({
         method: 'GET',
         url: '/api/policies',
       });
       
-      expect(res.statusCode).toBe(200);
+      expect(res.statusCode).toBe(401);
     });
   });
 

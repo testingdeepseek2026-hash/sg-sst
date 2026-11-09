@@ -24,8 +24,18 @@ const contractorSchema = z.object({
 });
 
 const contractorsRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/contractors', async () => getContractors(fastify.db));
+  fastify.get('/contractors', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me || me.rol !== 'administrador')
+      return reply.code(403).send({ error: 'Solo administrador' });
+    return getContractors(fastify.db);
+  });
   fastify.get('/contractors/:id', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me || me.rol !== 'administrador')
+      return reply.code(403).send({ error: 'Solo administrador' });
     const c = getContractorById(fastify.db, (request.params as any).id);
     if (!c) return reply.code(404).send({ error: 'Contratista no encontrado' });
     return c;

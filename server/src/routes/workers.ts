@@ -28,8 +28,16 @@ const workerSchema = z.object({
 });
 
 const workersRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/workers', async () => getWorkers(fastify.db));
+  fastify.get('/workers', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return getWorkers(fastify.db);
+  });
   fastify.get('/workers/:id', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const w = getWorkerById(fastify.db, (request.params as any).id);
     if (!w) return reply.code(404).send({ error: 'Trabajador no encontrado' });
     return w;

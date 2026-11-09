@@ -1,5 +1,5 @@
+import { encrypt, isEncrypted, SENSITIVE_FIELDS, decryptSensitiveFields } from '../lib/crypto.js';
 import { genId } from '../lib/utils.js';
-import { encrypt, decrypt, isEncrypted, SENSITIVE_FIELDS, decryptSensitiveFields } from '../lib/crypto.js';
 
 export interface WorkerExam {
   id: string;

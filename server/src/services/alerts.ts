@@ -296,6 +296,7 @@ export function getAlerts(
     fecha_hasta?: string;
     prioridad?: string;
     limit?: number;
+    workerId?: string;
   } = {}
 ): Alert[] {
   const conditions: string[] = [];
@@ -322,6 +323,17 @@ export function getAlerts(
     params.push(filtros.prioridad);
   }
 
+  // Filtrar por trabajador: alertas relacionadas a sus examenes, certificados, EPP, roles
+  if (filtros.workerId) {
+    conditions.push(`
+      (entidad = 'worker_exams' AND entidad_id IN (SELECT id FROM worker_exams WHERE worker_id = ?))
+      OR (entidad = 'worker_certs' AND entidad_id IN (SELECT id FROM worker_certs WHERE worker_id = ?))
+      OR (entidad = 'worker_epp' AND entidad_id IN (SELECT id FROM worker_epp WHERE worker_id = ?))
+      OR (entidad = 'roles' AND entidad_id IN (SELECT id FROM roles WHERE usuario_id = ?))
+    `);
+    params.push(filtros.workerId, filtros.workerId, filtros.workerId, filtros.workerId);
+  }
+
   const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
   const limit = filtros.limit ? `LIMIT ${filtros.limit}` : '';
 
@@ -332,26 +344,26 @@ export function getAlerts(
     .all(...params) as Alert[];
 }
 
-export function getAlertStats(db: any) {
-  const total = db.prepare('SELECT COUNT(*) as c FROM alerts').get() as { c: number };
-  const pendientes = db.prepare('SELECT COUNT(*) as c FROM alerts WHERE enviado = 0').get() as {
-    c: number;
-  };
-  const enviadas = db.prepare('SELECT COUNT(*) as c FROM alerts WHERE enviado = 1').get() as {
-    c: number;
-  };
-  const vencidas = db
-    .prepare(
-      "SELECT COUNT(*) as c FROM alerts WHERE enviado = 0 AND date(fecha_vencimiento) < date('now')"
-    )
-    .get() as { c: number };
-  const porTipo = db.prepare('SELECT tipo, COUNT(*) as c FROM alerts GROUP BY tipo').all() as {
-    tipo: string;
-    c: number;
-  }[];
-  const porPrioridad = db
-    .prepare('SELECT prioridad, COUNT(*) as c FROM alerts GROUP BY prioridad')
-    .all() as { prioridad: string; c: number }[];
+export function getAlertStats(db: any, workerId?: string) {
+  let where = '';
+  const params: any[] = [];
+  if (workerId) {
+    where = `WHERE 
+      (entidad = 'worker_exams' AND entidad_id IN (SELECT id FROM worker_exams WHERE worker_id = ?))
+      OR (entidad = 'worker_certs' AND entidad_id IN (SELECT id FROM worker_certs WHERE worker_id = ?))
+      OR (entidad = 'worker_epp' AND entidad_id IN (SELECT id FROM worker_epp WHERE worker_id = ?))
+      OR (entidad = 'roles' AND entidad_id IN (SELECT id FROM roles WHERE usuario_id = ?))
+    `;
+    params.push(workerId, workerId, workerId, workerId);
+  }
+
+  const baseWhere = where ? `${where}` : '1=1';
+  const total = db.prepare(`SELECT COUNT(*) as c FROM alerts WHERE ${baseWhere}`).get(...params) as { c: number };
+  const pendientes = db.prepare(`SELECT COUNT(*) as c FROM alerts WHERE ${baseWhere} AND enviado = 0`).get(...params) as { c: number };
+  const enviadas = db.prepare(`SELECT COUNT(*) as c FROM alerts WHERE ${baseWhere} AND enviado = 1`).get(...params) as { c: number };
+  const vencidas = db.prepare(`SELECT COUNT(*) as c FROM alerts WHERE ${baseWhere} AND enviado = 0 AND date(fecha_vencimiento) < date('now')`).get(...params) as { c: number };
+  const porTipo = db.prepare(`SELECT tipo, COUNT(*) as c FROM alerts WHERE ${baseWhere} GROUP BY tipo`).all(...params) as { tipo: string; c: number }[];
+  const porPrioridad = db.prepare(`SELECT prioridad, COUNT(*) as c FROM alerts WHERE ${baseWhere} GROUP BY prioridad`).all(...params) as { prioridad: string; c: number }[];
 
   return {
     total: total.c,

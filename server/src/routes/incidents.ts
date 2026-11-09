@@ -30,8 +30,16 @@ const incSchema = z.object({
 });
 
 const incidentsRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/incidents', async () => getIncidents(fastify.db));
+  fastify.get('/incidents', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return getIncidents(fastify.db);
+  });
   fastify.get('/incidents/:id', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const inc = getIncidentById(fastify.db, (request.params as any).id);
     if (!inc) return reply.code(404).send({ error: 'Incidente no encontrado' });
     return inc;

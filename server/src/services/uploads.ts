@@ -1,7 +1,7 @@
-import { genId, nowISO } from '../lib/utils.js';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join, extname } from 'node:path';
-import { randomBytes } from 'node:crypto';
+
+import { genId } from '../lib/utils.js';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads');
 

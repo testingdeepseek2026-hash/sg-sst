@@ -17,8 +17,12 @@ import {
 import * as UsersService from '../services/users.js';
 
 const alertsRoutes: FastifyPluginAsync = async (fastify) => {
-  // GET /alerts - listar con filtros
-  fastify.get('/alerts', async (request) => {
+  // GET /alerts - listar con filtros (admin: todas; trabajador: solo suyas)
+  fastify.get('/alerts', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+
     const {
       tipo,
       enviado,
@@ -35,6 +39,9 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       limit?: string;
     };
 
+    // Trabajador solo ve sus alertas
+    const workerId = me.rol === 'trabajador' ? uid : undefined;
+
     return getAlerts(fastify.db, {
       tipo,
       enviado: enviado !== undefined ? parseInt(enviado, 10) : undefined,
@@ -42,12 +49,18 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       fecha_hasta,
       prioridad,
       limit: parseInt(limit, 10),
+      workerId,
     });
   });
 
-  // GET /alerts/stats - estadísticas
-  fastify.get('/alerts/stats', async () => {
-    return getAlertStats(fastify.db);
+  // GET /alerts/stats - estadísticas (admin: global; trabajador: propias)
+  fastify.get('/alerts/stats', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+
+    const workerId = me.rol === 'trabajador' ? uid : undefined;
+    return getAlertStats(fastify.db, workerId);
   });
 
   // POST /alerts/generate (admin) - generar alertas manualmente

@@ -20,7 +20,10 @@ const indSchema = z.object({
 });
 
 const indicatorsRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/indicators', async (request) => {
+  fastify.get('/indicators', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const { periodo } = request.query as { periodo?: string };
     return getIndicators(fastify.db, periodo);
   });

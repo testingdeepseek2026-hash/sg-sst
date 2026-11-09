@@ -65,7 +65,10 @@ const bulkAttendanceSchema = z.object({
 });
 
 const plansRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/plans/annual', async (request) => {
+  fastify.get('/plans/annual', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const { anio } = request.query as { anio?: string };
     return getAnnualPlan(fastify.db, anio ? Number(anio) : undefined);
   });
@@ -121,7 +124,12 @@ const plansRoutes: FastifyPluginAsync = async (fastify) => {
     });
     return { ok: true };
   });
-  fastify.get('/plans/training', async () => getTrainingSchedule(fastify.db));
+  fastify.get('/plans/training', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return getTrainingSchedule(fastify.db);
+  });
   fastify.post('/plans/training', async (request, reply) => {
     const uid = (request as any).userId;
     const me = UsersService.getUserById(fastify.db, uid!);
@@ -176,8 +184,16 @@ const plansRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // ===== TRAININGS (Ejecución de capacitaciones con evidencias) =====
-  fastify.get('/plans/trainings', async () => getTrainings(fastify.db));
+  fastify.get('/plans/trainings', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return getTrainings(fastify.db);
+  });
   fastify.get('/plans/trainings/:id', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const t = getTrainingById(fastify.db, (request.params as any).id);
     if (!t) return reply.code(404).send({ error: 'Capacitación no encontrada' });
     return t;
@@ -237,6 +253,9 @@ const plansRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ===== TRAINING ATTENDANCE (Asistencia con firma) =====
   fastify.get('/plans/trainings/:id/attendance', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const { id } = request.params as { id: string };
     return getTrainingAttendance(fastify.db, id);
   });

@@ -28,6 +28,7 @@ export default function Layout({ user, onLogout, children }: LayoutProps) {
     { to: '/documentos', label: 'Documentos', icon: '📄' },
     { to: '/acciones', label: 'Acciones Corr.', icon: '✏️' },
     { to: '/auditorias', label: 'Auditorías', icon: '🔎' },
+    { to: '/bitacora', label: 'Bitácora Auditoría', icon: '📋' },
     { to: '/emergencias', label: 'Emergencias', icon: '🚨' },
     { to: '/contratistas', label: 'Contratistas', icon: '🏗️' },
     { to: '/alertas', label: 'Alertas', icon: '🔔' },

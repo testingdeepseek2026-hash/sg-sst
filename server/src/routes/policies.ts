@@ -54,7 +54,11 @@ const objectiveUpdateSchema = z.object({
 
 const policiesRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /policies - lista todas con objetivos anidados
-  fastify.get('/policies', async () => {
+  fastify.get('/policies', async (request, reply) => {
+    const uid = (request as any).userId;
+    if (!uid) return reply.code(401).send({ error: 'No autenticado' });
+    const me = UsersService.getUserById(fastify.db, uid);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const policies = getPolicies(fastify.db);
     const policiesWithObjectives = policies.map((p) => ({
       ...p,
@@ -65,6 +69,10 @@ const policiesRoutes: FastifyPluginAsync = async (fastify) => {
 
   // GET /policies/active - política vigente con objetivos
   fastify.get('/policies/active', async (request, reply) => {
+    const uid = (request as any).userId;
+    if (!uid) return reply.code(401).send({ error: 'No autenticado' });
+    const me = UsersService.getUserById(fastify.db, uid);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const active = getActivePolicy(fastify.db);
     if (!active) return reply.code(404).send({ error: 'No hay política vigente' });
     return {
@@ -75,6 +83,10 @@ const policiesRoutes: FastifyPluginAsync = async (fastify) => {
 
   // GET /policies/:id - detalle
   fastify.get('/policies/:id', async (request, reply) => {
+    const uid = (request as any).userId;
+    if (!uid) return reply.code(401).send({ error: 'No autenticado' });
+    const me = UsersService.getUserById(fastify.db, uid);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const { id } = request.params as { id: string };
     const policy = getPolicyById(fastify.db, id);
     if (!policy) return reply.code(404).send({ error: 'Política no encontrada' });
@@ -250,7 +262,10 @@ const policiesRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // GET /policies/:id/objectives - objetivos de una política
-  fastify.get('/policies/:id/objectives', async (request) => {
+  fastify.get('/policies/:id/objectives', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const { id } = request.params as { id: string };
     return getObjectives(fastify.db, id);
   });

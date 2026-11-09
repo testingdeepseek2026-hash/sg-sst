@@ -30,7 +30,10 @@ const assessSchema = z.object({
 });
 
 const standardsRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/standards', async (request) => {
+  fastify.get('/standards', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const { set } = request.query as { set?: string };
     return getStandards(fastify.db, set);
   });
@@ -52,8 +55,18 @@ const standardsRoutes: FastifyPluginAsync = async (fastify) => {
     });
     return s;
   });
-  fastify.get('/standards/assessments', async () => getStandardAssessments(fastify.db));
-  fastify.get('/standards/cumplimiento', async () => stdCumplimiento(fastify.db));
+  fastify.get('/standards/assessments', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return getStandardAssessments(fastify.db);
+  });
+  fastify.get('/standards/cumplimiento', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return stdCumplimiento(fastify.db);
+  });
   fastify.post('/standards/assessments', async (request, reply) => {
     const uid = (request as any).userId;
     const me = UsersService.getUserById(fastify.db, uid!);

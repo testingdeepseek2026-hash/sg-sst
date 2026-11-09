@@ -11,15 +11,15 @@ import { DB_PATH, openDb, runMigrations } from './lib/db.js';
 import { startAlertScheduler } from './lib/scheduler.js';
 import alertsRoutes from './routes/alerts.js';
 import companiesRoutes from './routes/companies.js';
+import contractorsRoutes from './routes/contractors.js';
 import {
   actionsRoutes,
   auditsRoutes,
+  auditLogsRoutes,
   documentsRoutes,
 } from './routes/documents_actions_audits_alerts.js';
-import exportRoutes from './routes/export.js';
-import uploadsRoutes from './routes/uploads.js';
-import contractorsRoutes from './routes/contractors.js';
 import emergenciesRoutes from './routes/emergencies.js';
+import exportRoutes from './routes/export.js';
 import hazardsRoutes from './routes/hazards.js';
 import importRoutes from './routes/import.js';
 import incidentsRoutes from './routes/incidents.js';
@@ -29,6 +29,7 @@ import plansRoutes from './routes/plans.js';
 import policiesRoutes from './routes/policies.js';
 import rolesRoutes from './routes/roles.js';
 import standardsRoutes from './routes/standards.js';
+import uploadsRoutes from './routes/uploads.js';
 import usersRoutes from './routes/users.js';
 import workersRoutes from './routes/workers.js';
 import workersItemsRoutes from './routes/workers_items.js';
@@ -68,6 +69,7 @@ app.register(alturaRoutes, { prefix: '/api' });
 app.register(documentsRoutes, { prefix: '/api' });
 app.register(actionsRoutes, { prefix: '/api' });
 app.register(auditsRoutes, { prefix: '/api' });
+app.register(auditLogsRoutes, { prefix: '/api' });
 app.register(alertsRoutes, { prefix: '/api' });
 app.register(exportRoutes, { prefix: '/api' });
 app.register(importRoutes, { prefix: '/api' });

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { api } from '@/lib/api';
 import { SignaturePad } from '@/components/SignaturePad';
+import { api } from '@/lib/api';
 
 // Checklists específicos por tipo de inspección
 const INSPECTION_CHECKLISTS: Record<string, { id: string; label: string; descripcion?: string }[]> = {
@@ -317,7 +317,7 @@ export default function Inspecciones() {
     }
   };
 
-  const showToast = (msg: string, isError = false) => {
+  const _showToast = (msg: string, isError = false) => {
     setMessage({ type: isError ? 'error' : 'success', text: msg });
     setTimeout(() => setMessage(null), 4000);
   };
@@ -426,7 +426,7 @@ export default function Inspecciones() {
 
           {/* Captura de fotos */}
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>📷 Evidencia fotográfica</label>
+            <label htmlFor="photo-input" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>📷 Evidencia fotográfica</label>
             <input type="file" accept="image/*" multiple onChange={handleFileChange} style={{ display: 'none' }} id="photo-input" />
             <button type="button" onClick={() => document.getElementById('photo-input')?.click()} style={{ padding: '8px 16px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: 6, cursor: 'pointer', fontSize: 13, marginBottom: 8 }}>
               📷 Agregar fotos
@@ -445,7 +445,7 @@ export default function Inspecciones() {
 
           {/* Firma digital */}
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>✍️ Firma digital del responsable</label>
+            <label htmlFor="inspection-signature" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>✍️ Firma digital del responsable</label>
             {form.firma_url ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <img src={form.firma_url} alt="Firma" style={{ maxHeight: 60, border: '1px solid #d1d5db', borderRadius: 4, background: '#fff' }} />

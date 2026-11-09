@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { api } from '@/lib/api';
-import { SignaturePad } from '@/components/SignaturePad';
 
 const TIPO_EMERGENCIA_LABELS: Record<string, string> = {
   incendio: '🔥 Incendio',

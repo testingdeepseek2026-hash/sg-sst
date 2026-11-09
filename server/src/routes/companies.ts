@@ -31,6 +31,9 @@ const companySchema = z.object({
 
 const companiesRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/companies', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const company = getCompany(fastify.db);
     if (!company) return reply.code(404).send({ error: 'Empresa no configurada' });
     return company;

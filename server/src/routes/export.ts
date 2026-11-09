@@ -1,7 +1,9 @@
+import ExcelJS from 'exceljs';
 import { FastifyPluginAsync } from 'fastify';
 import PDFDocument from 'pdfkit';
-import ExcelJS from 'exceljs';
 
+import { getCorrectiveActions } from '../services/actions.js';
+import { getFindingsByAudit } from '../services/audits_alerts.js';
 import { getCompany } from '../services/companies.js';
 import { getDocuments } from '../services/documents.js';
 import { getHazardAssessments } from '../services/hazards.js';
@@ -11,8 +13,6 @@ import { getAnnualPlan } from '../services/plans.js';
 import { getActivePolicy, getObjectives, getPolicies } from '../services/policies.js';
 import { getStandards, stdCumplimiento } from '../services/standards.js';
 import * as UsersService from '../services/users.js';
-import { getCorrectiveActions } from '../services/actions.js';
-import { getFindingsByAudit } from '../services/audits_alerts.js';
 
 function pdfHandler(
   reply: any,

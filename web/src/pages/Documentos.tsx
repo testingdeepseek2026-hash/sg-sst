@@ -369,7 +369,7 @@ export default function Documentos() {
             </div>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>📎 Archivo del Documento (PDF/Word/Excel)</label>
+            <label htmlFor="doc-file-input" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>📎 Archivo del Documento (PDF/Word/Excel)</label>
             <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={handleFileChange} style={{ display: 'none' }} id="doc-file-input" />
             <button type="button" onClick={() => document.getElementById('doc-file-input')?.click()} style={{ padding: '8px 16px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: 6, cursor: 'pointer', fontSize: 13, marginBottom: 8 }}>
               📎 Adjuntar archivo

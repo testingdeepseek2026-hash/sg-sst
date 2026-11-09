@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { api } from '@/lib/api';
 import { SignaturePad } from '@/components/SignaturePad';
+import { api } from '@/lib/api';
 
 const ORIGEN_LABELS: Record<string, string> = {
   auditoria: '🔍 Auditoría',
@@ -192,7 +192,7 @@ export default function Acciones() {
     }
   };
 
-  const handleSetEstado = async (id: string, estado: string) => {
+  const _handleSetEstado = async (id: string, estado: string) => {
     try {
       await api.put(`/actions/${id}`, { estado });
       showToast(`Estado actualizado a ${ESTADO_LABELS[estado]}`);
@@ -307,7 +307,7 @@ export default function Acciones() {
             </div>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>📎 Evidencia (archivo/imagen)</label>
+            <label htmlFor="action-evidencia-input" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>📎 Evidencia (archivo/imagen)</label>
             <input type="file" accept="image/*,application/pdf" onChange={handleEvidenciaChange} style={{ display: 'none' }} id="action-evidencia-input" />
             <button type="button" onClick={() => document.getElementById('action-evidencia-input')?.click()} style={{ padding: '8px 16px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: 6, cursor: 'pointer', fontSize: 13, marginBottom: 8 }}>
               📎 Adjuntar evidencia

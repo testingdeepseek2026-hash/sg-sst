@@ -7,7 +7,7 @@ import {
   getCorrectiveActions,
   updateCorrectiveAction,
 } from '../services/actions.js';
-import { createAudit, deleteAudit, getAudits, updateAudit, createFinding, deleteFinding, getFindingById, getFindingsByAudit, getFindingsSummary, updateFinding } from '../services/audits_alerts.js';
+import { createAudit, deleteAudit, getAudits, updateAudit, createFinding, deleteFinding, getFindingsByAudit, getFindingsSummary, updateFinding } from '../services/audits_alerts.js';
 import {
   createDocument,
   deleteDocument,
@@ -31,10 +31,26 @@ const docSchema = z.object({
 });
 
 const documentsRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/documents', async () => getDocuments(fastify.db));
+  fastify.get('/documents', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    // Admin ve todo; trabajador ve solo vigentes
+    if (me.rol !== 'administrador') {
+      return getDocuments(fastify.db, { estado: 'vigente' });
+    }
+    return getDocuments(fastify.db);
+  });
   fastify.get('/documents/:id', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const d = getDocumentById(fastify.db, (request.params as any).id);
     if (!d) return reply.code(404).send({ error: 'Documento no encontrado' });
+    // Trabajador solo ve documentos vigentes
+    if (me.rol !== 'administrador' && d.estado !== 'vigente') {
+      return reply.code(403).send({ error: 'No autorizado' });
+    }
     return d;
   });
   fastify.post('/documents', async (request, reply) => {
@@ -101,7 +117,12 @@ const actionSchema = z.object({
 });
 
 const actionsRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/actions', async () => getCorrectiveActions(fastify.db));
+  fastify.get('/actions', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return getCorrectiveActions(fastify.db);
+  });
   fastify.post('/actions', async (request, reply) => {
     const uid = (request as any).userId;
     const me = UsersService.getUserById(fastify.db, uid!);
@@ -183,7 +204,12 @@ const findingSchema = z.object({
 });
 
 const auditsRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/audits', async () => getAudits(fastify.db));
+  fastify.get('/audits', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return getAudits(fastify.db);
+  });
   fastify.post('/audits', async (request, reply) => {
     const uid = (request as any).userId;
     const me = UsersService.getUserById(fastify.db, uid!);
@@ -238,12 +264,18 @@ const auditsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // ===== AUDIT FINDINGS (Hallazgos) =====
-  fastify.get('/audits/:id/findings', async (request) => {
+  fastify.get('/audits/:id/findings', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const { id } = request.params as { id: string };
     return getFindingsByAudit(fastify.db, id);
   });
 
-  fastify.get('/audits/findings/summary', async () => {
+  fastify.get('/audits/findings/summary', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     return getFindingsSummary(fastify.db);
   });
 
@@ -356,4 +388,95 @@ const auditsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 };
 
-export { actionsRoutes, auditsRoutes, documentsRoutes };
+// ===== AUDIT LOGS (Bitácora de trazabilidad) =====
+const auditLogsRoutes: FastifyPluginAsync = async (fastify) => {
+  // GET /audit-logs - Solo administrador puede ver la bitácora completa
+  fastify.get('/audit-logs', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me || me.rol !== 'administrador')
+      return reply.code(403).send({ error: 'Solo administrador puede consultar la bitácora de auditoría' });
+
+    const { limit = '100', offset = '0', entidad, accion, usuario_id, desde, hasta } = request.query as {
+      limit?: string;
+      offset?: string;
+      entidad?: string;
+      accion?: string;
+      usuario_id?: string;
+      desde?: string;
+      hasta?: string;
+    };
+
+    let where = '1=1';
+    const params: any[] = [];
+
+    if (entidad) {
+      where += ' AND entidad = ?';
+      params.push(entidad);
+    }
+    if (accion) {
+      where += ' AND accion = ?';
+      params.push(accion);
+    }
+    if (usuario_id) {
+      where += ' AND usuario_id = ?';
+      params.push(usuario_id);
+    }
+    if (desde) {
+      where += ' AND date(creado_en) >= date(?)';
+      params.push(desde);
+    }
+    if (hasta) {
+      where += ' AND date(creado_en) <= date(?)';
+      params.push(hasta);
+    }
+
+    const logs = fastify.db
+      .prepare(
+        `SELECT * FROM audit_logs WHERE ${where} ORDER BY creado_en DESC LIMIT ? OFFSET ?`
+      )
+      .all(...params, parseInt(limit, 10), parseInt(offset, 10)) as Array<{
+        id: string;
+        usuario_id: string | null;
+        usuario_email: string | null;
+        accion: string;
+        entidad: string;
+        entidad_id: string | null;
+        valores_anteriores: string | null;
+        valores_nuevos: string | null;
+        ip: string | null;
+        creado_en: string;
+      }>;
+
+    const total = fastify.db
+      .prepare(`SELECT COUNT(*) as c FROM audit_logs WHERE ${where}`)
+      .get(...params) as { c: number };
+
+    return { logs, total: total.c };
+  });
+
+  // GET /audit-logs/stats - Resumen estadístico de la bitácora
+  fastify.get('/audit-logs/stats', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me || me.rol !== 'administrador')
+      return reply.code(403).send({ error: 'Solo administrador' });
+
+    const total = fastify.db.prepare('SELECT COUNT(*) as c FROM audit_logs').get() as { c: number };
+    const porEntidad = fastify.db
+      .prepare('SELECT entidad, COUNT(*) as c FROM audit_logs GROUP BY entidad ORDER BY c DESC')
+      .all() as Array<{ entidad: string; c: number }>;
+    const porAccion = fastify.db
+      .prepare('SELECT accion, COUNT(*) as c FROM audit_logs GROUP BY accion ORDER BY c DESC')
+      .all() as Array<{ accion: string; c: number }>;
+    const porUsuario = fastify.db
+      .prepare(
+        'SELECT usuario_email, COUNT(*) as c FROM audit_logs WHERE usuario_email IS NOT NULL GROUP BY usuario_email ORDER BY c DESC'
+      )
+      .all() as Array<{ usuario_email: string; c: number }>;
+
+    return { total: total.c, porEntidad, porAccion, porUsuario };
+  });
+};
+
+export { actionsRoutes, auditsRoutes, auditLogsRoutes, documentsRoutes };

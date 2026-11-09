@@ -34,8 +34,16 @@ const drillSchema = z.object({
 
 const emergenciesRoutes: FastifyPluginAsync = async (fastify) => {
   // ===== EMERGENCY PLANS =====
-  fastify.get('/emergency-plans', async () => getEmergencyPlans(fastify.db));
+  fastify.get('/emergency-plans', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return getEmergencyPlans(fastify.db);
+  });
   fastify.get('/emergency-plans/:id', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const plan = getEmergencyPlanById(fastify.db, (request.params as any).id);
     if (!plan) return reply.code(404).send({ error: 'Plan de emergencias no encontrado' });
     return plan;
@@ -94,13 +102,24 @@ const emergenciesRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // ===== DRILLS (Simulacros) =====
-  fastify.get('/drills', async () => getDrills(fastify.db));
+  fastify.get('/drills', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    return getDrills(fastify.db);
+  });
   fastify.get('/drills/:id', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const d = getDrillById(fastify.db, (request.params as any).id);
     if (!d) return reply.code(404).send({ error: 'Simulacro no encontrado' });
     return d;
   });
-  fastify.get('/emergency-plans/:id/drills', async (request) => {
+  fastify.get('/emergency-plans/:id/drills', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const { id } = request.params as { id: string };
     return getDrillsByPlan(fastify.db, id);
   });

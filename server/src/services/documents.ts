@@ -1,7 +1,14 @@
 import { genId, nowISO } from '../lib/utils.js';
 
-export function getDocuments(db: any) {
-  return db.prepare('SELECT * FROM documents ORDER BY fecha_emision DESC').all() as any[];
+export function getDocuments(db: any, filtros?: { estado?: string }) {
+  let sql = 'SELECT * FROM documents';
+  const params: any[] = [];
+  if (filtros?.estado) {
+    sql += ' WHERE estado = ?';
+    params.push(filtros.estado);
+  }
+  sql += ' ORDER BY fecha_emision DESC';
+  return db.prepare(sql).all(...params) as any[];
 }
 export function getDocumentById(db: any, id: string) {
   return db.prepare('SELECT * FROM documents WHERE id = ?').get(id) as any | undefined;

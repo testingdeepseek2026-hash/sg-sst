@@ -26,6 +26,9 @@ export default [
       '*.config.ts',
       '*.config.js',
       'pnpm-lock.yaml',
+      'server/backup.cjs',
+      'server/backup.js',
+      'server/backup.ps1',
     ],
   },
   // Base config for all TypeScript files
