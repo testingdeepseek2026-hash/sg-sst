@@ -14,11 +14,13 @@ export function getAllUsers(db: any): User[] {
   return db.prepare('SELECT * FROM users ORDER BY nombre').all() as User[];
 }
 
-export function getUserByEmail(db: any, email: string): User | undefined {
+export function getUserByEmail(db: any, email: string | null | undefined): User | undefined {
+  if (!email) return undefined;
   return db.prepare('SELECT * FROM users WHERE email = ?').get(email) as User | undefined;
 }
 
-export function getUserById(db: any, id: string): User | undefined {
+export function getUserById(db: any, id: string | null | undefined): User | undefined {
+  if (!id) return undefined;
   return db.prepare('SELECT * FROM users WHERE id = ?').get(id) as User | undefined;
 }
 
@@ -86,14 +88,14 @@ const AUDIT_SENSITIVE_FIELDS = [
  */
 function sanitizeForAudit(obj: any): any {
   if (!obj || typeof obj !== 'object') return obj;
-  
+
   if (Array.isArray(obj)) {
     return obj.map(sanitizeForAudit);
   }
-  
+
   const sanitized: Record<string, any> = {};
   for (const [key, value] of Object.entries(obj)) {
-    if (AUDIT_SENSITIVE_FIELDS.some(f => key.toLowerCase().includes(f.toLowerCase()))) {
+    if (AUDIT_SENSITIVE_FIELDS.some((f) => key.toLowerCase().includes(f.toLowerCase()))) {
       sanitized[key] = '[DATO SENSIBLE - PROTEGIDO LEY 1581/2012]';
     } else if (value && typeof value === 'object') {
       sanitized[key] = sanitizeForAudit(value);
@@ -130,8 +132,12 @@ export function auditLog(
     input.accion,
     input.entidad,
     input.entidad_id ?? null,
-    input.valores_anteriores !== undefined ? JSON.stringify(sanitizeForAudit(input.valores_anteriores)) : null,
-    input.valores_nuevos !== undefined ? JSON.stringify(sanitizeForAudit(input.valores_nuevos)) : null,
+    input.valores_anteriores !== undefined
+      ? JSON.stringify(sanitizeForAudit(input.valores_anteriores))
+      : null,
+    input.valores_nuevos !== undefined
+      ? JSON.stringify(sanitizeForAudit(input.valores_nuevos))
+      : null,
     input.ip ?? null,
     now
   );
