@@ -229,7 +229,7 @@ jobs:
 
       - name: Extract metadata for Web
         id: meta-web
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}/web
           tags: |
@@ -251,7 +251,7 @@ jobs:
 
       - name: Extract metadata for Server
         id: meta-server
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}/server
           tags: |
