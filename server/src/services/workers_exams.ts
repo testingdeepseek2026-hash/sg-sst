@@ -1,4 +1,5 @@
 import { genId } from '../lib/utils.js';
+import { encrypt, decrypt, isEncrypted, SENSITIVE_FIELDS, decryptSensitiveFields } from '../lib/crypto.js';
 
 export interface WorkerExam {
   id: string;
@@ -22,15 +23,22 @@ export function getExamsByWorker(
   const rows = db
     .prepare('SELECT * FROM worker_exams WHERE worker_id = ? ORDER BY fecha DESC')
     .all(workerId) as WorkerExam[];
+  
   if (!includeSensitive) {
     // Ley 1581/2012: no devolver datos sensibles en listados
     return rows.map((r) => ({
       ...r,
       restricciones: null,
+      medico: null,
+      entidad: null,
+      archivo_url: null,
+      notas: null,
       resultado: r.resultado === 'no_apto' ? 'no_apto' : 'apto', // solo indicar si es apto o no
     }));
   }
-  return rows;
+  
+  // Descifrar campos sensibles para admin
+  return rows.map((r) => decryptSensitiveFields(r) as WorkerExam);
 }
 
 export function getExamById(db: any, id: string, includeSensitive = false): WorkerExam | undefined {
@@ -41,10 +49,14 @@ export function getExamById(db: any, id: string, includeSensitive = false): Work
     return {
       ...row,
       restricciones: null,
+      medico: null,
+      entidad: null,
+      archivo_url: null,
+      notas: null,
       resultado: row.resultado === 'no_apto' ? 'no_apto' : 'apto',
     };
   }
-  return row;
+  return decryptSensitiveFields(row) as WorkerExam;
 }
 
 export function createExam(
@@ -84,30 +96,46 @@ export function createExam(
     }
   }
 
+  // Cifrar campos sensibles antes de guardar (Ley 1581/2012 - datos sensibles en reposo)
+  const sensitiveInput: Record<string, any> = { ...input };
+  for (const field of SENSITIVE_FIELDS) {
+    if (sensitiveInput[field] && typeof sensitiveInput[field] === 'string' && !isEncrypted(sensitiveInput[field])) {
+      sensitiveInput[field] = encrypt(sensitiveInput[field]);
+    }
+  }
+
   const id = genId();
   db.prepare(
     `INSERT INTO worker_exams (id, worker_id, tipo, fecha, vencimiento, resultado, restricciones, medico, entidad, archivo_url, notas)
      VALUES (?,?,?,?,?,?,?,?,?,?,?)`
   ).run(
     id,
-    input.worker_id,
-    input.tipo,
-    input.fecha,
-    input.vencimiento ?? null,
-    input.resultado ?? 'apto',
-    input.restricciones ?? null,
-    input.medico ?? null,
-    input.entidad ?? null,
-    input.archivo_url ?? null,
-    input.notas ?? null
+    sensitiveInput.worker_id,
+    sensitiveInput.tipo,
+    sensitiveInput.fecha,
+    sensitiveInput.vencimiento ?? null,
+    sensitiveInput.resultado ?? 'apto',
+    sensitiveInput.restricciones ?? null,
+    sensitiveInput.medico ?? null,
+    sensitiveInput.entidad ?? null,
+    sensitiveInput.archivo_url ?? null,
+    sensitiveInput.notas ?? null
   );
   return getExamById(db, id, true)!;
 }
 
 export function updateExam(db: any, id: string, patch: Partial<WorkerExam>): WorkerExam {
+  // Cifrar campos sensibles en el patch
+  const sensitivePatch: Record<string, any> = { ...patch };
+  for (const field of SENSITIVE_FIELDS) {
+    if (sensitivePatch[field] && typeof sensitivePatch[field] === 'string' && !isEncrypted(sensitivePatch[field])) {
+      sensitivePatch[field] = encrypt(sensitivePatch[field]);
+    }
+  }
+
   const sets: string[] = [];
   const vals: any[] = [];
-  for (const [k, v] of Object.entries(patch)) {
+  for (const [k, v] of Object.entries(sensitivePatch)) {
     if (v === undefined) continue;
     sets.push(`${k} = ?`);
     vals.push(v);

@@ -63,6 +63,47 @@ export function deleteUser(db: any, id: string) {
   db.prepare('DELETE FROM users WHERE id = ?').run(id);
 }
 
+// Campos sensibles que no deben ir en bitácoras (Ley 1581/2012)
+const AUDIT_SENSITIVE_FIELDS = [
+  'restricciones',
+  'medico',
+  'entidad',
+  'archivo_url',
+  'notas',
+  'diagnostico',
+  'tratamiento',
+  'historia_clinica',
+  'examenes',
+  'resultados',
+  'archivo_evidencia',
+  'firma_url',
+  'firma_solicitante_url',
+  'firma_responsable_url',
+];
+
+/**
+ * Sanitiza un objeto removiendo o enmascarando campos sensibles antes de log/bitácora
+ */
+function sanitizeForAudit(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeForAudit);
+  }
+  
+  const sanitized: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (AUDIT_SENSITIVE_FIELDS.some(f => key.toLowerCase().includes(f.toLowerCase()))) {
+      sanitized[key] = '[DATO SENSIBLE - PROTEGIDO LEY 1581/2012]';
+    } else if (value && typeof value === 'object') {
+      sanitized[key] = sanitizeForAudit(value);
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+}
+
 export function auditLog(
   db: any,
   input: {
@@ -89,8 +130,8 @@ export function auditLog(
     input.accion,
     input.entidad,
     input.entidad_id ?? null,
-    input.valores_anteriores !== undefined ? JSON.stringify(input.valores_anteriores) : null,
-    input.valores_nuevos !== undefined ? JSON.stringify(input.valores_nuevos) : null,
+    input.valores_anteriores !== undefined ? JSON.stringify(sanitizeForAudit(input.valores_anteriores)) : null,
+    input.valores_nuevos !== undefined ? JSON.stringify(sanitizeForAudit(input.valores_nuevos)) : null,
     input.ip ?? null,
     now
   );
