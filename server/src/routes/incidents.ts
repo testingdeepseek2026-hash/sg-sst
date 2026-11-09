@@ -3,12 +3,25 @@ import { z } from 'zod';
 
 import {
   createIncident,
+  createIncidentAction,
   deleteIncident,
+  deleteIncidentAction,
+  getActionsByIncident,
   getIncidentById,
   getIncidents,
   updateIncident,
+  updateIncidentAction,
 } from '../services/incidents.js';
 import * as UsersService from '../services/users.js';
+
+const actionSchema = z.object({
+  descripcion: z.string().min(5),
+  responsable: z.string().min(2),
+  fecha_limite: z.string().optional().nullable(),
+  estado: z.enum(['pendiente', 'en_proceso', 'completada', 'vencida']).default('pendiente'),
+  evidencia_url: z.string().optional().nullable(),
+  completada_en: z.string().optional().nullable(),
+});
 
 const incSchema = z.object({
   tipo: z.enum(['incidente', 'accidente', 'enfermedad_laboral']),
@@ -93,6 +106,76 @@ const incidentsRoutes: FastifyPluginAsync = async (fastify) => {
       accion: 'eliminar',
       entidad: 'incidents',
       entidad_id: (request.params as any).id,
+    });
+    return { ok: true };
+  });
+
+  // ===== ACCIONES CORRECTIVAS DEL INCIDENTE =====
+  fastify.get('/incidents/:id/actions', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    const { id } = request.params as { id: string };
+    if (!getIncidentById(fastify.db, id))
+      return reply.code(404).send({ error: 'Incidente no encontrado' });
+    return getActionsByIncident(fastify.db, id);
+  });
+
+  fastify.post('/incidents/:id/actions', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me || me.rol !== 'administrador')
+      return reply.code(403).send({ error: 'Solo administrador' });
+    const { id } = request.params as { id: string };
+    if (!getIncidentById(fastify.db, id))
+      return reply.code(404).send({ error: 'Incidente no encontrado' });
+    const parsed = actionSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+    const action = createIncidentAction(fastify.db, id, parsed.data);
+    UsersService.auditLog(fastify.db, {
+      usuario_id: uid,
+      usuario_email: me.email,
+      accion: 'crear',
+      entidad: 'incident_actions',
+      entidad_id: action.id,
+      valores_nuevos: parsed.data,
+    });
+    return action;
+  });
+
+  fastify.put('/incidents/:id/actions/:aid', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me || me.rol !== 'administrador')
+      return reply.code(403).send({ error: 'Solo administrador' });
+    const { aid } = request.params as { aid: string };
+    const parsed = actionSchema.partial().safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+    const updated = updateIncidentAction(fastify.db, aid, parsed.data);
+    UsersService.auditLog(fastify.db, {
+      usuario_id: uid,
+      usuario_email: me.email,
+      accion: 'editar',
+      entidad: 'incident_actions',
+      entidad_id: aid,
+      valores_nuevos: parsed.data,
+    });
+    return updated;
+  });
+
+  fastify.delete('/incidents/:id/actions/:aid', async (request, reply) => {
+    const uid = (request as any).userId;
+    const me = UsersService.getUserById(fastify.db, uid!);
+    if (!me || me.rol !== 'administrador')
+      return reply.code(403).send({ error: 'Solo administrador' });
+    const { aid } = request.params as { aid: string };
+    deleteIncidentAction(fastify.db, aid);
+    UsersService.auditLog(fastify.db, {
+      usuario_id: uid,
+      usuario_email: me.email,
+      accion: 'eliminar',
+      entidad: 'incident_actions',
+      entidad_id: aid,
     });
     return { ok: true };
   });

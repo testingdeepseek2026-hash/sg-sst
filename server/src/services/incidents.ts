@@ -18,7 +18,7 @@ export function createIncident(db: any, input: any) {
     input.tipo,
     input.fecha_ocurrencia,
     input.fecha_reporte ?? null,
-    input.trabajador_id ?? null,
+    input.trabajador_id ? input.trabajador_id : null,
     input.lugar ?? null,
     input.descripcion,
     input.lesiones ?? null,
@@ -48,4 +48,47 @@ export function updateIncident(db: any, id: string, patch: any) {
 }
 export function deleteIncident(db: any, id: string) {
   db.prepare('DELETE FROM incidents WHERE id = ?').run(id);
+}
+
+// ===== ACCIONES CORRECTIVAS DEL INCIDENTE =====
+
+export function getActionsByIncident(db: any, incidentId: string) {
+  return db
+    .prepare('SELECT * FROM incident_actions WHERE incident_id = ? ORDER BY creado_en DESC')
+    .all(incidentId) as any[];
+}
+
+export function createIncidentAction(db: any, incidentId: string, input: any) {
+  const id = genId();
+  db.prepare(
+    `INSERT INTO incident_actions (id, incident_id, descripcion, responsable, fecha_limite, estado, evidencia_url, creado_en)
+     VALUES (?,?,?,?,?,?,?,?)`
+  ).run(
+    id,
+    incidentId,
+    input.descripcion,
+    input.responsable,
+    input.fecha_limite ?? null,
+    input.estado ?? 'pendiente',
+    input.evidencia_url ?? null,
+    new Date().toISOString()
+  );
+  return db.prepare('SELECT * FROM incident_actions WHERE id = ?').get(id);
+}
+
+export function updateIncidentAction(db: any, id: string, patch: any) {
+  const sets: string[] = [];
+  const vals: any[] = [];
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === undefined) continue;
+    sets.push(`${k} = ?`);
+    vals.push(v);
+  }
+  if (sets.length === 0) return db.prepare('SELECT * FROM incident_actions WHERE id = ?').get(id);
+  db.prepare(`UPDATE incident_actions SET ${sets.join(', ')} WHERE id = ?`).run(...vals, id);
+  return db.prepare('SELECT * FROM incident_actions WHERE id = ?').get(id);
+}
+
+export function deleteIncidentAction(db: any, id: string) {
+  db.prepare('DELETE FROM incident_actions WHERE id = ?').run(id);
 }

@@ -380,6 +380,19 @@ CREATE TABLE IF NOT EXISTS incidents (
   FOREIGN KEY (trabajador_id) REFERENCES workers(id)
 );
 
+-- Acciones correctivas y preventivas asociadas a un incidente
+CREATE TABLE IF NOT EXISTS incident_actions (
+  id TEXT PRIMARY KEY,
+  incident_id TEXT NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+  descripcion TEXT NOT NULL,
+  responsable TEXT NOT NULL,
+  fecha_limite TEXT,
+  estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente','en_proceso','completada','vencida')),
+  evidencia_url TEXT,
+  creado_en TEXT NOT NULL DEFAULT (datetime('now')),
+  completada_en TEXT
+);
+
 -- ------------------------------------------------------------------
 -- 15. Plan de emergencias y simulacros
 -- ------------------------------------------------------------------
@@ -450,6 +463,23 @@ CREATE TABLE IF NOT EXISTS audits (
   conclusiones TEXT,
   compromisos TEXT,
   estado TEXT NOT NULL DEFAULT 'programada', -- programada | realizada | cerrada
+  creado_en TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Hallazgos de auditoría (no conformidades, observaciones, oportunidades, fortalezas)
+CREATE TABLE IF NOT EXISTS audit_findings (
+  id TEXT PRIMARY KEY,
+  audit_id TEXT NOT NULL REFERENCES audits(id) ON DELETE CASCADE,
+  descripcion TEXT NOT NULL,
+  tipo TEXT NOT NULL CHECK (tipo IN ('no_conformidad','observacion','oportunidad_mejora','fortaleza')),
+  requisito TEXT,
+  evidencia TEXT,
+  responsable TEXT,
+  fecha_limite TEXT,
+  estado TEXT NOT NULL DEFAULT 'abierto' CHECK (estado IN ('abierto','en_proceso','cerrado','verificado')),
+  accion_correctiva TEXT,
+  evidencia_cierre TEXT,
+  fecha_cierre TEXT,
   creado_en TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

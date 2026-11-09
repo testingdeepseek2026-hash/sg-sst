@@ -26,8 +26,8 @@ describe('Migraciones y datos semilla', () => {
       'hazard_catalog', 'hazard_assessments', 'standards', 'standard_assessments',
       'annual_plan', 'training_schedule', 'trainings', 'training_attendance',
       'inspections', 'altura_permits', 'ats', 'incidents', 'emergency_plans',
-      'drills', 'documents', 'corrective_actions', 'audits', 'contractors',
-      'alerts', 'indicators'
+      'drills', 'documents', 'corrective_actions', 'audits', 'audit_findings', 'contractors',
+      'alerts', 'indicators', 'incident_actions'
     ]) {
       expect(tableNames).toContain(expected);
     }
