@@ -1,6 +1,34 @@
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+
+import {
+  BarChart3,
+  Bell,
+  Building2,
+  CalendarDays,
+  ClipboardCheck,
+  ClipboardList,
+  FileText,
+  Folder,
+  Handshake,
+  HardHat,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Mountain,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  Shield,
+  Siren,
+  TriangleAlert,
+  Upload,
+  Users,
+  X,
+} from 'lucide-react';
+
+import type { LucideIcon } from 'lucide-react';
 
 interface LayoutProps {
   user: { nombre: string; rol: string };
@@ -8,140 +36,221 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-export default function Layout({ user, onLogout, children }: LayoutProps) {
-  const [open, setOpen] = useState(true);
+const menuGroups: Array<{
+  label: string;
+  items: Array<{ to: string; label: string; icon: LucideIcon }>;
+}> = [
+  {
+    label: 'Inicio',
+    items: [{ to: '/dashboard', label: 'Tablero', icon: LayoutDashboard }],
+  },
+  {
+    label: 'Planear',
+    items: [
+      { to: '/trabajadores', label: 'Trabajadores', icon: HardHat },
+      { to: '/riesgos', label: 'Matriz de riesgos', icon: TriangleAlert },
+      { to: '/estandar', label: 'Estándares mínimos', icon: ClipboardCheck },
+      { to: '/politica', label: 'Política SST', icon: FileText },
+      { to: '/planes', label: 'Plan anual', icon: CalendarDays },
+      { to: '/indicadores', label: 'Indicadores', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Ejecutar',
+    items: [
+      { to: '/incidentes', label: 'Incidentes', icon: Siren },
+      { to: '/inspecciones', label: 'Inspecciones', icon: Search },
+      { to: '/altura', label: 'Trabajo en alturas', icon: Mountain },
+      { to: '/emergencias', label: 'Emergencias', icon: TriangleAlert },
+      { to: '/contratistas', label: 'Contratistas', icon: Handshake },
+    ],
+  },
+  {
+    label: 'Verificar',
+    items: [
+      { to: '/acciones', label: 'Acciones correctivas', icon: ClipboardList },
+      { to: '/auditorias', label: 'Auditorías', icon: Search },
+      { to: '/bitacora', label: 'Bitácora de auditoría', icon: Folder },
+      { to: '/alertas', label: 'Alertas', icon: Bell },
+    ],
+  },
+  {
+    label: 'Administración',
+    items: [
+      { to: '/empresa', label: 'Empresa', icon: Building2 },
+      { to: '/usuarios', label: 'Usuarios', icon: Users },
+      { to: '/roles', label: 'Roles SST', icon: Shield },
+      { to: '/documentos', label: 'Documentos', icon: FileText },
+      { to: '/importar', label: 'Importar Excel', icon: Upload },
+    ],
+  },
+];
 
-  const menu = [
-    { to: '/dashboard', label: 'Tablero', icon: '📊' },
-    { to: '/empresa', label: 'Empresa', icon: '🏢' },
-    { to: '/usuarios', label: 'Usuarios', icon: '👥' },
-    { to: '/roles', label: 'Roles SST', icon: '🛡️' },
-    { to: '/trabajadores', label: 'Trabajadores', icon: '👷' },
-    { to: '/riesgos', label: 'Matriz Riesgos', icon: '⚠️' },
-    { to: '/estandar', label: 'Estándares Mínimos', icon: '✅' },
-    { to: '/politica', label: 'Política SST', icon: '📋' },
-    { to: '/planes', label: 'Plan Anual', icon: '📅' },
-    { to: '/indicadores', label: 'Indicadores', icon: '📈' },
-    { to: '/incidentes', label: 'Incidentes', icon: '🚨' },
-    { to: '/inspecciones', label: 'Inspecciones', icon: '🔍' },
-    { to: '/altura', label: 'Trabajo Alturas', icon: '🧗' },
-    { to: '/documentos', label: 'Documentos', icon: '📄' },
-    { to: '/acciones', label: 'Acciones Corr.', icon: '✏️' },
-    { to: '/auditorias', label: 'Auditorías', icon: '🔎' },
-    { to: '/bitacora', label: 'Bitácora Auditoría', icon: '📋' },
-    { to: '/emergencias', label: 'Emergencias', icon: '🚨' },
-    { to: '/contratistas', label: 'Contratistas', icon: '🏗️' },
-    { to: '/alertas', label: 'Alertas', icon: '🔔' },
-    { to: '/importar', label: 'Importar Excel', icon: '📥' },
-  ];
+export default function Layout({ user, onLogout, children }: LayoutProps) {
+  const [expanded, setExpanded] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileMenuButton = useRef<HTMLButtonElement>(null);
+  const sidebar = useRef<HTMLElement>(null);
+
+  const closeMobileMenu = () => {
+    setMobileOpen(false);
+    mobileMenuButton.current?.focus();
+  };
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeMobileMenu();
+        return;
+      }
+
+      if (event.key === 'Tab') {
+        const focusable = Array.from(
+          sidebar.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? []
+        ).filter((element) => !element.classList.contains('app-sidebar-toggle'));
+        if (!focusable.length) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    document.querySelector<HTMLElement>('.app-sidebar a')?.focus();
+
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 768px)');
+    const handleBreakpointChange = (event: MediaQueryListEvent) => {
+      if (event.matches) setMobileOpen(false);
+    };
+
+    desktop.addEventListener('change', handleBreakpointChange);
+    return () => desktop.removeEventListener('change', handleBreakpointChange);
+  }, []);
 
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
-      <aside
-        style={{
-          width: open ? 240 : 64,
-          background: '#0f766e',
-          color: '#fff',
-          display: 'flex',
-          flexDirection: 'column',
-          padding: 12,
-          gap: 8,
-          transition: 'width 0.2s',
-        }}
-      >
-        <div
-          style={{
-            fontWeight: 'bold',
-            fontSize: 18,
-            marginBottom: 16,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            minHeight: 40,
-          }}
-        >
-          SG-SST
-        </div>
+    <div className={`app-shell${expanded ? '' : ' app-shell--collapsed'}`}>
+      {mobileOpen && (
         <button
-          onClick={() => setOpen(!open)}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: '#fff',
-            textAlign: 'left',
-            width: '100%',
-            padding: 8,
-            cursor: 'pointer',
-          }}
-        >
-          {open ? '◀' : '▶'}
-        </button>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {menu.map((m) => (
-            <NavLink
-              key={m.to}
-              to={m.to}
-              end={m.to === '/dashboard'}
-              className={({ isActive }) => (isActive ? 'active' : '')}
-              style={({ isActive }) => ({
-                display: 'flex',
-                alignItems: 'center',
-                gap: open ? 10 : 0,
-                padding: open ? 10 : 14,
-                color: isActive ? '#fff' : 'rgba(255,255,255,0.9)',
-                background: isActive ? 'rgba(255,255,255,0.15)' : 'transparent',
-                borderRadius: 6,
-                border: 'none',
-                textAlign: 'left',
-                width: '100%',
-                cursor: 'pointer',
-                fontSize: 14,
-                justifyContent: open ? 'flex-start' : 'center',
-                textDecoration: 'none',
-              })}
-            >
-              <span
-                style={{
-                  fontSize: 18,
-                  minWidth: open ? 24 : 0,
-                  textAlign: open ? 'left' : 'center',
-                }}
-              >
-                {m.icon}
-              </span>
-              {open && <span>{m.label}</span>}
-            </NavLink>
+          aria-label="Cerrar navegación"
+          className="app-sidebar-backdrop"
+          onClick={closeMobileMenu}
+          tabIndex={-1}
+          type="button"
+        />
+      )}
+
+      <aside
+        aria-label="Navegación de SG-SST"
+        className={`app-sidebar${mobileOpen ? ' app-sidebar--mobile-open' : ''}`}
+        id="app-navigation"
+        ref={sidebar}
+      >
+        <div className="app-sidebar-header">
+          <div className="app-brand">
+            <span aria-hidden="true" className="app-brand-mark">
+              S
+            </span>
+            <span className="app-sidebar-label">SG-SST</span>
+          </div>
+          <button
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Contraer menú' : 'Expandir menú'}
+            className="app-sidebar-toggle"
+            onClick={() => setExpanded((value) => !value)}
+            title={expanded ? 'Contraer menú' : 'Expandir menú'}
+            type="button"
+          >
+            {expanded ? (
+              <PanelLeftClose aria-hidden="true" />
+            ) : (
+              <PanelLeftOpen aria-hidden="true" />
+            )}
+          </button>
+          <button
+            aria-label="Cerrar menú de navegación"
+            className="app-sidebar-mobile-close"
+            onClick={closeMobileMenu}
+            type="button"
+          >
+            <X aria-hidden="true" />
+          </button>
+        </div>
+
+        <nav aria-label="Navegación principal" className="app-navigation">
+          {menuGroups.map((group) => (
+            <section aria-label={group.label} className="app-navigation-group" key={group.label}>
+              <h2 className="app-navigation-heading">{group.label}</h2>
+              <div className="app-navigation-items">
+                {group.items.map(({ to, label, icon: Icon }) => (
+                  <NavLink
+                    aria-label={label}
+                    className={({ isActive }) =>
+                      `app-navigation-link${isActive ? ' app-navigation-link--active' : ''}`
+                    }
+                    end={to === '/dashboard'}
+                    key={to}
+                    onClick={() => {
+                      if (mobileOpen) closeMobileMenu();
+                    }}
+                    title={!expanded ? label : undefined}
+                    to={to}
+                  >
+                    <Icon aria-hidden="true" className="app-navigation-icon" />
+                    <span className="app-sidebar-label">{label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            </section>
           ))}
         </nav>
-        <div
-          style={{
-            marginTop: 'auto',
-            paddingTop: 12,
-            borderTop: '1px solid rgba(255,255,255,0.3)',
-            fontSize: 12,
-            opacity: 0.8,
-          }}
-        >
-          {user.nombre} ({user.rol})
+
+        <div className="app-sidebar-footer">
+          <div className="app-user-summary" title={`${user.nombre} (${user.rol})`}>
+            <span aria-hidden="true" className="app-user-avatar">
+              {user.nombre.trim().charAt(0).toUpperCase()}
+            </span>
+            <span className="app-user-details app-sidebar-label">
+              <span className="app-user-name">{user.nombre}</span>
+              <span className="app-user-role">{user.rol}</span>
+            </span>
+          </div>
+          <button className="app-logout-button" onClick={onLogout} type="button">
+            <LogOut aria-hidden="true" className="app-navigation-icon" />
+            <span className="app-sidebar-label">Cerrar sesión</span>
+          </button>
         </div>
-        <button
-          onClick={onLogout}
-          style={{
-            marginTop: 8,
-            background: 'rgba(255,255,255,0.15)',
-            border: 'none',
-            color: '#fff',
-            padding: 8,
-            borderRadius: 6,
-            width: '100%',
-            cursor: 'pointer',
-            fontSize: 13,
-          }}
-        >
-          Cerrar sesión
-        </button>
       </aside>
-      <main style={{ flex: 1, padding: 24, overflow: 'auto' }}>{children}</main>
+
+      <main className="app-main">
+        <div className="app-mobile-header">
+          <button
+            aria-controls="app-navigation"
+            aria-expanded={mobileOpen}
+            aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'}
+            className="app-mobile-menu-button"
+            onClick={() => setMobileOpen(true)}
+            ref={mobileMenuButton}
+            type="button"
+          >
+            {mobileOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+          </button>
+          <span>SG-SST</span>
+        </div>
+        {children}
+      </main>
     </div>
   );
 }
