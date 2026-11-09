@@ -6,6 +6,7 @@ import {
   getPendingAlertsForSending,
   markAsSent,
 } from '../services/alerts.js';
+import { runBackup, getBackupConfigFromEnv } from '../services/backup.js';
 
 import { createTransporter } from './email.js';
 
@@ -16,6 +17,7 @@ interface AlertWithEmail extends Alert {
 
 let dailyJob: CronJob | null = null;
 let weeklyJob: CronJob | null = null;
+let backupJob: CronJob | null = null;
 
 export function startAlertScheduler(db: any): void {
   // Solo en producción y si está habilitado
@@ -60,6 +62,33 @@ export function startAlertScheduler(db: any): void {
     'America/Bogota'
   );
 
+  // Job backup diario: 02:00 America/Bogota (hora de bajo uso)
+  if (process.env.BACKUP_ENABLED === 'true') {
+    const backupConfig = getBackupConfigFromEnv();
+    backupJob = new CronJob(
+      '0 2 * * *',
+      async () => {
+        console.log('[SCHEDULER] Ejecutando respaldo diario...');
+        try {
+          const result = runBackup(backupConfig);
+          if (result.success) {
+            console.log(`[SCHEDULER] Respaldo completado: ${result.file} (${result.deleted} antiguos eliminados)`);
+          } else {
+            console.error('[SCHEDULER] Error en respaldo:', result.error);
+          }
+        } catch (err: any) {
+          console.error('[SCHEDULER] Error en job backup:', err.message);
+        }
+      },
+      null,
+      true,
+      backupConfig.timezone
+    );
+    console.log(`[SCHEDULER] Backup programado: Diario 02:00 (${backupConfig.timezone}), retención ${backupConfig.retentionDays} días`);
+  } else {
+    console.log('[SCHEDULER] Backup deshabilitado (BACKUP_ENABLED!=true)');
+  }
+
   console.log(
     '[SCHEDULER] Alertas programadas: Diario 07:00, Semanal Lunes 08:00 (America/Bogota)'
   );
@@ -73,6 +102,10 @@ export function stopAlertScheduler(): void {
   if (weeklyJob) {
     weeklyJob.stop();
     weeklyJob = null;
+  }
+  if (backupJob) {
+    backupJob.stop();
+    backupJob = null;
   }
   console.log('[SCHEDULER] Scheduler detenido');
 }

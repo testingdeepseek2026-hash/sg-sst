@@ -16,7 +16,7 @@ import {
   updateObjective,
   updatePolicy,
 } from '../services/policies.js';
-import * as UsersService from '../services/users.js';
+import { requireRole, getAuthUser, auditLog } from '../lib/auth.js';
 
 const policyCreateSchema = z.object({
   titulo: z.string().min(2),
@@ -53,12 +53,8 @@ const objectiveUpdateSchema = z.object({
 });
 
 const policiesRoutes: FastifyPluginAsync = async (fastify) => {
-  // GET /policies - lista todas con objetivos anidados
+  // GET /policies - lista todas con objetivos anidados (cualquier autenticado)
   fastify.get('/policies', async (request, reply) => {
-    const uid = (request as any).userId;
-    if (!uid) return reply.code(401).send({ error: 'No autenticado' });
-    const me = UsersService.getUserById(fastify.db, uid);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const policies = getPolicies(fastify.db);
     const policiesWithObjectives = policies.map((p) => ({
       ...p,
@@ -67,12 +63,8 @@ const policiesRoutes: FastifyPluginAsync = async (fastify) => {
     return policiesWithObjectives;
   });
 
-  // GET /policies/active - política vigente con objetivos
+  // GET /policies/active - política vigente con objetivos (cualquier autenticado)
   fastify.get('/policies/active', async (request, reply) => {
-    const uid = (request as any).userId;
-    if (!uid) return reply.code(401).send({ error: 'No autenticado' });
-    const me = UsersService.getUserById(fastify.db, uid);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const active = getActivePolicy(fastify.db);
     if (!active) return reply.code(404).send({ error: 'No hay política vigente' });
     return {
@@ -81,12 +73,8 @@ const policiesRoutes: FastifyPluginAsync = async (fastify) => {
     };
   });
 
-  // GET /policies/:id - detalle
+  // GET /policies/:id - detalle (cualquier autenticado)
   fastify.get('/policies/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    if (!uid) return reply.code(401).send({ error: 'No autenticado' });
-    const me = UsersService.getUserById(fastify.db, uid);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const { id } = request.params as { id: string };
     const policy = getPolicyById(fastify.db, id);
     if (!policy) return reply.code(404).send({ error: 'Política no encontrada' });
@@ -97,244 +85,294 @@ const policiesRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // POST /policies (admin) - crear borrador
-  fastify.post('/policies', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.post('/policies', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parsed = policyCreateSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
     try {
       const p = createPolicy(fastify.db, parsed.data);
-      UsersService.auditLog(fastify.db, {
-        usuario_id: uid,
-        usuario_email: me.email,
+
+      const user = getAuthUser(request);
+      auditLog(fastify.db, {
+        usuario_id: user.id,
+        usuario_email: user.email,
         accion: 'crear',
         entidad: 'policies',
         entidad_id: p.id,
         valores_nuevos: parsed.data,
       });
+
       return p;
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
     }
   });
 
-  // PUT /policies/:id (admin) - editar (si vigente -> nueva versión)
-  fastify.put('/policies/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  // PUT /policies/:id (admin) - actualizar borrador
+  fastify.put('/policies/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = policyUpdateSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
     try {
-      const old = getPolicyById(fastify.db, id);
-      if (!old) return reply.code(404).send({ error: 'Política no encontrada' });
       const updated = updatePolicy(fastify.db, id, parsed.data);
-      UsersService.auditLog(fastify.db, {
-        usuario_id: uid,
-        usuario_email: me.email,
+      if (!updated) return reply.code(404).send({ error: 'Política no encontrada' });
+
+      const user = getAuthUser(request);
+      auditLog(fastify.db, {
+        usuario_id: user.id,
+        usuario_email: user.email,
         accion: 'editar',
         entidad: 'policies',
-        entidad_id: updated.id,
-        valores_anteriores: old,
-        valores_nuevos: updated,
+        entidad_id: id,
+        valores_nuevos: parsed.data,
       });
+
       return updated;
     } catch (err: any) {
+      if (err.message.includes('no encontrada')) {
+        return reply.code(404).send({ error: err.message });
+      }
       return reply.code(400).send({ error: err.message });
     }
   });
 
-  // POST /policies/:id/firmar (admin) - firmar y poner vigente
-  fastify.post('/policies/:id/firmar', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  // POST /policies/:id/firmar (admin) - firmar
+  fastify.post('/policies/:id/firmar', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = firmarSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
     try {
-      const old = getPolicyById(fastify.db, id);
       const updated = firmarPolicy(fastify.db, id, parsed.data.firmado_por);
-      UsersService.auditLog(fastify.db, {
-        usuario_id: uid,
-        usuario_email: me.email,
+      if (!updated) return reply.code(404).send({ error: 'Política no encontrada' });
+
+      const user = getAuthUser(request);
+      auditLog(fastify.db, {
+        usuario_id: user.id,
+        usuario_email: user.email,
         accion: 'firmar',
         entidad: 'policies',
         entidad_id: id,
-        valores_anteriores: old,
-        valores_nuevos: updated,
+        valores_nuevos: { firmado_por: parsed.data.firmado_por },
       });
+
       return updated;
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
     }
   });
 
-  // POST /policies/:id/divulgar (admin) - registrar fecha divulgación
-  fastify.post('/policies/:id/divulgar', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  // POST /policies/:id/divulgar (admin) - divulgar (pone vigente)
+  fastify.post('/policies/:id/divulgar', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
 
     try {
-      const old = getPolicyById(fastify.db, id);
       const updated = divulgarPolicy(fastify.db, id);
-      UsersService.auditLog(fastify.db, {
-        usuario_id: uid,
-        usuario_email: me.email,
+      if (!updated) return reply.code(404).send({ error: 'Política no encontrada' });
+
+      const user = getAuthUser(request);
+      auditLog(fastify.db, {
+        usuario_id: user.id,
+        usuario_email: user.email,
         accion: 'divulgar',
         entidad: 'policies',
         entidad_id: id,
-        valores_anteriores: old,
-        valores_nuevos: updated,
       });
+
       return updated;
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
     }
   });
 
-  // POST /policies/:id/archivar (admin) - archivar política
-  fastify.post('/policies/:id/archivar', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  // POST /policies/:id/archivar (admin) - archivar
+  fastify.post('/policies/:id/archivar', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
 
     try {
-      const old = getPolicyById(fastify.db, id);
       const updated = archivarPolicy(fastify.db, id);
-      UsersService.auditLog(fastify.db, {
-        usuario_id: uid,
-        usuario_email: me.email,
+      if (!updated) return reply.code(404).send({ error: 'Política no encontrada' });
+
+      const user = getAuthUser(request);
+      auditLog(fastify.db, {
+        usuario_id: user.id,
+        usuario_email: user.email,
         accion: 'archivar',
         entidad: 'policies',
         entidad_id: id,
-        valores_anteriores: old,
-        valores_nuevos: updated,
       });
+
       return updated;
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
     }
   });
 
-  // DELETE /policies/:id (admin) - solo si borrador
-  fastify.delete('/policies/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  // DELETE /policies/:id (admin) - eliminar borrador
+  fastify.delete('/policies/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
 
     try {
-      const old = getPolicyById(fastify.db, id);
-      deletePolicy(fastify.db, id);
-      UsersService.auditLog(fastify.db, {
-        usuario_id: uid,
-        usuario_email: me.email,
+      const deleted = deletePolicy(fastify.db, id);
+      if (!deleted) return reply.code(404).send({ error: 'Política no encontrada o no es borrador' });
+
+      const user = getAuthUser(request);
+      auditLog(fastify.db, {
+        usuario_id: user.id,
+        usuario_email: user.email,
         accion: 'eliminar',
         entidad: 'policies',
         entidad_id: id,
-        valores_anteriores: old,
       });
+
       return { ok: true };
     } catch (err: any) {
+      if (err.message.includes('no encontrada')) {
+        return reply.code(404).send({ error: err.message });
+      }
       return reply.code(400).send({ error: err.message });
     }
   });
 
-  // GET /policies/:id/objectives - objetivos de una política
+  // ===== OBJETIVOS =====
+  // GET /policies/:id/objectives
   fastify.get('/policies/:id/objectives', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const { id } = request.params as { id: string };
     return getObjectives(fastify.db, id);
   });
 
-  // POST /policies/:id/objectives (admin) - crear objetivo
-  fastify.post('/policies/:id/objectives', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  // POST /policies/:id/objectives (admin)
+  fastify.post('/policies/:id/objectives', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const parsed = objectiveSchema.omit({ policy_id: true }).safeParse(request.body);
+    const parsed = objectiveSchema.safeParse({ ...(request.body as object), policy_id: id });
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+    const obj = createObjective(fastify.db, parsed.data);
 
-    const obj = createObjective(fastify.db, { ...parsed.data, policy_id: id });
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'objectives',
       entidad_id: obj.id,
-      valores_nuevos: { ...parsed.data, policy_id: id },
+      valores_nuevos: parsed.data,
     });
+
     return obj;
   });
 
-  // PUT /objectives/:id (admin) - editar objetivo
-  fastify.put('/objectives/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
-    const { id } = request.params as { id: string };
+  // PUT /objectives/:oid (admin)
+  fastify.put('/objectives/:oid', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const { oid } = request.params as { oid: string };
     const parsed = objectiveUpdateSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+    const updated = updateObjective(fastify.db, oid, parsed.data);
+    if (!updated) return reply.code(404).send({ error: 'Objetivo no encontrado' });
 
-    const old = fastify.db.prepare('SELECT * FROM objectives WHERE id = ?').get(id);
-    const updated = updateObjective(fastify.db, id, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'objectives',
-      entidad_id: id,
-      valores_anteriores: old,
-      valores_nuevos: updated,
+      entidad_id: oid,
+      valores_nuevos: parsed.data,
     });
+
     return updated;
   });
 
-  // DELETE /objectives/:id (admin) - eliminar objetivo
-  fastify.delete('/objectives/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  // DELETE /objectives/:oid (admin)
+  fastify.delete('/objectives/:oid', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const { oid } = request.params as { oid: string };
+    deleteObjective(fastify.db, oid);
 
-    const { id } = request.params as { id: string };
-    deleteObjective(fastify.db, id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'objectives',
-      entidad_id: id,
+      entidad_id: oid,
     });
+
     return { ok: true };
+  });
+
+  // Exportar política a PDF
+  fastify.get('/policies/:id/export', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const policy = getPolicyById(fastify.db, id);
+    if (!policy) return reply.code(404).send({ error: 'Política no encontrada' });
+    const objectives = getObjectives(fastify.db, id);
+
+    // Generar PDF simple
+    const { PDFDocument, rgb } = await import('pdf-lib');
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([595, 842]);
+    const { width, height } = page.getSize();
+
+    const fontSize = 12;
+    let y = height - 50;
+
+    const primaryColor = rgb(0, 0.2, 0.6);
+    page.drawText('POLÍTICA SG-SST', { x: 50, y, size: 18, color: primaryColor });
+    y -= 30;
+    page.drawText(`Título: ${policy.titulo}`, { x: 50, y, size: fontSize });
+    y -= 20;
+    page.drawText(`Versión: ${policy.version}`, { x: 50, y, size: fontSize });
+    y -= 20;
+    page.drawText(`Estado: ${policy.estado}`, { x: 50, y, size: fontSize });
+    y -= 20;
+    page.drawText(`Firmado por: ${policy.firmado_por || '—'}`, { x: 50, y, size: fontSize });
+    y -= 20;
+    page.drawText(`Fecha firma: ${policy.fecha_firma || '—'}`, { x: 50, y, size: fontSize });
+    y -= 20;
+    page.drawText(`Fecha divulgación: ${policy.fecha_divulgacion || '—'}`, { x: 50, y, size: fontSize });
+    y -= 30;
+
+    // Contenido (con saltos de línea simples)
+    const lines = policy.contenido.split('\n');
+    for (const line of lines) {
+      if (y < 60) {
+        pdfDoc.addPage([595, 842]);
+        y = height - 50;
+      }
+      page.drawText(line, { x: 50, y, size: fontSize });
+      y -= 18;
+    }
+
+    y -= 20;
+    page.drawText('OBJETIVOS', { x: 50, y, size: 14, color: primaryColor });
+    y -= 25;
+
+    for (const obj of objectives) {
+      if (y < 60) {
+        pdfDoc.addPage([595, 842]);
+        y = height - 50;
+      }
+      page.drawText(`• ${obj.descripcion} (${obj.tipo}) - ${obj.estado}`, { x: 60, y, size: fontSize });
+      y -= 18;
+      if (obj.meta) {
+        page.drawText(`  Meta: ${obj.meta}`, { x: 70, y, size: fontSize - 1 });
+        y -= 16;
+      }
+      if (obj.responsable) {
+        page.drawText(`  Responsable: ${obj.responsable}`, { x: 70, y, size: fontSize - 1 });
+        y -= 16;
+      }
+      if (obj.fecha_limite) {
+        page.drawText(`  Fecha límite: ${obj.fecha_limite}`, { x: 70, y, size: fontSize - 1 });
+        y -= 16;
+      }
+      y -= 8;
+    }
+
+    const pdfBytes = await pdfDoc.save();
+    reply.type('application/pdf');
+    reply.header('Content-Disposition', `attachment; filename=politica_${policy.titulo.replace(/\s+/g, '_')}.pdf`);
+    return Buffer.from(pdfBytes);
   });
 };
 

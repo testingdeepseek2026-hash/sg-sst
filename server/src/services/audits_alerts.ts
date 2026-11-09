@@ -58,11 +58,14 @@ export interface AuditFinding {
 }
 
 export function getFindingsByAudit(db: any, auditId: string) {
-  return db.prepare('SELECT * FROM audit_findings WHERE audit_id = ? ORDER BY creado_en DESC').all(auditId) as AuditFinding[];
+  return db
+    .prepare('SELECT * FROM audit_findings WHERE audit_id = ? ORDER BY creado_en DESC')
+    .all(auditId) as AuditFinding[];
 }
 
 export function getFindingById(db: any, id: string) {
-  return db.prepare('SELECT * FROM audit_findings WHERE id = ?').get(id) as AuditFinding | undefined;
+  return db.prepare('SELECT * FROM audit_findings WHERE id = ?').get(id) as
+    AuditFinding | undefined;
 }
 
 export function createFinding(db: any, input: any) {
@@ -110,11 +113,23 @@ export function deleteFinding(db: any, id: string) {
 export function getFindingsSummary(db: any) {
   // Resumen global de hallazgos para seguimiento
   const total = db.prepare('SELECT COUNT(*) as c FROM audit_findings').get() as { c: number };
-  const abiertos = db.prepare("SELECT COUNT(*) as c FROM audit_findings WHERE estado = 'abierto'").get() as { c: number };
-  const enProceso = db.prepare("SELECT COUNT(*) as c FROM audit_findings WHERE estado = 'en_proceso'").get() as { c: number };
-  const cerrados = db.prepare("SELECT COUNT(*) as c FROM audit_findings WHERE estado = 'cerrado'").get() as { c: number };
-  const verificados = db.prepare("SELECT COUNT(*) as c FROM audit_findings WHERE estado = 'verificado'").get() as { c: number };
-  const vencidos = db.prepare("SELECT COUNT(*) as c FROM audit_findings WHERE estado NOT IN ('cerrado', 'verificado') AND date(fecha_limite) < date('now')").get() as { c: number };
+  const abiertos = db
+    .prepare("SELECT COUNT(*) as c FROM audit_findings WHERE estado = 'abierto'")
+    .get() as { c: number };
+  const enProceso = db
+    .prepare("SELECT COUNT(*) as c FROM audit_findings WHERE estado = 'en_proceso'")
+    .get() as { c: number };
+  const cerrados = db
+    .prepare("SELECT COUNT(*) as c FROM audit_findings WHERE estado = 'cerrado'")
+    .get() as { c: number };
+  const verificados = db
+    .prepare("SELECT COUNT(*) as c FROM audit_findings WHERE estado = 'verificado'")
+    .get() as { c: number };
+  const vencidos = db
+    .prepare(
+      "SELECT COUNT(*) as c FROM audit_findings WHERE estado NOT IN ('cerrado', 'verificado') AND date(fecha_limite) < date('now')"
+    )
+    .get() as { c: number };
 
   return {
     total: total.c,

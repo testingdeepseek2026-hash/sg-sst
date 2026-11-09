@@ -115,6 +115,7 @@ Elige el stack que mejor se adapte (puede ser una aplicación web propia, una pl
 - **Dashboard:** Carga datos de standards, workers, actions, incidents via API
 
 **Estado actual (7 de noviembre 2026 - Post estabilización):**
+
 - ✅ **Suite frontend completa**: 49/49 tests pasan (7 archivos: Politica, Hazards, Trabajadores, Estandares, Login, Dashboard, api)
 - ✅ **Suite backend completa**: 193/193 tests pasan (12 archivos: policies, hazards, workers, incidents, standards, alerts, etc.)
 - ✅ **Typechecks**: server y web pasan sin errores
@@ -122,6 +123,7 @@ Elige el stack que mejor se adapte (puede ser una aplicación web propia, una pl
 - ✅ **Total pruebas**: 242 pasando (193 backend + 49 frontend)
 
 **Fixes recientes aplicados:**
+
 - Tests `Hazards.test.tsx`, `Trabajadores.test.tsx`, `Estandares.test.tsx` corregidos y alineados con UI actual
 - `Trabajadores.tsx`: validación de fecha en `handleCertFechaEmisionChange` para evitar `Invalid time value`
 - `Incidentes.tsx`: llamadas a `_showMessage` corregidas a firma `(type, text)` en lugar de objeto

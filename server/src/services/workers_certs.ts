@@ -1,3 +1,4 @@
+import { decryptSensitiveFields, encrypt, isEncrypted, SENSITIVE_FIELDS } from '../lib/crypto.js';
 import { genId } from '../lib/utils.js';
 
 export interface WorkerCert {
@@ -14,13 +15,16 @@ export interface WorkerCert {
 }
 
 export function getCertsByWorker(db: any, workerId: string): WorkerCert[] {
-  return db
+  const rows = db
     .prepare('SELECT * FROM worker_certs WHERE worker_id = ? ORDER BY fecha_emision DESC')
     .all(workerId) as WorkerCert[];
+  return rows.map((r) => decryptSensitiveFields(r) as WorkerCert);
 }
 
 export function getCertById(db: any, id: string): WorkerCert | undefined {
-  return db.prepare('SELECT * FROM worker_certs WHERE id = ?').get(id) as WorkerCert | undefined;
+  const row = db.prepare('SELECT * FROM worker_certs WHERE id = ?').get(id) as WorkerCert | undefined;
+  if (!row) return undefined;
+  return decryptSensitiveFields(row) as WorkerCert;
 }
 
 export function crearCertificado(
@@ -47,20 +51,32 @@ export function crearCertificado(
     }
   }
 
+  // Cifrar campos sensibles antes de guardar (Ley 1581/2012)
+  const sensitiveInput: Record<string, any> = { ...input };
+  for (const field of SENSITIVE_FIELDS) {
+    if (
+      sensitiveInput[field] &&
+      typeof sensitiveInput[field] === 'string' &&
+      !isEncrypted(sensitiveInput[field])
+    ) {
+      sensitiveInput[field] = encrypt(sensitiveInput[field]);
+    }
+  }
+
   const id = genId();
   db.prepare(
     `INSERT INTO worker_certs (id, worker_id, tipo, nombre_curso, entidad, fecha_emision, fecha_vencimiento, archivo_url, notas)
      VALUES (?,?,?,?,?,?,?,?,?)`
   ).run(
     id,
-    input.worker_id,
-    input.tipo,
-    input.nombre_curso ?? null,
-    input.entidad ?? null,
-    input.fecha_emision,
-    input.fecha_vencimiento,
-    input.archivo_url ?? null,
-    input.notas ?? null
+    sensitiveInput.worker_id,
+    sensitiveInput.tipo,
+    sensitiveInput.nombre_curso ?? null,
+    sensitiveInput.entidad ?? null,
+    sensitiveInput.fecha_emision,
+    sensitiveInput.fecha_vencimiento,
+    sensitiveInput.archivo_url ?? null,
+    sensitiveInput.notas ?? null
   );
   return getCertById(db, id)!;
 }
@@ -84,9 +100,21 @@ export function updateCert(db: any, id: string, patch: Partial<WorkerCert>): Wor
     }
   }
 
+  // Cifrar campos sensibles en el patch
+  const sensitivePatch: Record<string, any> = { ...patch };
+  for (const field of SENSITIVE_FIELDS) {
+    if (
+      sensitivePatch[field] &&
+      typeof sensitivePatch[field] === 'string' &&
+      !isEncrypted(sensitivePatch[field])
+    ) {
+      sensitivePatch[field] = encrypt(sensitivePatch[field]);
+    }
+  }
+
   const sets: string[] = [];
   const vals: any[] = [];
-  for (const [k, v] of Object.entries(patch)) {
+  for (const [k, v] of Object.entries(sensitivePatch)) {
     if (v === undefined) continue;
     sets.push(`${k} = ?`);
     vals.push(v);

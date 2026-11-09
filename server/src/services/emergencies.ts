@@ -16,14 +16,7 @@ export function createEmergencyPlan(db: any, input: any) {
   db.prepare(
     `INSERT INTO emergency_plans (id, nombre, tipo_emergencia, contenido, fecha_creacion, vigente)
      VALUES (?,?,?,?,?,?)`
-  ).run(
-    id,
-    input.nombre,
-    input.tipo_emergencia,
-    input.contenido ?? null,
-    now,
-    input.vigente ?? 1
-  );
+  ).run(id, input.nombre, input.tipo_emergencia, input.contenido ?? null, now, input.vigente ?? 1);
   return db.prepare('SELECT * FROM emergency_plans WHERE id = ?').get(id);
 }
 
@@ -49,12 +42,16 @@ export function deleteEmergencyPlan(db: any, id: string) {
 // ===== DRILLS (Simulacros) =====
 
 export function getDrills(db: any) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT d.*, ep.nombre as plan_nombre, ep.tipo_emergencia as plan_tipo
     FROM drills d
     LEFT JOIN emergency_plans ep ON ep.id = d.emergency_plan_id
     ORDER BY d.fecha DESC
-  `).all() as any[];
+  `
+    )
+    .all() as any[];
 }
 
 export function getDrillById(db: any, id: string) {
@@ -62,7 +59,9 @@ export function getDrillById(db: any, id: string) {
 }
 
 export function getDrillsByPlan(db: any, planId: string) {
-  return db.prepare('SELECT * FROM drills WHERE emergency_plan_id = ? ORDER BY fecha DESC').all(planId) as any[];
+  return db
+    .prepare('SELECT * FROM drills WHERE emergency_plan_id = ? ORDER BY fecha DESC')
+    .all(planId) as any[];
 }
 
 export function createDrill(db: any, input: any) {

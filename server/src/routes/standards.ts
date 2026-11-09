@@ -10,7 +10,7 @@ import {
   stdCumplimiento,
   updateStandardAssessment,
 } from '../services/standards.js';
-import * as UsersService from '../services/users.js';
+import { requireRole, getAuthUser, auditLog } from '../lib/auth.js';
 
 const stdSchema = z.object({
   codigo: z.string().min(2),
@@ -30,93 +30,95 @@ const assessSchema = z.object({
 });
 
 const standardsRoutes: FastifyPluginAsync = async (fastify) => {
+  // GET /standards - Cualquier autenticado
   fastify.get('/standards', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const { set } = request.query as { set?: string };
     return getStandards(fastify.db, set);
   });
-  fastify.post('/standards', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  // POST /standards - Solo administrador
+  fastify.post('/standards', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parsed = stdSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const s = createStandard(fastify.db, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'standards',
       entidad_id: s.id,
       valores_nuevos: parsed.data,
     });
+
     return s;
   });
+
+  // GET /standards/assessments - Cualquier autenticado
   fastify.get('/standards/assessments', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     return getStandardAssessments(fastify.db);
   });
+
+  // GET /standards/cumplimiento - Cualquier autenticado
   fastify.get('/standards/cumplimiento', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     return stdCumplimiento(fastify.db);
   });
-  fastify.post('/standards/assessments', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  // POST /standards/assessments - Solo administrador
+  fastify.post('/standards/assessments', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parsed = assessSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const a = createStandardAssessment(fastify.db, { ...parsed.data, usuario_id: uid });
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    const a = createStandardAssessment(fastify.db, { ...parsed.data, usuario_id: user.id });
+
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'standard_assessments',
       entidad_id: a.id,
       valores_nuevos: parsed.data,
     });
+
     return a;
   });
-  fastify.put('/standards/assessments/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  // PUT /standards/assessments/:id - Solo administrador
+  fastify.put('/standards/assessments/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = assessSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const updated = updateStandardAssessment(fastify.db, id, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'standard_assessments',
       entidad_id: id,
       valores_nuevos: parsed.data,
     });
+
     return updated;
   });
-  fastify.delete('/standards/assessments/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    deleteStandardAssessment(fastify.db, (request.params as any).id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+  // DELETE /standards/assessments/:id - Solo administrador
+  fastify.delete('/standards/assessments/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    deleteStandardAssessment(fastify.db, id);
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'standard_assessments',
-      entidad_id: (request.params as any).id,
+      entidad_id: id,
     });
+
     return { ok: true };
   });
 };

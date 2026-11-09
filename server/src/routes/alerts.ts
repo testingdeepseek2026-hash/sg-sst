@@ -14,14 +14,13 @@ import {
   getPendingAlertsForSending,
   markAsSent,
 } from '../services/alerts.js';
-import * as UsersService from '../services/users.js';
+import { requireRole, getAuthUser, auditLog, isAdmin } from '../lib/auth.js';
 
 const alertsRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /alerts - listar con filtros (admin: todas; trabajador: solo suyas)
   fastify.get('/alerts', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    const user = request.user;
+    if (!user) return reply.code(401).send({ error: 'No autenticado' });
 
     const {
       tipo,
@@ -40,7 +39,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     };
 
     // Trabajador solo ve sus alertas
-    const workerId = me.rol === 'trabajador' ? uid : undefined;
+    const workerId = user.rol === 'trabajador' ? user.id : undefined;
 
     return getAlerts(fastify.db, {
       tipo,
@@ -55,39 +54,32 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
 
   // GET /alerts/stats - estadísticas (admin: global; trabajador: propias)
   fastify.get('/alerts/stats', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    const user = request.user;
+    if (!user) return reply.code(401).send({ error: 'No autenticado' });
 
-    const workerId = me.rol === 'trabajador' ? uid : undefined;
+    const workerId = user.rol === 'trabajador' ? user.id : undefined;
     return getAlertStats(fastify.db, workerId);
   });
 
   // POST /alerts/generate (admin) - generar alertas manualmente
-  fastify.post('/alerts/generate', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.post('/alerts/generate', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const user = getAuthUser(request);
     const nuevas = generateAlerts(fastify.db);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'generar',
       entidad: 'alerts',
       valores_nuevos: { generadas: nuevas.length },
     });
+
     return { generadas: nuevas.length, alertas: nuevas };
   });
 
   // POST /alerts/send (admin) - enviar alertas pendientes manualmente
-  fastify.post('/alerts/send', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.post('/alerts/send', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const user = getAuthUser(request);
     const transporter = createTransporter();
     const pending = getPendingAlertsForSending(fastify.db);
 
@@ -144,85 +136,75 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       }
     }
 
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'enviar',
       entidad: 'alerts',
       valores_nuevos: { enviadas, errores },
     });
+
     return { enviadas, errores };
   });
 
   // PUT /alerts/:id/sent (admin) - marcar como enviada
-  fastify.put('/alerts/:id/sent', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.put('/alerts/:id/sent', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const user = getAuthUser(request);
     const { id } = request.params as { id: string };
     const updated = markAsSent(fastify.db, [id]);
     if (!updated) return reply.code(404).send({ error: 'Alerta no encontrada' });
 
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'marcar_enviada',
       entidad: 'alerts',
       entidad_id: id,
     });
+
     return { ok: true };
   });
 
   // POST /alerts/mark-sent (admin) - marcar múltiples
-  fastify.post('/alerts/mark-sent', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.post('/alerts/mark-sent', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const user = getAuthUser(request);
     const { ids } = request.body as { ids: string[] };
     if (!ids || !ids.length) return reply.code(400).send({ error: 'ids requeridos' });
 
     const updated = markAsSent(fastify.db, ids);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'marcar_enviada_multiple',
       entidad: 'alerts',
       valores_nuevos: { ids },
     });
+
     return { actualizadas: updated };
   });
 
   // DELETE /alerts/:id (admin)
-  fastify.delete('/alerts/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.delete('/alerts/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const user = getAuthUser(request);
     deleteAlert(fastify.db, (request.params as any).id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'alerts',
       entidad_id: (request.params as any).id,
     });
+
     return { ok: true };
   });
 
-  // GET /alerts/test-email?to= - email de prueba
-  fastify.get('/alerts/test-email', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  // GET /alerts/test-email?to= - email de prueba (admin)
+  fastify.get('/alerts/test-email', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const user = getAuthUser(request);
     const { to } = request.query as { to?: string };
-    const email = to || me.email;
+    const email = to || user.email;
 
     const transporter = createTransporter();
     const html = buildAlertEmailHtml([
@@ -258,13 +240,8 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     return { success: result.success, error: result.error };
   });
 
-  // GET /alerts/preview - preview HTML
-  fastify.get('/alerts/preview', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  // GET /alerts/preview - preview HTML (admin)
+  fastify.get('/alerts/preview', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const html = buildAlertEmailHtml([
       {
         tipo: 'examen',

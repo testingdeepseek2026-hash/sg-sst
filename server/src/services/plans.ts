@@ -84,12 +84,16 @@ export function deleteTrainingSchedule(db: any, id: string) {
 // ===== TRAININGS (Ejecución de capacitaciones con evidencias) =====
 
 export function getTrainings(db: any) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT t.*, ts.nombre as schedule_nombre, ts.tipo as schedule_tipo
     FROM trainings t
     LEFT JOIN training_schedule ts ON ts.id = t.schedule_id
     ORDER BY t.fecha DESC
-  `).all() as any[];
+  `
+    )
+    .all() as any[];
 }
 
 export function getTrainingById(db: any, id: string) {
@@ -137,13 +141,17 @@ export function deleteTraining(db: any, id: string) {
 // ===== TRAINING ATTENDANCE (Asistencia con firma) =====
 
 export function getTrainingAttendance(db: any, trainingId: string) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT ta.*, w.nombres, w.apellidos, w.numero_documento, w.cargo
     FROM training_attendance ta
     JOIN workers w ON w.id = ta.worker_id
     WHERE ta.training_id = ?
     ORDER BY w.apellidos, w.nombres
-  `).all(trainingId) as any[];
+  `
+    )
+    .all(trainingId) as any[];
 }
 
 export function createTrainingAttendance(db: any, input: any) {
@@ -151,13 +159,7 @@ export function createTrainingAttendance(db: any, input: any) {
   db.prepare(
     `INSERT INTO training_attendance (id, training_id, worker_id, firmado, firma_url)
      VALUES (?,?,?,?,?)`
-  ).run(
-    id,
-    input.training_id,
-    input.worker_id,
-    input.firmado ?? 0,
-    input.firma_url ?? null
-  );
+  ).run(id, input.training_id, input.worker_id, input.firmado ?? 0, input.firma_url ?? null);
   return db.prepare('SELECT * FROM training_attendance WHERE id = ?').get(id);
 }
 

@@ -4,6 +4,7 @@ import cookie from '@fastify/cookie';
 import { createTestDb, cleanDb } from '../../setup.js';
 import policiesRoutes from '../../../src/routes/policies.js';
 import * as policiesService from '../../../src/services/policies.js';
+import { requireAuth } from '../../../src/lib/auth.js';
 
 describe('Políticas - Rutas API (Integración)', () => {
   let app: ReturnType<typeof Fastify>;
@@ -17,11 +18,8 @@ describe('Políticas - Rutas API (Integración)', () => {
     db = createTestDb();
     app.decorate('db', db);
     
-    // Mock auth hook
-    app.addHook('preHandler', async (request) => {
-      request.userId = request.cookies['sg_sst_user'] ?? undefined;
-      request.userEmail = request.cookies['sg_sst_email'] ?? undefined;
-    });
+    // Usar el hook de autenticación centralizado (igual que la app principal)
+    app.addHook('preHandler', requireAuth);
     
     await app.register(policiesRoutes, { prefix: '/api' });
     await app.ready();

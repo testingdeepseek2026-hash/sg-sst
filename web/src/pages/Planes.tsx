@@ -136,7 +136,7 @@ export default function Planes() {
       setPlans(plansData as AnnualActivity[]);
       setTrainings(trainingData as TrainingSchedule[]);
       setExecutions(executionsData as TrainingExecution[]);
-      setWorkers((workersData as WorkerSimple[]).filter(w => w.estado === 'activo'));
+      setWorkers((workersData as WorkerSimple[]).filter((w) => w.estado === 'activo'));
     } catch (err: any) {
       console.error('Error cargando datos:', err);
       setMessage({ type: 'error', text: err.message || 'Error cargando datos' });
@@ -159,7 +159,7 @@ export default function Planes() {
     try {
       setLoading(true);
       setMessage(null);
-      
+
       if (planForm.id) {
         // Editar plan existente
         await api.put(`/plans/annual/${planForm.id}`, {
@@ -188,7 +188,7 @@ export default function Planes() {
         presupuesto: 0,
         estado: 'pendiente',
       });
-      
+
       await loadData();
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Error guardando plan' });
@@ -256,7 +256,7 @@ export default function Planes() {
 
       await api.post('/plans/training', trainingForm);
       setMessage({ type: 'success', text: 'Capacitación agregada correctamente' });
-      
+
       setTrainingForm({
         nombre: '',
         tipo: 'capacitacion',
@@ -379,9 +379,12 @@ export default function Planes() {
 
   const bulkAddAttendance = async (trainingId: string) => {
     try {
-      const workerIds = workers.map(w => w.id);
+      const workerIds = workers.map((w) => w.id);
       await api.post(`/plans/trainings/${trainingId}/attendance/bulk`, { worker_ids: workerIds });
-      setMessage({ type: 'success', text: `${workerIds.length} trabajadores agregados a la asistencia` });
+      setMessage({
+        type: 'success',
+        text: `${workerIds.length} trabajadores agregados a la asistencia`,
+      });
       loadAttendance(trainingId);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Error agregando asistencia masiva' });
@@ -425,15 +428,21 @@ export default function Planes() {
   // KPI calculations
   const getPlanKPIs = () => {
     const total = plans.length;
-    const porEstado = plans.reduce((acc, p) => {
-      acc[p.estado] = (acc[p.estado] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const porEstado = plans.reduce(
+      (acc, p) => {
+        acc[p.estado] = (acc[p.estado] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
-    const byYear = plans.reduce((acc, p) => {
-      acc[p.anio] = (acc[p.anio] || 0) + 1;
-      return acc;
-    }, {} as Record<number, number>);
+    const byYear = plans.reduce(
+      (acc, p) => {
+        acc[p.anio] = (acc[p.anio] || 0) + 1;
+        return acc;
+      },
+      {} as Record<number, number>
+    );
 
     // Alertas por vencer (30 días)
     const today = new Date();
@@ -455,15 +464,21 @@ export default function Planes() {
 
   const getTrainingKPIs = () => {
     const total = trainings.length;
-    const porEstado = trainings.reduce((acc, t) => {
-      acc[t.estado] = (acc[t.estado] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const porEstado = trainings.reduce(
+      (acc, t) => {
+        acc[t.estado] = (acc[t.estado] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
-    const byTipo = trainings.reduce((acc, t) => {
-      acc[t.tipo] = (acc[t.tipo] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const byTipo = trainings.reduce(
+      (acc, t) => {
+        acc[t.tipo] = (acc[t.tipo] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     const programadas = trainings.filter((t) => t.estado === 'programada').length;
     const realizadas = trainings.filter((t) => t.estado === 'realizada').length;
@@ -562,11 +577,36 @@ export default function Planes() {
         >
           {/* KPIs */}
           <div className="plans-kpi-grid plans-kpi-grid--annual">
-            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Total Actividades</div><div className="plans-kpi-card-value" style={{ color: '#0f766e' }}>{getPlanKPIs().total}</div></div>
-            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Cumplidas</div><div className="plans-kpi-card-value" style={{ color: '#16a34a' }}>{getPlanKPIs().porEstado.cumplido || 0}</div></div>
-            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">En Proceso</div><div className="plans-kpi-card-value" style={{ color: '#ea580c' }}>{getPlanKPIs().porEstado.en_proceso || 0}</div></div>
-            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Vencidas</div><div className="plans-kpi-card-value" style={{ color: '#dc2626' }}>{getPlanKPIs().vencidas}</div></div>
-            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Alertas (30 días)</div><div className="plans-kpi-card-value" style={{ color: '#f59e0b' }}>{getPlanKPIs().alertadas}</div></div>
+            <div className="ui-surface plans-kpi-card">
+              <div className="plans-kpi-card-label">Total Actividades</div>
+              <div className="plans-kpi-card-value" style={{ color: '#0f766e' }}>
+                {getPlanKPIs().total}
+              </div>
+            </div>
+            <div className="ui-surface plans-kpi-card">
+              <div className="plans-kpi-card-label">Cumplidas</div>
+              <div className="plans-kpi-card-value" style={{ color: '#16a34a' }}>
+                {getPlanKPIs().porEstado.cumplido || 0}
+              </div>
+            </div>
+            <div className="ui-surface plans-kpi-card">
+              <div className="plans-kpi-card-label">En Proceso</div>
+              <div className="plans-kpi-card-value" style={{ color: '#ea580c' }}>
+                {getPlanKPIs().porEstado.en_proceso || 0}
+              </div>
+            </div>
+            <div className="ui-surface plans-kpi-card">
+              <div className="plans-kpi-card-label">Vencidas</div>
+              <div className="plans-kpi-card-value" style={{ color: '#dc2626' }}>
+                {getPlanKPIs().vencidas}
+              </div>
+            </div>
+            <div className="ui-surface plans-kpi-card">
+              <div className="plans-kpi-card-label">Alertas (30 días)</div>
+              <div className="plans-kpi-card-value" style={{ color: '#f59e0b' }}>
+                {getPlanKPIs().alertadas}
+              </div>
+            </div>
           </div>
 
           {/* Filters */}
@@ -592,7 +632,13 @@ export default function Planes() {
             {planFilterEstado !== 'all' && (
               <button
                 onClick={() => setPlanFilterEstado('all')}
-                style={{ padding: '8px 12px', background: '#e5e7eb', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                style={{
+                  padding: '8px 12px',
+                  background: '#e5e7eb',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
               >
                 ✕ Quitar filtro
               </button>
@@ -640,20 +686,37 @@ export default function Planes() {
               }}
             >
               <div>
-                <label htmlFor="plan-anio" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Año *</label>
+                <label
+                  htmlFor="plan-anio"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Año *
+                </label>
                 <input
                   id="plan-anio"
                   type="number"
                   value={planForm.anio}
-                  onChange={(e) => setPlanForm({ ...planForm, anio: parseInt(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setPlanForm({ ...planForm, anio: parseInt(e.target.value) || 0 })
+                  }
                   min="2020"
                   max="2030"
                   required
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label htmlFor="plan-objetivo" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Objetivo *</label>
+                <label
+                  htmlFor="plan-objetivo"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Objetivo *
+                </label>
                 <input
                   id="plan-objetivo"
                   type="text"
@@ -661,27 +724,52 @@ export default function Planes() {
                   onChange={(e) => setPlanForm({ ...planForm, objetivo: e.target.value })}
                   placeholder="Actividad o medida a implementar"
                   required
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div>
-                <label htmlFor="plan-responsable" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Responsable</label>
+                <label
+                  htmlFor="plan-responsable"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Responsable
+                </label>
                 <input
                   id="plan-responsable"
                   type="text"
                   value={planForm.responsable}
                   onChange={(e) => setPlanForm({ ...planForm, responsable: e.target.value })}
                   placeholder="Nombre/Área responsable"
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div>
-                <label htmlFor="plan-estado" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Estado</label>
+                <label
+                  htmlFor="plan-estado"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Estado
+                </label>
                 <select
                   id="plan-estado"
                   value={planForm.estado}
                   onChange={(e) => setPlanForm({ ...planForm, estado: e.target.value as any })}
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 >
                   <option value="pendiente">Pendiente</option>
                   <option value="en_proceso">En proceso</option>
@@ -690,45 +778,87 @@ export default function Planes() {
                 </select>
               </div>
               <div>
-                <label htmlFor="plan-fecha-inicio" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Fecha inicio</label>
+                <label
+                  htmlFor="plan-fecha-inicio"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Fecha inicio
+                </label>
                 <input
                   id="plan-fecha-inicio"
                   type="date"
                   value={planForm.fecha_inicio}
                   onChange={(e) => setPlanForm({ ...planForm, fecha_inicio: e.target.value })}
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div>
-                <label htmlFor="plan-fecha-fin" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Fecha fin</label>
+                <label
+                  htmlFor="plan-fecha-fin"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Fecha fin
+                </label>
                 <input
                   id="plan-fecha-fin"
                   type="date"
                   value={planForm.fecha_fin}
                   onChange={(e) => setPlanForm({ ...planForm, fecha_fin: e.target.value })}
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div>
-                <label htmlFor="plan-presupuesto" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Presupuesto ($)</label>
+                <label
+                  htmlFor="plan-presupuesto"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Presupuesto ($)
+                </label>
                 <input
                   id="plan-presupuesto"
                   type="number"
                   value={planForm.presupuesto}
-                  onChange={(e) => setPlanForm({ ...planForm, presupuesto: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setPlanForm({ ...planForm, presupuesto: parseFloat(e.target.value) || 0 })
+                  }
                   placeholder="0"
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label htmlFor="plan-meta" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Meta</label>
+                <label
+                  htmlFor="plan-meta"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Meta
+                </label>
                 <input
                   id="plan-meta"
                   type="text"
                   value={planForm.meta}
                   onChange={(e) => setPlanForm({ ...planForm, meta: e.target.value })}
                   placeholder="Objetivo específico de la actividad"
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8 }}>
@@ -750,16 +880,18 @@ export default function Planes() {
                 {planForm.id && (
                   <button
                     type="button"
-                    onClick={() => setPlanForm({
-                      anio: new Date().getFullYear(),
-                      objetivo: '',
-                      meta: '',
-                      responsable: '',
-                      fecha_inicio: new Date().toISOString().slice(0, 10),
-                      fecha_fin: '',
-                      presupuesto: 0,
-                      estado: 'pendiente',
-                    })}
+                    onClick={() =>
+                      setPlanForm({
+                        anio: new Date().getFullYear(),
+                        objetivo: '',
+                        meta: '',
+                        responsable: '',
+                        fecha_inicio: new Date().toISOString().slice(0, 10),
+                        fecha_fin: '',
+                        presupuesto: 0,
+                        estado: 'pendiente',
+                      })
+                    }
                     style={{
                       padding: '10px 16px',
                       background: '#e5e7eb',
@@ -778,11 +910,20 @@ export default function Planes() {
           </div>
 
           {/* Plans Table */}
-          <div style={{ background: '#fff', borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: 10,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+              overflow: 'hidden',
+            }}
+          >
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f3f4f6' }}>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151', textAlign: 'left' }}>Objetivo</th>
+                  <th style={{ padding: 10, fontSize: 12, color: '#374151', textAlign: 'left' }}>
+                    Objetivo
+                  </th>
                   <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Año</th>
                   <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Responsable</th>
                   <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Fechas</th>
@@ -804,26 +945,33 @@ export default function Planes() {
                     const todayDate = new Date();
                     const fechaFin = p.fecha_fin ? new Date(p.fecha_fin) : null;
                     const isVencida = fechaFin && fechaFin < todayDate && p.estado !== 'cumplido';
-                    const isVenciendo = fechaFin && (fechaFin.getTime() - todayDate.getTime()) < 30 * 86400000 && (fechaFin.getTime() - todayDate.getTime()) > 0;
+                    const isVenciendo =
+                      fechaFin &&
+                      fechaFin.getTime() - todayDate.getTime() < 30 * 86400000 &&
+                      fechaFin.getTime() - todayDate.getTime() > 0;
 
                     return (
                       <tr key={p.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: 10, fontSize: 12, maxWidth: '250px' }}>{p.objetivo}</td>
+                        <td style={{ padding: 10, fontSize: 12, maxWidth: '250px' }}>
+                          {p.objetivo}
+                        </td>
                         <td style={{ padding: 10, fontSize: 12 }}>{p.anio}</td>
                         <td style={{ padding: 10, fontSize: 12 }}>{p.responsable || '—'}</td>
                         <td style={{ padding: 10, fontSize: 12 }}>
                           {p.fecha_inicio} {p.fecha_fin ? `→ ${p.fecha_fin}` : ''}
                         </td>
                         <td style={{ padding: 10 }}>
-                          <span style={{
-                            display: 'inline-block',
-                            padding: '2px 8px',
-                            borderRadius: 12,
-                            fontSize: 11,
-                            fontWeight: 'bold',
-                            background: isVencida ? '#fee2e2' : estadoColor.bg,
-                            color: isVencida ? '#dc2626' : estadoColor.text,
-                          }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '2px 8px',
+                              borderRadius: 12,
+                              fontSize: 11,
+                              fontWeight: 'bold',
+                              background: isVencida ? '#fee2e2' : estadoColor.bg,
+                              color: isVencida ? '#dc2626' : estadoColor.text,
+                            }}
+                          >
                             {p.estado}
                             {isVencida && ' ⚠️'}
                             {isVenciendo && ' 🔔'}
@@ -836,13 +984,29 @@ export default function Planes() {
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button
                               onClick={() => openPlanEdit(p)}
-                              style={{ padding: '4px 8px', background: '#0f766e', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}
+                              style={{
+                                padding: '4px 8px',
+                                background: '#0f766e',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 4,
+                                fontSize: 11,
+                                cursor: 'pointer',
+                              }}
                             >
                               Editar
                             </button>
                             <button
                               onClick={() => p.id && handlePlanDelete(p.id)}
-                              style={{ padding: '4px 8px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}
+                              style={{
+                                padding: '4px 8px',
+                                background: '#dc2626',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 4,
+                                fontSize: 11,
+                                cursor: 'pointer',
+                              }}
                             >
                               ✕
                             </button>
@@ -869,10 +1033,30 @@ export default function Planes() {
         >
           {/* Training KPIs */}
           <div className="plans-kpi-grid">
-            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Total Capacitaciones</div><div className="plans-kpi-card-value" style={{ color: '#0f766e' }}>{getTrainingKPIs().total}</div></div>
-            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Programadas</div><div className="plans-kpi-card-value" style={{ color: '#3b82f6' }}>{getTrainingKPIs().programadas}</div></div>
-            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Realizadas</div><div className="plans-kpi-card-value" style={{ color: '#16a34a' }}>{getTrainingKPIs().realizadas}</div></div>
-            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Alertas (30 días)</div><div className="plans-kpi-card-value" style={{ color: '#f59e0b' }}>{getTrainingKPIs().alertasCapacitacion}</div></div>
+            <div className="ui-surface plans-kpi-card">
+              <div className="plans-kpi-card-label">Total Capacitaciones</div>
+              <div className="plans-kpi-card-value" style={{ color: '#0f766e' }}>
+                {getTrainingKPIs().total}
+              </div>
+            </div>
+            <div className="ui-surface plans-kpi-card">
+              <div className="plans-kpi-card-label">Programadas</div>
+              <div className="plans-kpi-card-value" style={{ color: '#3b82f6' }}>
+                {getTrainingKPIs().programadas}
+              </div>
+            </div>
+            <div className="ui-surface plans-kpi-card">
+              <div className="plans-kpi-card-label">Realizadas</div>
+              <div className="plans-kpi-card-value" style={{ color: '#16a34a' }}>
+                {getTrainingKPIs().realizadas}
+              </div>
+            </div>
+            <div className="ui-surface plans-kpi-card">
+              <div className="plans-kpi-card-label">Alertas (30 días)</div>
+              <div className="plans-kpi-card-value" style={{ color: '#f59e0b' }}>
+                {getTrainingKPIs().alertasCapacitacion}
+              </div>
+            </div>
           </div>
 
           {/* Filters */}
@@ -890,7 +1074,13 @@ export default function Planes() {
             {trainingFilterEstado !== 'all' && (
               <button
                 onClick={() => setTrainingFilterEstado('all')}
-                style={{ padding: '8px 12px', background: '#e5e7eb', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                style={{
+                  padding: '8px 12px',
+                  background: '#e5e7eb',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
               >
                 ✕ Quitar filtro
               </button>
@@ -936,7 +1126,12 @@ export default function Planes() {
               }}
             >
               <div>
-                <label htmlFor="training-nombre" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Nombre *</label>
+                <label
+                  htmlFor="training-nombre"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Nombre *
+                </label>
                 <input
                   id="training-nombre"
                   type="text"
@@ -944,65 +1139,131 @@ export default function Planes() {
                   onChange={(e) => setTrainingForm({ ...trainingForm, nombre: e.target.value })}
                   placeholder="Capacitación en seguridad"
                   required
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div>
-                <label htmlFor="training-tipo" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Tipo *</label>
+                <label
+                  htmlFor="training-tipo"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Tipo *
+                </label>
                 <select
                   id="training-tipo"
                   value={trainingForm.tipo}
                   onChange={(e) => setTrainingForm({ ...trainingForm, tipo: e.target.value })}
                   required
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 >
                   {TIPO_CAPACITACION.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label htmlFor="training-fecha" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Fecha *</label>
+                <label
+                  htmlFor="training-fecha"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Fecha *
+                </label>
                 <input
                   id="training-fecha"
                   type="date"
                   value={trainingForm.fecha}
                   onChange={(e) => setTrainingForm({ ...trainingForm, fecha: e.target.value })}
                   required
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div>
-                <label htmlFor="training-duracion" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Duración (horas)</label>
+                <label
+                  htmlFor="training-duracion"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Duración (horas)
+                </label>
                 <input
                   id="training-duracion"
                   type="number"
                   value={trainingForm.duracion_horas}
-                  onChange={(e) => setTrainingForm({ ...trainingForm, duracion_horas: parseFloat(e.target.value) || 1 })}
+                  onChange={(e) =>
+                    setTrainingForm({
+                      ...trainingForm,
+                      duracion_horas: parseFloat(e.target.value) || 1,
+                    })
+                  }
                   min="0.5"
                   step="0.5"
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div>
-                <label htmlFor="training-responsable" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Responsable *</label>
+                <label
+                  htmlFor="training-responsable"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Responsable *
+                </label>
                 <input
                   id="training-responsable"
                   type="text"
                   value={trainingForm.responsable}
-                  onChange={(e) => setTrainingForm({ ...trainingForm, responsable: e.target.value })}
+                  onChange={(e) =>
+                    setTrainingForm({ ...trainingForm, responsable: e.target.value })
+                  }
                   placeholder="Nombre del instructor"
                   required
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div>
-                <label htmlFor="training-estado" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Estado</label>
+                <label
+                  htmlFor="training-estado"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Estado
+                </label>
                 <select
                   id="training-estado"
                   value={trainingForm.estado}
-                  onChange={(e) => setTrainingForm({ ...trainingForm, estado: e.target.value as any })}
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  onChange={(e) =>
+                    setTrainingForm({ ...trainingForm, estado: e.target.value as any })
+                  }
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 >
                   <option value="programada">Programada</option>
                   <option value="realizada">Realizada</option>
@@ -1010,14 +1271,24 @@ export default function Planes() {
                 </select>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label htmlFor="training-objetivo" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Objetivo</label>
+                <label
+                  htmlFor="training-objetivo"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Objetivo
+                </label>
                 <input
                   id="training-objetivo"
                   type="text"
                   value={trainingForm.objetivo}
                   onChange={(e) => setTrainingForm({ ...trainingForm, objetivo: e.target.value })}
                   placeholder="Objetivo de la capacitación"
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8 }}>
@@ -1038,15 +1309,17 @@ export default function Planes() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setTrainingForm({
-                    nombre: '',
-                    tipo: 'capacitacion',
-                    fecha: new Date().toISOString().slice(0, 10),
-                    duracion_horas: 1,
-                    responsable: '',
-                    objetivo: '',
-                    estado: 'programada',
-                  })}
+                  onClick={() =>
+                    setTrainingForm({
+                      nombre: '',
+                      tipo: 'capacitacion',
+                      fecha: new Date().toISOString().slice(0, 10),
+                      duracion_horas: 1,
+                      responsable: '',
+                      objetivo: '',
+                      estado: 'programada',
+                    })
+                  }
                   style={{
                     padding: '10px 16px',
                     background: '#e5e7eb',
@@ -1064,11 +1337,20 @@ export default function Planes() {
           </div>
 
           {/* Trainings Table */}
-          <div style={{ background: '#fff', borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: 10,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+              overflow: 'hidden',
+            }}
+          >
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f3f4f6' }}>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151', textAlign: 'left' }}>Nombre</th>
+                  <th style={{ padding: 10, fontSize: 12, color: '#374151', textAlign: 'left' }}>
+                    Nombre
+                  </th>
                   <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Tipo</th>
                   <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Fecha</th>
                   <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Duración</th>
@@ -1088,26 +1370,32 @@ export default function Planes() {
                   filteredTrainings.map((t) => {
                     const estadoColor = ESTADO_TRAINING_COLORS[t.estado];
                     const fecha = new Date(t.fecha);
-                    const diffDias = Math.ceil((fecha.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    const diffDias = Math.ceil(
+                      (fecha.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+                    );
                     const isVenciendo = diffDias > 0 && diffDias <= 7;
 
                     return (
                       <tr key={t.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                         <td style={{ padding: 10, fontSize: 12, maxWidth: '200px' }}>{t.nombre}</td>
                         <td style={{ padding: 10, fontSize: 12 }}>{t.tipo}</td>
-                        <td style={{ padding: 10, fontSize: 12 }}>{fecha.toLocaleDateString('es-CO')}</td>
+                        <td style={{ padding: 10, fontSize: 12 }}>
+                          {fecha.toLocaleDateString('es-CO')}
+                        </td>
                         <td style={{ padding: 10, fontSize: 12 }}>{t.duracion_horas || 1}h</td>
                         <td style={{ padding: 10, fontSize: 12 }}>{t.responsable || '—'}</td>
                         <td style={{ padding: 10 }}>
-                          <span style={{
-                            display: 'inline-block',
-                            padding: '2px 8px',
-                            borderRadius: 12,
-                            fontSize: 11,
-                            fontWeight: 'bold',
-                            background: isVenciendo ? '#fef3c7' : estadoColor.bg,
-                            color: isVenciendo ? '#92400e' : estadoColor.text,
-                          }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '2px 8px',
+                              borderRadius: 12,
+                              fontSize: 11,
+                              fontWeight: 'bold',
+                              background: isVenciendo ? '#fef3c7' : estadoColor.bg,
+                              color: isVenciendo ? '#92400e' : estadoColor.text,
+                            }}
+                          >
                             {t.estado}
                             {isVenciendo && ' 🔔'}
                           </span>
@@ -1115,7 +1403,15 @@ export default function Planes() {
                         <td style={{ padding: 10 }}>
                           <button
                             onClick={() => t.id && handleTrainingDelete(t.id)}
-                            style={{ padding: '4px 8px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}
+                            style={{
+                              padding: '4px 8px',
+                              background: '#dc2626',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 4,
+                              fontSize: 11,
+                              cursor: 'pointer',
+                            }}
                           >
                             ✕ Eliminar
                           </button>
@@ -1131,12 +1427,28 @@ export default function Planes() {
           {/* By Type Breakdown */}
           <div style={{ marginTop: 16, padding: 16, background: '#f9fafb', borderRadius: 10 }}>
             <h4 style={{ margin: '0 0 12px', color: '#0f766e' }}>Capacitaciones por tipo</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                gap: 12,
+              }}
+            >
               {Object.entries(getTrainingKPIs().byTipo).map(([tipo, count]) => {
-                const label = TIPO_CAPACITACION.find(t => t.value === tipo)?.label || tipo;
+                const label = TIPO_CAPACITACION.find((t) => t.value === tipo)?.label || tipo;
                 return (
-                  <div key={tipo} style={{ background: '#fff', padding: 12, borderRadius: 8, textAlign: 'center' }}>
-                    <div style={{ fontSize: 18, fontWeight: 'bold', color: '#0f766e' }}>{count}</div>
+                  <div
+                    key={tipo}
+                    style={{
+                      background: '#fff',
+                      padding: 12,
+                      borderRadius: 8,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <div style={{ fontSize: 18, fontWeight: 'bold', color: '#0f766e' }}>
+                      {count}
+                    </div>
                     <div style={{ fontSize: 11, color: '#6b7280' }}>{label}</div>
                   </div>
                 );
@@ -1157,10 +1469,30 @@ export default function Planes() {
         >
           {/* KPIs */}
           <div className="plans-kpi-grid">
-            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Total Ejecuciones</div><div className="plans-kpi-card-value" style={{ color: '#0f766e' }}>{executions.length}</div></div>
-            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Realizadas</div><div className="plans-kpi-card-value" style={{ color: '#16a34a' }}>{executions.filter(e => e.estado === 'realizada').length}</div></div>
-            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Programadas</div><div className="plans-kpi-card-value" style={{ color: '#3b82f6' }}>{executions.filter(e => e.estado === 'programada').length}</div></div>
-            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Con Evidencia</div><div className="plans-kpi-card-value" style={{ color: '#f59e0b' }}>{executions.filter(e => e.archivo_evidencia).length}</div></div>
+            <div className="ui-surface plans-kpi-card">
+              <div className="plans-kpi-card-label">Total Ejecuciones</div>
+              <div className="plans-kpi-card-value" style={{ color: '#0f766e' }}>
+                {executions.length}
+              </div>
+            </div>
+            <div className="ui-surface plans-kpi-card">
+              <div className="plans-kpi-card-label">Realizadas</div>
+              <div className="plans-kpi-card-value" style={{ color: '#16a34a' }}>
+                {executions.filter((e) => e.estado === 'realizada').length}
+              </div>
+            </div>
+            <div className="ui-surface plans-kpi-card">
+              <div className="plans-kpi-card-label">Programadas</div>
+              <div className="plans-kpi-card-value" style={{ color: '#3b82f6' }}>
+                {executions.filter((e) => e.estado === 'programada').length}
+              </div>
+            </div>
+            <div className="ui-surface plans-kpi-card">
+              <div className="plans-kpi-card-label">Con Evidencia</div>
+              <div className="plans-kpi-card-value" style={{ color: '#f59e0b' }}>
+                {executions.filter((e) => e.archivo_evidencia).length}
+              </div>
+            </div>
           </div>
 
           {/* Message */}
@@ -1204,12 +1536,24 @@ export default function Planes() {
               }}
             >
               <div>
-                <label htmlFor="exec-schedule" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Cronograma (opcional)</label>
+                <label
+                  htmlFor="exec-schedule"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Cronograma (opcional)
+                </label>
                 <select
                   id="exec-schedule"
                   value={executionForm.schedule_id}
-                  onChange={(e) => setExecutionForm({ ...executionForm, schedule_id: e.target.value })}
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  onChange={(e) =>
+                    setExecutionForm({ ...executionForm, schedule_id: e.target.value })
+                  }
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 >
                   <option value="">— Sin vincular a cronograma —</option>
                   {trainings.map((t) => (
@@ -1220,7 +1564,12 @@ export default function Planes() {
                 </select>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label htmlFor="exec-nombre" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Nombre *</label>
+                <label
+                  htmlFor="exec-nombre"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Nombre *
+                </label>
                 <input
                   id="exec-nombre"
                   type="text"
@@ -1228,38 +1577,77 @@ export default function Planes() {
                   onChange={(e) => setExecutionForm({ ...executionForm, nombre: e.target.value })}
                   placeholder="Capacitación en trabajo en alturas"
                   required
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div>
-                <label htmlFor="exec-fecha" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Fecha *</label>
+                <label
+                  htmlFor="exec-fecha"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Fecha *
+                </label>
                 <input
                   id="exec-fecha"
                   type="date"
                   value={executionForm.fecha}
                   onChange={(e) => setExecutionForm({ ...executionForm, fecha: e.target.value })}
                   required
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div>
-                <label htmlFor="exec-instructor" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Instructor</label>
+                <label
+                  htmlFor="exec-instructor"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Instructor
+                </label>
                 <input
                   id="exec-instructor"
                   type="text"
                   value={executionForm.instructor || ''}
-                  onChange={(e) => setExecutionForm({ ...executionForm, instructor: e.target.value })}
+                  onChange={(e) =>
+                    setExecutionForm({ ...executionForm, instructor: e.target.value })
+                  }
                   placeholder="Nombre del instructor"
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div>
-                <label htmlFor="exec-estado" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Estado</label>
+                <label
+                  htmlFor="exec-estado"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  Estado
+                </label>
                 <select
                   id="exec-estado"
                   value={executionForm.estado}
-                  onChange={(e) => setExecutionForm({ ...executionForm, estado: e.target.value as any })}
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  onChange={(e) =>
+                    setExecutionForm({ ...executionForm, estado: e.target.value as any })
+                  }
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 >
                   <option value="programada">Programada</option>
                   <option value="realizada">Realizada</option>
@@ -1267,14 +1655,26 @@ export default function Planes() {
                 </select>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label htmlFor="exec-evidencia" style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>URL Evidencia (PDF/Foto/Base64)</label>
+                <label
+                  htmlFor="exec-evidencia"
+                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                >
+                  URL Evidencia (PDF/Foto/Base64)
+                </label>
                 <input
                   id="exec-evidencia"
                   type="text"
                   value={executionForm.archivo_evidencia || ''}
-                  onChange={(e) => setExecutionForm({ ...executionForm, archivo_evidencia: e.target.value })}
+                  onChange={(e) =>
+                    setExecutionForm({ ...executionForm, archivo_evidencia: e.target.value })
+                  }
                   placeholder="https://... o data:image/... (base64)"
-                  style={{ padding: 8, width: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
                 />
               </div>
               <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8 }}>
@@ -1296,15 +1696,17 @@ export default function Planes() {
                 {executionForm.id && (
                   <button
                     type="button"
-                    onClick={() => setExecutionForm({
-                      id: '',
-                      schedule_id: '',
-                      nombre: '',
-                      fecha: new Date().toISOString().slice(0, 10),
-                      instructor: '',
-                      archivo_evidencia: '',
-                      estado: 'programada',
-                    })}
+                    onClick={() =>
+                      setExecutionForm({
+                        id: '',
+                        schedule_id: '',
+                        nombre: '',
+                        fecha: new Date().toISOString().slice(0, 10),
+                        instructor: '',
+                        archivo_evidencia: '',
+                        estado: 'programada',
+                      })
+                    }
                     style={{
                       padding: '10px 16px',
                       background: '#e5e7eb',
@@ -1323,11 +1725,20 @@ export default function Planes() {
           </div>
 
           {/* Executions Table */}
-          <div style={{ background: '#fff', borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: 10,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+              overflow: 'hidden',
+            }}
+          >
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f3f4f6' }}>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151', textAlign: 'left' }}>Nombre</th>
+                  <th style={{ padding: 10, fontSize: 12, color: '#374151', textAlign: 'left' }}>
+                    Nombre
+                  </th>
                   <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Cronograma</th>
                   <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Fecha</th>
                   <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Instructor</th>
@@ -1352,18 +1763,22 @@ export default function Planes() {
                       <tr key={e.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                         <td style={{ padding: 10, fontSize: 12, maxWidth: '200px' }}>{e.nombre}</td>
                         <td style={{ padding: 10, fontSize: 12 }}>{e.schedule_nombre || '—'}</td>
-                        <td style={{ padding: 10, fontSize: 12 }}>{new Date(e.fecha).toLocaleDateString('es-CO')}</td>
+                        <td style={{ padding: 10, fontSize: 12 }}>
+                          {new Date(e.fecha).toLocaleDateString('es-CO')}
+                        </td>
                         <td style={{ padding: 10, fontSize: 12 }}>{e.instructor || '—'}</td>
                         <td style={{ padding: 10 }}>
-                          <span style={{
-                            display: 'inline-block',
-                            padding: '2px 8px',
-                            borderRadius: 12,
-                            fontSize: 11,
-                            fontWeight: 'bold',
-                            background: estadoColor.bg,
-                            color: estadoColor.text,
-                          }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '2px 8px',
+                              borderRadius: 12,
+                              fontSize: 11,
+                              fontWeight: 'bold',
+                              background: estadoColor.bg,
+                              color: estadoColor.text,
+                            }}
+                          >
                             {e.estado}
                           </span>
                         </td>
@@ -1377,7 +1792,15 @@ export default function Planes() {
                         <td style={{ padding: 10, textAlign: 'center' }}>
                           <button
                             onClick={() => openAttendanceModal(e)}
-                            style={{ padding: '4px 8px', background: '#0f766e', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}
+                            style={{
+                              padding: '4px 8px',
+                              background: '#0f766e',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 4,
+                              fontSize: 11,
+                              cursor: 'pointer',
+                            }}
                           >
                             👥 Gestionar
                           </button>
@@ -1386,13 +1809,29 @@ export default function Planes() {
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button
                               onClick={() => openExecutionEdit(e)}
-                              style={{ padding: '4px 8px', background: '#0f766e', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}
+                              style={{
+                                padding: '4px 8px',
+                                background: '#0f766e',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 4,
+                                fontSize: 11,
+                                cursor: 'pointer',
+                              }}
                             >
                               Editar
                             </button>
                             <button
                               onClick={() => e.id && handleExecutionDelete(e.id)}
-                              style={{ padding: '4px 8px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}
+                              style={{
+                                padding: '4px 8px',
+                                background: '#dc2626',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 4,
+                                fontSize: 11,
+                                cursor: 'pointer',
+                              }}
                             >
                               ✕
                             </button>
@@ -1424,12 +1863,41 @@ export default function Planes() {
                 overflow: 'auto',
               }}
             >
-              <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 800, maxHeight: '90vh', overflow: 'auto' }}>
-                <div style={{ padding: 20, borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, color: '#0f766e' }}>Asistencia - {selectedExecution.nombre}</h3>
+              <div
+                style={{
+                  background: '#fff',
+                  borderRadius: 12,
+                  width: '100%',
+                  maxWidth: 800,
+                  maxHeight: '90vh',
+                  overflow: 'auto',
+                }}
+              >
+                <div
+                  style={{
+                    padding: 20,
+                    borderBottom: '1px solid #e5e7eb',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <h3 style={{ margin: 0, color: '#0f766e' }}>
+                    Asistencia - {selectedExecution.nombre}
+                  </h3>
                   <button
-                    onClick={() => { setAttendanceModalOpen(false); setSelectedExecution(null); setAttendance([]); }}
-                    style={{ padding: '8px 12px', background: '#e5e7eb', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                    onClick={() => {
+                      setAttendanceModalOpen(false);
+                      setSelectedExecution(null);
+                      setAttendance([]);
+                    }}
+                    style={{
+                      padding: '8px 12px',
+                      background: '#e5e7eb',
+                      border: 'none',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                    }}
                   >
                     ✕ Cerrar
                   </button>
@@ -1438,13 +1906,29 @@ export default function Planes() {
                   <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
                     <button
                       onClick={() => loadAttendance(selectedExecution!.id!)}
-                      style={{ padding: '8px 16px', background: '#0f766e', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}
+                      style={{
+                        padding: '8px 16px',
+                        background: '#0f766e',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 6,
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                      }}
                     >
                       🔄 Recargar
                     </button>
                     <button
                       onClick={() => bulkAddAttendance(selectedExecution!.id!)}
-                      style={{ padding: '8px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}
+                      style={{
+                        padding: '8px 16px',
+                        background: '#2563eb',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 6,
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                      }}
                     >
                       ➕ Agregar todos los trabajadores
                     </button>
@@ -1453,25 +1937,50 @@ export default function Planes() {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr style={{ background: '#f3f4f6' }}>
-                          <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Trabajador</th>
+                          <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>
+                            Trabajador
+                          </th>
                           <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Documento</th>
                           <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Cargo</th>
-                          <th style={{ padding: 10, fontSize: 12, color: '#374151', textAlign: 'center' }}>Firmado</th>
-                          <th style={{ padding: 10, fontSize: 12, color: '#374151', textAlign: 'center' }}>Firma</th>
+                          <th
+                            style={{
+                              padding: 10,
+                              fontSize: 12,
+                              color: '#374151',
+                              textAlign: 'center',
+                            }}
+                          >
+                            Firmado
+                          </th>
+                          <th
+                            style={{
+                              padding: 10,
+                              fontSize: 12,
+                              color: '#374151',
+                              textAlign: 'center',
+                            }}
+                          >
+                            Firma
+                          </th>
                           <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acciones</th>
                         </tr>
                       </thead>
                       <tbody>
                         {attendance.length === 0 ? (
                           <tr>
-                            <td colSpan={6} style={{ padding: 20, textAlign: 'center', color: '#6b7280' }}>
+                            <td
+                              colSpan={6}
+                              style={{ padding: 20, textAlign: 'center', color: '#6b7280' }}
+                            >
                               No hay asistentes registrados
                             </td>
                           </tr>
                         ) : (
                           attendance.map((a) => (
                             <tr key={a.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                              <td style={{ padding: 10 }}>{a.nombres} {a.apellidos}</td>
+                              <td style={{ padding: 10 }}>
+                                {a.nombres} {a.apellidos}
+                              </td>
                               <td style={{ padding: 10 }}>{a.numero_documento}</td>
                               <td style={{ padding: 10 }}>{a.cargo}</td>
                               <td style={{ padding: 10, textAlign: 'center' }}>
@@ -1485,7 +1994,15 @@ export default function Planes() {
                                 {a.firma_url ? (
                                   <button
                                     onClick={() => window.open(a.firma_url!, '_blank')}
-                                    style={{ padding: '4px 8px', background: '#dcfce7', color: '#166534', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}
+                                    style={{
+                                      padding: '4px 8px',
+                                      background: '#dcfce7',
+                                      color: '#166534',
+                                      border: 'none',
+                                      borderRadius: 4,
+                                      fontSize: 10,
+                                      cursor: 'pointer',
+                                    }}
                                   >
                                     Ver firma
                                   </button>
@@ -1497,14 +2014,30 @@ export default function Planes() {
                                 {!a.firmado && (
                                   <button
                                     onClick={() => openSignaturePad(a)}
-                                    style={{ padding: '4px 8px', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}
+                                    style={{
+                                      padding: '4px 8px',
+                                      background: '#f59e0b',
+                                      color: '#fff',
+                                      border: 'none',
+                                      borderRadius: 4,
+                                      fontSize: 11,
+                                      cursor: 'pointer',
+                                    }}
                                   >
                                     🖊️ Firmar
                                   </button>
                                 )}
                                 <button
                                   onClick={() => handleDeleteAttendance(a.id)}
-                                  style={{ padding: '4px 8px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}
+                                  style={{
+                                    padding: '4px 8px',
+                                    background: '#dc2626',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: 4,
+                                    fontSize: 11,
+                                    cursor: 'pointer',
+                                  }}
                                 >
                                   ✕
                                 </button>
@@ -1537,8 +2070,18 @@ export default function Planes() {
                 padding: 20,
               }}
             >
-              <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 500, padding: 20 }}>
-                <h3 style={{ margin: '0 0 16px', color: '#0f766e' }}>Firma de {editingAttendance.nombres} {editingAttendance.apellidos}</h3>
+              <div
+                style={{
+                  background: '#fff',
+                  borderRadius: 12,
+                  width: '100%',
+                  maxWidth: 500,
+                  padding: 20,
+                }}
+              >
+                <h3 style={{ margin: '0 0 16px', color: '#0f766e' }}>
+                  Firma de {editingAttendance.nombres} {editingAttendance.apellidos}
+                </h3>
                 <SignaturePad
                   onSave={handleSaveSignature}
                   onCancel={() => setEditingAttendance(null)}
@@ -1546,7 +2089,6 @@ export default function Planes() {
               </div>
             </div>
           )}
-
         </section>
       )}
 
@@ -1555,7 +2097,15 @@ export default function Planes() {
         <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#374151' }}>
           📋 Normativa coligada
         </summary>
-        <div style={{ marginTop: 12, padding: 12, background: '#f9fafb', borderRadius: 6, lineHeight: 1.7 }}>
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            background: '#f9fafb',
+            borderRadius: 6,
+            lineHeight: 1.7,
+          }}
+        >
           <strong>Decretos y Resoluciones relevantes:</strong>
           <ul style={{ margin: '8px 0 0 20px' }}>
             <li>Res. 0312/2019: Estándares mínimos SST para seguridad y salud en el trabajo</li>
@@ -1564,7 +2114,8 @@ export default function Planes() {
             <li>Ley 1581/2012: Consentimiento tratamiento de datos sensibles</li>
           </ul>
           <p style={{ marginTop: 8, fontSize: 11, color: '#6b7280' }}>
-            Plazos legales: Reporte ARL (2 días hábiles), Reporte MinTrabajo accidentes graves/mortales (24 horas).
+            Plazos legales: Reporte ARL (2 días hábiles), Reporte MinTrabajo accidentes
+            graves/mortales (24 horas).
           </p>
         </div>
       </details>

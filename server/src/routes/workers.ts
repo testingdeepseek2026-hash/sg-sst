@@ -9,6 +9,7 @@ import {
   getWorkers,
   updateWorker,
 } from '../services/workers.js';
+import { requireRole, getAuthUser, auditLog } from '../lib/auth.js';
 
 const workerSchema = z.object({
   tipo_documento: z.string().default('CC'),
@@ -28,74 +29,75 @@ const workerSchema = z.object({
 });
 
 const workersRoutes: FastifyPluginAsync = async (fastify) => {
+  // GET /workers - Cualquier autenticado
   fastify.get('/workers', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     return getWorkers(fastify.db);
   });
+
+  // GET /workers/:id - Cualquier autenticado
   fastify.get('/workers/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
-    const w = getWorkerById(fastify.db, (request.params as any).id);
+    const { id } = request.params as { id: string };
+    const w = getWorkerById(fastify.db, id);
     if (!w) return reply.code(404).send({ error: 'Trabajador no encontrado' });
     return w;
   });
-  fastify.post('/workers', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  // POST /workers - Solo administrador
+  fastify.post('/workers', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parsed = workerSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const w = createWorker(fastify.db, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'workers',
       entidad_id: w.id,
       valores_nuevos: parsed.data,
     });
+
     return w;
   });
-  fastify.put('/workers/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  // PUT /workers/:id - Solo administrador
+  fastify.put('/workers/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const prev = getWorkerById(fastify.db, id);
     if (!prev) return reply.code(404).send({ error: 'Trabajador no encontrado' });
     const parsed = workerSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const updated = updateWorker(fastify.db, id, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'workers',
       entidad_id: id,
       valores_anteriores: prev,
       valores_nuevos: parsed.data,
     });
+
     return updated;
   });
-  fastify.delete('/workers/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  // DELETE /workers/:id - Solo administrador
+  fastify.delete('/workers/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     deleteWorker(fastify.db, id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'workers',
       entidad_id: id,
     });
+
     return { ok: true };
   });
 };

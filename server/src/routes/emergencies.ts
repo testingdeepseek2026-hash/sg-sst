@@ -14,7 +14,7 @@ import {
   updateDrill,
   updateEmergencyPlan,
 } from '../services/emergencies.js';
-import * as UsersService from '../services/users.js';
+import { requireRole, getAuthUser, auditLog } from '../lib/auth.js';
 
 const emergencyPlanSchema = z.object({
   nombre: z.string().min(2),
@@ -35,144 +35,136 @@ const drillSchema = z.object({
 const emergenciesRoutes: FastifyPluginAsync = async (fastify) => {
   // ===== EMERGENCY PLANS =====
   fastify.get('/emergency-plans', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     return getEmergencyPlans(fastify.db);
   });
+
   fastify.get('/emergency-plans/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
-    const plan = getEmergencyPlanById(fastify.db, (request.params as any).id);
+    const { id } = request.params as { id: string };
+    const plan = getEmergencyPlanById(fastify.db, id);
     if (!plan) return reply.code(404).send({ error: 'Plan de emergencias no encontrado' });
     return plan;
   });
-  fastify.post('/emergency-plans', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  fastify.post('/emergency-plans', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parsed = emergencyPlanSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const p = createEmergencyPlan(fastify.db, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'emergency_plans',
       entidad_id: p.id,
       valores_nuevos: parsed.data,
     });
+
     return p;
   });
-  fastify.put('/emergency-plans/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  fastify.put('/emergency-plans/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = emergencyPlanSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const updated = updateEmergencyPlan(fastify.db, id, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'emergency_plans',
       entidad_id: id,
       valores_nuevos: parsed.data,
     });
+
     return updated;
   });
-  fastify.delete('/emergency-plans/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    deleteEmergencyPlan(fastify.db, (request.params as any).id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+  fastify.delete('/emergency-plans/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    deleteEmergencyPlan(fastify.db, id);
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'emergency_plans',
-      entidad_id: (request.params as any).id,
+      entidad_id: id,
     });
+
     return { ok: true };
   });
 
   // ===== DRILLS (Simulacros) =====
   fastify.get('/drills', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     return getDrills(fastify.db);
   });
+
   fastify.get('/drills/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
-    const d = getDrillById(fastify.db, (request.params as any).id);
+    const { id } = request.params as { id: string };
+    const d = getDrillById(fastify.db, id);
     if (!d) return reply.code(404).send({ error: 'Simulacro no encontrado' });
     return d;
   });
+
   fastify.get('/emergency-plans/:id/drills', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     const { id } = request.params as { id: string };
     return getDrillsByPlan(fastify.db, id);
   });
-  fastify.post('/drills', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  fastify.post('/drills', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parsed = drillSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const d = createDrill(fastify.db, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'drills',
       entidad_id: d.id,
       valores_nuevos: parsed.data,
     });
+
     return d;
   });
-  fastify.put('/drills/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  fastify.put('/drills/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = drillSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const updated = updateDrill(fastify.db, id, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'drills',
       entidad_id: id,
       valores_nuevos: parsed.data,
     });
+
     return updated;
   });
-  fastify.delete('/drills/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    deleteDrill(fastify.db, (request.params as any).id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+  fastify.delete('/drills/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    deleteDrill(fastify.db, id);
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'drills',
-      entidad_id: (request.params as any).id,
+      entidad_id: id,
     });
+
     return { ok: true };
   });
 };

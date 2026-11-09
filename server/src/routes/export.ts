@@ -12,7 +12,7 @@ import { getIndicators } from '../services/indicators.js';
 import { getAnnualPlan } from '../services/plans.js';
 import { getActivePolicy, getObjectives, getPolicies } from '../services/policies.js';
 import { getStandards, stdCumplimiento } from '../services/standards.js';
-import * as UsersService from '../services/users.js';
+import { requireRole } from '../lib/auth.js';
 
 function pdfHandler(
   reply: any,
@@ -52,11 +52,8 @@ async function excelHandler(
 }
 
 const exportRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/export/estandares', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  // ===== PDF EXPORTS =====
+  fastify.get('/export/estandares', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { set } = request.query as { set?: string };
     const standards = getStandards(fastify.db, set);
     const cumplimiento = stdCumplimiento(fastify.db);
@@ -85,11 +82,7 @@ const exportRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
-  fastify.get('/export/plan-anual', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.get('/export/plan-anual', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { anio } = request.query as { anio?: string };
     const plans = getAnnualPlan(fastify.db, anio ? Number(anio) : undefined);
 
@@ -105,11 +98,7 @@ const exportRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
-  fastify.get('/export/matriz-riesgos', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.get('/export/matriz-riesgos', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const assessments = getHazardAssessments(fastify.db);
 
     await pdfHandler(reply, 'matriz_peligros_riesgos.pdf', (doc) => {
@@ -126,11 +115,7 @@ const exportRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
-  fastify.get('/export/indicadores', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.get('/export/indicadores', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { periodo } = request.query as { periodo?: string };
     const indicators = getIndicators(fastify.db, periodo);
 
@@ -146,11 +131,7 @@ const exportRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
-  fastify.get('/export/incidentes', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.get('/export/incidentes', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const incidents = getIncidents(fastify.db);
 
     await pdfHandler(reply, 'incidentes_accidentes.pdf', (doc) => {
@@ -165,11 +146,7 @@ const exportRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
-  fastify.get('/export/evidencias', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.get('/export/evidencias', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const docs = getDocuments(fastify.db);
 
     await pdfHandler(reply, 'listado_evidencias.pdf', (doc) => {
@@ -185,12 +162,7 @@ const exportRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // ===== EXPORT POLÍTICA SST =====
-  fastify.get('/export/politica', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.get('/export/politica', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const activePolicy = getActivePolicy(fastify.db);
     const allPolicies = getPolicies(fastify.db);
     const company = getCompany(fastify.db);
@@ -308,11 +280,7 @@ const exportRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // ===== EXCEL EXPORTS =====
-  fastify.get('/export/estandares/excel', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.get('/export/estandares/excel', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { set } = request.query as { set?: string };
     const standards = getStandards(fastify.db, set);
     const cumplimiento = stdCumplimiento(fastify.db);
@@ -355,11 +323,7 @@ const exportRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
-  fastify.get('/export/plan-anual/excel', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.get('/export/plan-anual/excel', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { anio } = request.query as { anio?: string };
     const plans = getAnnualPlan(fastify.db, anio ? Number(anio) : undefined);
 
@@ -390,11 +354,7 @@ const exportRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
-  fastify.get('/export/matriz-riesgos/excel', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.get('/export/matriz-riesgos/excel', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const assessments = getHazardAssessments(fastify.db);
 
     await excelHandler(reply, 'matriz_peligros_riesgos.xlsx', async (wb) => {
@@ -432,11 +392,7 @@ const exportRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
-  fastify.get('/export/indicadores/excel', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.get('/export/indicadores/excel', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { periodo } = request.query as { periodo?: string };
     const indicators = getIndicators(fastify.db, periodo);
 
@@ -465,11 +421,7 @@ const exportRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
-  fastify.get('/export/incidentes/excel', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.get('/export/incidentes/excel', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const incidents = getIncidents(fastify.db);
 
     await excelHandler(reply, 'incidentes_accidentes.xlsx', async (wb) => {
@@ -515,11 +467,7 @@ const exportRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
-  fastify.get('/export/evidencias/excel', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.get('/export/evidencias/excel', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const docs = getDocuments(fastify.db);
 
     await excelHandler(reply, 'listado_evidencias.xlsx', async (wb) => {
@@ -553,11 +501,7 @@ const exportRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
-  fastify.get('/export/acciones/excel', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.get('/export/acciones/excel', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const actions = getCorrectiveActions(fastify.db);
 
     await excelHandler(reply, 'acciones_correctivas.xlsx', async (wb) => {
@@ -597,46 +541,46 @@ const exportRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
-  fastify.get('/export/auditoria/:id/hallazgos/excel', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.get('/export/auditoria/:id/hallazgos/excel', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const findings = getFindingsByAudit(fastify.db, id);
     const audit = fastify.db.prepare('SELECT * FROM audits WHERE id = ?').get(id);
 
-    await excelHandler(reply, `hallazgos_auditoria_${audit?.anio}_${audit?.tipo}.xlsx`, async (wb) => {
-      const ws = wb.addWorksheet('Hallazgos');
-      ws.columns = [
-        { header: 'ID', key: 'id', width: 12 },
-        { header: 'Tipo', key: 'tipo', width: 20 },
-        { header: 'Descripción', key: 'descripcion', width: 50 },
-        { header: 'Requisito', key: 'requisito', width: 30 },
-        { header: 'Evidencia', key: 'evidencia', width: 30 },
-        { header: 'Responsable', key: 'responsable', width: 20 },
-        { header: 'Fecha Límite', key: 'fecha_limite', width: 15 },
-        { header: 'Estado', key: 'estado', width: 15 },
-        { header: 'Acción Correctiva', key: 'accion_correctiva', width: 40 },
-        { header: 'Evidencia Cierre', key: 'evidencia_cierre', width: 30 },
-        { header: 'Fecha Cierre', key: 'fecha_cierre', width: 15 },
-      ];
-      for (const f of findings) {
-        ws.addRow({
-          id: f.id,
-          tipo: f.tipo,
-          descripcion: f.descripcion,
-          requisito: f.requisito ?? '',
-          evidencia: f.evidencia ?? '',
-          responsable: f.responsable,
-          fecha_limite: f.fecha_limite,
-          estado: f.estado,
-          accion_correctiva: f.accion_correctiva ?? '',
-          evidencia_cierre: f.evidencia_cierre ?? '',
-          fecha_cierre: f.fecha_cierre ?? '',
-        });
+    await excelHandler(
+      reply,
+      `hallazgos_auditoria_${audit?.anio}_${audit?.tipo}.xlsx`,
+      async (wb) => {
+        const ws = wb.addWorksheet('Hallazgos');
+        ws.columns = [
+          { header: 'ID', key: 'id', width: 12 },
+          { header: 'Tipo', key: 'tipo', width: 20 },
+          { header: 'Descripción', key: 'descripcion', width: 50 },
+          { header: 'Requisito', key: 'requisito', width: 30 },
+          { header: 'Evidencia', key: 'evidencia', width: 30 },
+          { header: 'Responsable', key: 'responsable', width: 20 },
+          { header: 'Fecha Límite', key: 'fecha_limite', width: 15 },
+          { header: 'Estado', key: 'estado', width: 15 },
+          { header: 'Acción Correctiva', key: 'accion_correctiva', width: 40 },
+          { header: 'Evidencia Cierre', key: 'evidencia_cierre', width: 30 },
+          { header: 'Fecha Cierre', key: 'fecha_cierre', width: 15 },
+        ];
+        for (const f of findings) {
+          ws.addRow({
+            id: f.id,
+            tipo: f.tipo,
+            descripcion: f.descripcion,
+            requisito: f.requisito ?? '',
+            evidencia: f.evidencia ?? '',
+            responsable: f.responsable,
+            fecha_limite: f.fecha_limite,
+            estado: f.estado,
+            accion_correctiva: f.accion_correctiva ?? '',
+            evidencia_cierre: f.evidencia_cierre ?? '',
+            fecha_cierre: f.fecha_cierre ?? '',
+          });
+        }
       }
-    });
+    );
   });
 };
 

@@ -1,3 +1,4 @@
+import { decryptSensitiveFields, encrypt, isEncrypted, SENSITIVE_FIELDS } from '../lib/crypto.js';
 import { genId } from '../lib/utils.js';
 
 export interface WorkerEpp {
@@ -29,13 +30,16 @@ const EPP_ITEMS_COMUNES = [
 ];
 
 export function getEppByWorker(db: any, workerId: string): WorkerEpp[] {
-  return db
+  const rows = db
     .prepare('SELECT * FROM worker_epp WHERE worker_id = ? ORDER BY fecha_entrega DESC')
     .all(workerId) as WorkerEpp[];
+  return rows.map((r) => decryptSensitiveFields(r) as WorkerEpp);
 }
 
 export function getEppById(db: any, id: string): WorkerEpp | undefined {
-  return db.prepare('SELECT * FROM worker_epp WHERE id = ?').get(id) as WorkerEpp | undefined;
+  const row = db.prepare('SELECT * FROM worker_epp WHERE id = ?').get(id) as WorkerEpp | undefined;
+  if (!row) return undefined;
+  return decryptSensitiveFields(row) as WorkerEpp;
 }
 
 export function createEpp(
@@ -51,28 +55,52 @@ export function createEpp(
     notas?: string | null;
   }
 ): WorkerEpp {
+  // Cifrar campos sensibles antes de guardar (Ley 1581/2012 - firma es dato biométrico)
+  const sensitiveInput: Record<string, any> = { ...input };
+  for (const field of SENSITIVE_FIELDS) {
+    if (
+      sensitiveInput[field] &&
+      typeof sensitiveInput[field] === 'string' &&
+      !isEncrypted(sensitiveInput[field])
+    ) {
+      sensitiveInput[field] = encrypt(sensitiveInput[field]);
+    }
+  }
+
   const id = genId();
   db.prepare(
     `INSERT INTO worker_epp (id, worker_id, item, cantidad, fecha_entrega, fecha_vencimiento, firmado_por_trabajador, firma_url, notas)
      VALUES (?,?,?,?,?,?,?,?,?)`
   ).run(
     id,
-    input.worker_id,
-    input.item,
-    input.cantidad ?? 1,
-    input.fecha_entrega,
-    input.fecha_vencimiento ?? null,
-    input.firmado_por_trabajador ?? 0,
-    input.firma_url ?? null,
-    input.notas ?? null
+    sensitiveInput.worker_id,
+    sensitiveInput.item,
+    sensitiveInput.cantidad ?? 1,
+    sensitiveInput.fecha_entrega,
+    sensitiveInput.fecha_vencimiento ?? null,
+    sensitiveInput.firmado_por_trabajador ?? 0,
+    sensitiveInput.firma_url ?? null,
+    sensitiveInput.notas ?? null
   );
   return getEppById(db, id)!;
 }
 
 export function updateEpp(db: any, id: string, patch: Partial<WorkerEpp>): WorkerEpp {
+  // Cifrar campos sensibles en el patch
+  const sensitivePatch: Record<string, any> = { ...patch };
+  for (const field of SENSITIVE_FIELDS) {
+    if (
+      sensitivePatch[field] &&
+      typeof sensitivePatch[field] === 'string' &&
+      !isEncrypted(sensitivePatch[field])
+    ) {
+      sensitivePatch[field] = encrypt(sensitivePatch[field]);
+    }
+  }
+
   const sets: string[] = [];
   const vals: any[] = [];
-  for (const [k, v] of Object.entries(patch)) {
+  for (const [k, v] of Object.entries(sensitivePatch)) {
     if (v === undefined) continue;
     sets.push(`${k} = ?`);
     vals.push(v);
@@ -98,7 +126,9 @@ export function firmarEntregaEpp(
   if (epp.worker_id !== workerId) {
     // Permitir si es admin (se valida en ruta)
   }
-  return updateEpp(db, id, { firmado_por_trabajador: 1, firma_url: firmaBase64 });
+  // Cifrar la firma antes de guardar
+  const encryptedFirma = encrypt(firmaBase64);
+  return updateEpp(db, id, { firmado_por_trabajador: 1, firma_url: encryptedFirma });
 }
 
 export function getVencimientosProximos(

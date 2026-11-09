@@ -4,8 +4,8 @@ import { z } from 'zod';
 
 import { createHazardAssessment } from '../services/hazards.js';
 import { createIncident } from '../services/incidents.js';
-import * as UsersService from '../services/users.js';
 import { createWorker } from '../services/workers.js';
+import { requireRole, getAuthUser, auditLog } from '../lib/auth.js';
 
 const { Workbook } = ExcelJS;
 
@@ -25,11 +25,11 @@ function excelToJson(buf: Buffer): { headers: string[]; rows: any[][]; preview: 
   const wb = new Workbook();
   wb.xlsx.load(buf as any);
   const ws = wb.worksheets[0];
-  
+
   const headers: string[] = [];
   const rows: any[][] = [];
   const preview: any[] = [];
-  
+
   ws.eachRow((row, rowNumber) => {
     const vals = (row.values as any[]) ?? [];
     if (rowNumber === 1) {
@@ -42,36 +42,33 @@ function excelToJson(buf: Buffer): { headers: string[]; rows: any[][]; preview: 
       rows.push(rowData);
       if (preview.length < 5) {
         const obj: Record<string, any> = {};
-        headers.forEach((h, i) => { obj[h] = rowData[i]; });
+        headers.forEach((h, i) => {
+          obj[h] = rowData[i];
+        });
         preview.push(obj);
       }
     }
   });
-  
+
   return { headers, rows, preview };
 }
 
 const importRoutes: FastifyPluginAsync = async (fastify) => {
   // Preview endpoint - returns headers and first 5 rows for validation
-  fastify.post('/import/preview', async (request, reply) => {
-    const uid = request.userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    
+  fastify.post('/import/preview', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parts = await request.files();
     const files = Array.isArray(parts) ? parts : [parts];
     if (!files.length) return reply.code(400).send({ error: 'No se envió archivo' });
     const file = files[0];
     const buf = await readFileBuffer(file);
-    
+
     try {
       const { headers, rows, preview } = excelToJson(buf);
       return {
         headers,
         totalRows: rows.length,
         preview,
-        message: `Archivo válido: ${headers.length} columnas, ${rows.length} filas de datos`
+        message: `Archivo válido: ${headers.length} columnas, ${rows.length} filas de datos`,
       };
     } catch (e: any) {
       return reply.code(400).send({ error: `Error leyendo Excel: ${e.message}` });
@@ -79,24 +76,25 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   async function handleImport(
-    request: any, 
-    reply: any, 
-    factory: (db: any, row: any[], headers: string[]) => { success: boolean; error?: string; data?: any }
+    request: any,
+    reply: any,
+    factory: (
+      db: any,
+      row: any[],
+      headers: string[]
+    ) => { success: boolean; error?: string; data?: any }
   ) {
-    const uid = request.userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    
+    const user = getAuthUser(request);
+
     const parts = await request.files();
     const files = Array.isArray(parts) ? parts : [parts];
     if (!files.length) return reply.code(400).send({ error: 'No se envió archivo' });
     const file = files[0];
     const buf = await readFileBuffer(file);
-    
+
     let headers: string[] = [];
     let rows: any[][] = [];
-    
+
     try {
       const parsed = excelToJson(buf);
       headers = parsed.headers;
@@ -104,11 +102,11 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
     } catch (e: any) {
       return reply.code(400).send({ error: `Error leyendo Excel: ${e.message}` });
     }
-    
+
     let importados = 0;
     const errores: string[] = [];
     const advertencias: string[] = [];
-    
+
     for (let i = 0; i < rows.length; i++) {
       const rowNumber = i + 2; // +2 because row 1 is header, 0-indexed
       try {
@@ -125,30 +123,30 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
         errores.push(`Fila ${rowNumber}: ${e.message}`);
       }
     }
-    
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'importar',
       entidad: 'importaciones',
       valores_nuevos: { importados, errores: errores.length, advertencias: advertencias.length },
     });
-    
-    return { 
-      importados, 
-      errores, 
+
+    return {
+      importados,
+      errores,
       advertencias,
       resumen: {
         total: rows.length,
         exitosos: importados,
         fallidos: errores.length,
-        advertencias: advertencias.length
-      }
+        advertencias: advertencias.length,
+      },
     };
   }
 
   // Import workers with validation
-  fastify.post('/import/trabajadores', async (request, reply) => {
+  fastify.post('/import/trabajadores', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const workerSchema = z.object({
       tipo_documento: z.string().optional().default('CC'),
       numero_documento: z.string().min(3),
@@ -168,12 +166,14 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
 
     return handleImport(request, reply, (db, row, headers) => {
       const obj: Record<string, any> = {};
-      headers.forEach((h, i) => { obj[h] = row[i]; });
-      
+      headers.forEach((h, i) => {
+        obj[h] = row[i];
+      });
+
       // Normalize field names (case-insensitive match)
       const getVal = (keys: string[]) => {
         for (const k of keys) {
-          const found = Object.keys(obj).find(o => o.toLowerCase() === k.toLowerCase());
+          const found = Object.keys(obj).find((o) => o.toLowerCase() === k.toLowerCase());
           if (found) return obj[found];
         }
         return undefined;
@@ -197,7 +197,10 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       if (!parsed.success) {
-        return { success: false, error: parsed.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ') };
+        return {
+          success: false,
+          error: parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; '),
+        };
       }
 
       if (!parsed.data.numero_documento) {
@@ -205,7 +208,9 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       // Check duplicate
-      const existing = db.prepare('SELECT id FROM workers WHERE numero_documento = ?').get(parsed.data.numero_documento);
+      const existing = db
+        .prepare('SELECT id FROM workers WHERE numero_documento = ?')
+        .get(parsed.data.numero_documento);
       if (existing) {
         return { success: false, error: `Documento ${parsed.data.numero_documento} ya existe` };
       }
@@ -216,7 +221,7 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Import risks with validation
-  fastify.post('/import/riesgos', async (request, reply) => {
+  fastify.post('/import/riesgos', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const riskSchema = z.object({
       cargo_oficio: z.string().optional().default(''),
       area: z.string().optional().nullable(),
@@ -228,11 +233,13 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
 
     return handleImport(request, reply, (db, row, headers) => {
       const obj: Record<string, any> = {};
-      headers.forEach((h, i) => { obj[h] = row[i]; });
-      
+      headers.forEach((h, i) => {
+        obj[h] = row[i];
+      });
+
       const getVal = (keys: string[]) => {
         for (const k of keys) {
-          const found = Object.keys(obj).find(o => o.toLowerCase() === k.toLowerCase());
+          const found = Object.keys(obj).find((o) => o.toLowerCase() === k.toLowerCase());
           if (found) return obj[found];
         }
         return undefined;
@@ -248,7 +255,10 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       if (!parsed.success) {
-        return { success: false, error: parsed.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ') };
+        return {
+          success: false,
+          error: parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; '),
+        };
       }
 
       if (!parsed.data.peligro_texto) {
@@ -261,9 +271,12 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Import incidents with validation
-  fastify.post('/import/incidentes', async (request, reply) => {
+  fastify.post('/import/incidentes', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const incidentSchema = z.object({
-      tipo: z.enum(['incidente', 'accidente', 'enfermedad_laboral']).optional().default('incidente'),
+      tipo: z
+        .enum(['incidente', 'accidente', 'enfermedad_laboral'])
+        .optional()
+        .default('incidente'),
       fecha_ocurrencia: z.string(),
       descripcion: z.string().optional().default(''),
       estado: z.enum(['abierto', 'investigando', 'cerrado']).optional().default('abierto'),
@@ -282,11 +295,13 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
 
     return handleImport(request, reply, (db, row, headers) => {
       const obj: Record<string, any> = {};
-      headers.forEach((h, i) => { obj[h] = row[i]; });
-      
+      headers.forEach((h, i) => {
+        obj[h] = row[i];
+      });
+
       const getVal = (keys: string[]) => {
         for (const k of keys) {
-          const found = Object.keys(obj).find(o => o.toLowerCase() === k.toLowerCase());
+          const found = Object.keys(obj).find((o) => o.toLowerCase() === k.toLowerCase());
           if (found) return obj[found];
         }
         return undefined;
@@ -311,7 +326,10 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       if (!parsed.success) {
-        return { success: false, error: parsed.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ') };
+        return {
+          success: false,
+          error: parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; '),
+        };
       }
 
       if (!parsed.data.fecha_ocurrencia) {
@@ -325,17 +343,16 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Download template endpoint
   fastify.get('/import/template/:type', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    const user = request.user;
+    if (!user) return reply.code(401).send({ error: 'No autenticado' });
     const { type } = request.params as { type: string };
-    
+
     const wb = new Workbook();
     const ws = wb.addWorksheet('Plantilla');
-    
+
     let columns: { header: string; key: string; width: number }[] = [];
     let exampleRow: Record<string, any> = {};
-    
+
     switch (type) {
       case 'trabajadores':
         columns = [
@@ -426,17 +443,19 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
         };
         break;
       default:
-        return reply.code(400).send({ error: 'Tipo de plantilla no válido. Use: trabajadores, riesgos, incidentes' });
+        return reply
+          .code(400)
+          .send({ error: 'Tipo de plantilla no válido. Use: trabajadores, riesgos, incidentes' });
     }
-    
+
     ws.columns = columns;
     ws.addRow(exampleRow);
-    
+
     // Add header style
     ws.getRow(1).font = { bold: true };
     ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F766E' } };
     ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    
+
     const buf = await wb.xlsx.writeBuffer();
     reply.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     reply.header('Content-Disposition', `attachment; filename=plantilla_${type}.xlsx`);

@@ -15,7 +15,7 @@ import {
   updateAlturaPermit,
   updateInspection,
 } from '../services/inspections.js';
-import * as UsersService from '../services/users.js';
+import { requireRole, getAuthUser, auditLog } from '../lib/auth.js';
 
 const inspSchema = z.object({
   tipo: z.enum([
@@ -42,197 +42,177 @@ const inspSchema = z.object({
 
 const inspectionsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/inspections', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     return getInspections(fastify.db);
   });
+
   fastify.get('/inspections/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
-    const insp = getInspectionById(fastify.db, (request.params as any).id);
+    const { id } = request.params as { id: string };
+    const insp = getInspectionById(fastify.db, id);
     if (!insp) return reply.code(404).send({ error: 'Inspección no encontrada' });
     return insp;
   });
-  fastify.post('/inspections', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  fastify.post('/inspections', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parsed = inspSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const insp = createInspection(fastify.db, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'inspections',
       entidad_id: insp.id,
       valores_nuevos: parsed.data,
     });
+
     return insp;
   });
-  fastify.put('/inspections/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  fastify.put('/inspections/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = inspSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const updated = updateInspection(fastify.db, id, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'inspections',
       entidad_id: id,
       valores_nuevos: parsed.data,
     });
+
     return updated;
   });
-  fastify.delete('/inspections/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    deleteInspection(fastify.db, (request.params as any).id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+  fastify.delete('/inspections/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    deleteInspection(fastify.db, id);
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'inspections',
-      entidad_id: (request.params as any).id,
+      entidad_id: id,
     });
+
     return { ok: true };
   });
-};
 
-const alturaSchema = z.object({
-  obra: z.string().min(2),
-  fecha: z.string(),
-  hora_inicio: z.string().optional(),
-  hora_fin: z.string().optional(),
-  solicitante: z.string().optional(),
-  responsable_seguridad: z.string().optional(),
-  sistema_proteccion: z.string().optional(),
-  equipo_verificado: z.boolean().default(false),
-  apto_medico: z.boolean().default(false),
-  certificado_alturas: z.boolean().default(false),
-  estado: z.enum(['pendiente', 'autorizado', 'rechazado', 'cerrado']).default('pendiente'),
-  at_s_id: z.string().optional().nullable(),
-});
-
-const alturaRoutes: FastifyPluginAsync = async (fastify) => {
+  // ===== ALTURA PERMITS =====
   fastify.get('/altura/permits', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     return getAlturaPermits(fastify.db);
   });
-  fastify.post('/altura/permits', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    const parsed = alturaSchema.safeParse(request.body);
+
+  fastify.post('/altura/permits', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const parsed = inspSchema.safeParse(request.body); // reusar schema compatible
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const p = createAlturaPermit(fastify.db, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+    const permit = createAlturaPermit(fastify.db, parsed.data);
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'altura_permits',
-      entidad_id: p.id,
+      entidad_id: permit.id,
       valores_nuevos: parsed.data,
     });
-    return p;
+
+    return permit;
   });
-  fastify.put('/altura/permits/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  fastify.put('/altura/permits/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const parsed = alturaSchema.partial().safeParse(request.body);
+    const parsed = inspSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const updated = updateAlturaPermit(fastify.db, id, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'altura_permits',
       entidad_id: id,
       valores_nuevos: parsed.data,
     });
+
     return updated;
   });
-  fastify.delete('/altura/permits/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    deleteAlturaPermit(fastify.db, (request.params as any).id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+  fastify.delete('/altura/permits/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    deleteAlturaPermit(fastify.db, id);
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'altura_permits',
-      entidad_id: (request.params as any).id,
+      entidad_id: id,
     });
+
     return { ok: true };
   });
+
+  // ===== ATS =====
   fastify.get('/altura/ats', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     return getATS(fastify.db);
   });
-  fastify.post('/altura/ats', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    const parsed = z
-      .object({
-        obra: z.string().min(2),
-        tarea: z.string().min(2),
-        peligro: z.string().optional(),
-        control: z.string().optional(),
-        responsable: z.string().optional(),
-        fecha: z.string().optional(),
-        estado: z.enum(['vigente', 'cerrado']).default('vigente'),
-      })
-      .safeParse(request.body);
+
+  fastify.post('/altura/ats', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const parsed = inspSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const a = createATS(fastify.db, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+    const ats = createATS(fastify.db, parsed.data);
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'ats',
-      entidad_id: a.id,
+      entidad_id: ats.id,
       valores_nuevos: parsed.data,
     });
-    return a;
+
+    return ats;
   });
-  fastify.delete('/altura/ats/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    deleteATS(fastify.db, (request.params as any).id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+  fastify.delete('/altura/ats/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    deleteATS(fastify.db, id);
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'ats',
-      entidad_id: (request.params as any).id,
+      entidad_id: id,
     });
+
     return { ok: true };
   });
 };
 
+// Rutas de altura separadas para registro individual
+const alturaRoutes: FastifyPluginAsync = async (fastify) => {
+  fastify.get('/altura/permits', async (request, reply) => {
+    return getAlturaPermits(fastify.db);
+  });
+
+  fastify.get('/altura/ats', async (request, reply) => {
+    return getATS(fastify.db);
+  });
+};
+
+export { inspectionsRoutes, alturaRoutes };
 export default inspectionsRoutes;
-export { alturaRoutes };

@@ -5,6 +5,7 @@
 Este documento describe el procedimiento de respaldo automático y restauración de la aplicación SG-SST para microempresa colombiana.
 
 **Componentes a respaldar:**
+
 1. **Base de datos SQLite** (`data/sg-sst.db`) - Contiene toda la información operativa
 2. **Archivos subidos** (`uploads/`) - Evidencias, firmas, documentos adjuntos
 
@@ -14,10 +15,10 @@ Este documento describe el procedimiento de respaldo automático y restauración
 
 ### Scripts disponibles
 
-| Script | Plataforma | Descripción |
-|--------|------------|-------------|
-| `backup.cjs` | Node.js (Linux/macOS/Windows) | Cross-platform, usa tar/zip |
-| `backup.ps1` | PowerShell (Windows) | Nativo Windows, usa .NET GZipStream |
+| Script       | Plataforma                    | Descripción                         |
+| ------------ | ----------------------------- | ----------------------------------- |
+| `backup.cjs` | Node.js (Linux/macOS/Windows) | Cross-platform, usa tar/zip         |
+| `backup.ps1` | PowerShell (Windows)          | Nativo Windows, usa .NET GZipStream |
 
 ### Configuración (Variables de entorno)
 
@@ -55,6 +56,7 @@ cd server
 ### Programación automática (cron / Task Scheduler)
 
 **Linux/macOS (cron):**
+
 ```bash
 # Diario a las 02:00
 0 2 * * * /usr/bin/node /ruta/al/proyecto/server/backup.cjs >> /var/log/sg-sst-backup.log 2>&1
@@ -64,6 +66,7 @@ cd server
 ```
 
 **Windows (Task Scheduler):**
+
 1. Abrir "Programador de tareas"
 2. Crear tarea básica → Diaria → 02:00
 3. Acción: Iniciar programa
@@ -86,6 +89,7 @@ node backup.cjs --restore=sg-sst-db-2026-11-08_02-00-00.sqlite.gz
 ```
 
 **Proceso de restauración:**
+
 1. El script descifra/descomprime el respaldo a un archivo temporal
 2. Verifica integridad de la base de datos (PRAGMA integrity_check)
 3. Crea una copia de seguridad de la BD actual (`sg-sst.db.pre-restore-<timestamp>`)
@@ -145,6 +149,7 @@ tar -tzf /ruta/proyecto/backups/sg-sst-uploads-2026-11-08_02-00-00.tar.gz | head
 ### Datos sensibles en respaldos
 
 Los respaldos contienen **datos personales y sensibles**:
+
 - Datos de identificación de trabajadores (nombres, documentos, contactos)
 - **Datos médicos ocupacionales** (exámenes, restricciones, diagnósticos) - CIFRADOS en BD
 - Firmas digitales y evidencias fotográficas
@@ -154,7 +159,7 @@ Los respaldos contienen **datos personales y sensibles**:
 
 1. **Cifrado en reposo**: Los campos médicos sensibles están cifrados con AES-256-GCM en la BD (ver `server/src/lib/crypto.ts`)
 2. **Acceso restringido**: Solo el rol `administrador` puede acceder a la bitácora y datos sensibles
-3. **Respaldo seguro**: 
+3. **Respaldo seguro**:
    - Guardar respaldos en ubicación con acceso controlado
    - Cifrar el disco/volumen donde se almacenan los respaldos
    - Transmitir respaldos solo por canales seguros (SFTP, HTTPS)
@@ -166,6 +171,7 @@ Los respaldos contienen **datos personales y sensibles**:
 ### Eliminación segura
 
 Al eliminar respaldos antiguos (script automático o manual):
+
 ```bash
 # Linux/macOS - sobrescribir antes de borrar
 shred -vfz -n 3 backups/sg-sst-db-*.sqlite.gz
@@ -216,19 +222,19 @@ cipher /w:C:\ruta\backups
 
 ### Contactos de emergencia
 
-| Rol | Responsable | Contacto |
-|-----|-------------|----------|
-| Responsable SG-SST | [Nombre] | [Tel/Email] |
-| Administrador TI | [Nombre] | [Tel/Email] |
-| Proveedor hosting | [Empresa] | [Soporte] |
+| Rol                | Responsable | Contacto    |
+| ------------------ | ----------- | ----------- |
+| Responsable SG-SST | [Nombre]    | [Tel/Email] |
+| Administrador TI   | [Nombre]    | [Tel/Email] |
+| Proveedor hosting  | [Empresa]   | [Soporte]   |
 
 ---
 
 ## 6. Registro de Pruebas de Restauración
 
-| Fecha | Tipo | Respaldo usado | Resultado | Observaciones | Responsable |
-|-------|------|----------------|-----------|---------------|-------------|
-| 2026-11-08 | Completa | sg-sst-db-2026-11-08_02-00-00.sqlite.gz | ✅ Exitosa | Integridad verificada, 47 workers, 123 incidents | [Nombre] |
+| Fecha      | Tipo     | Respaldo usado                          | Resultado  | Observaciones                                    | Responsable |
+| ---------- | -------- | --------------------------------------- | ---------- | ------------------------------------------------ | ----------- |
+| 2026-11-08 | Completa | sg-sst-db-2026-11-08_02-00-00.sqlite.gz | ✅ Exitosa | Integridad verificada, 47 workers, 123 incidents | [Nombre]    |
 
 ---
 

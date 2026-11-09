@@ -9,7 +9,7 @@ import {
   getRoleVencimientos,
   updateRole,
 } from '../services/roles.js';
-import * as UsersService from '../services/users.js';
+import { requireRole, getAuthUser, auditLog } from '../lib/auth.js';
 
 const roleSchema = z.object({
   nombre: z.string().min(2),
@@ -23,80 +23,80 @@ const roleSchema = z.object({
 });
 
 const rolesRoutes: FastifyPluginAsync = async (fastify) => {
+  // GET /roles - Cualquier autenticado
   fastify.get('/roles', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     return getRoles(fastify.db);
   });
+
+  // GET /roles/vencimientos - Cualquier autenticado
   fastify.get('/roles/vencimientos', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
     return getRoleVencimientos(fastify.db);
   });
+
+  // GET /roles/:id - Cualquier autenticado
   fastify.get('/roles/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
-    const r = getRoleById(fastify.db, (request.params as any).id);
+    const { id } = request.params as { id: string };
+    const r = getRoleById(fastify.db, id);
     if (!r) return reply.code(404).send({ error: 'Rol no encontrado' });
     return r;
   });
-  fastify.post('/roles', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  // POST /roles - Solo administrador
+  fastify.post('/roles', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parsed = roleSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const role = createRole(fastify.db, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'roles',
       entidad_id: role.id,
       valores_nuevos: parsed.data,
     });
+
     return role;
   });
-  fastify.put('/roles/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  // PUT /roles/:id - Solo administrador
+  fastify.put('/roles/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const prev = getRoleById(fastify.db, id);
     if (!prev) return reply.code(404).send({ error: 'Rol no encontrado' });
     const parsed = roleSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const updated = updateRole(fastify.db, id, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'roles',
       entidad_id: id,
       valores_anteriores: prev,
       valores_nuevos: parsed.data,
     });
+
     return updated;
   });
-  fastify.delete('/roles/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  // DELETE /roles/:id - Solo administrador
+  fastify.delete('/roles/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     deleteRole(fastify.db, id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'roles',
       entidad_id: id,
     });
+
     return { ok: true };
   });
 };

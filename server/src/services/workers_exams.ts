@@ -1,4 +1,4 @@
-import { encrypt, isEncrypted, SENSITIVE_FIELDS, decryptSensitiveFields } from '../lib/crypto.js';
+import { decryptSensitiveFields, encrypt, isEncrypted, SENSITIVE_FIELDS } from '../lib/crypto.js';
 import { genId } from '../lib/utils.js';
 
 export interface WorkerExam {
@@ -23,7 +23,7 @@ export function getExamsByWorker(
   const rows = db
     .prepare('SELECT * FROM worker_exams WHERE worker_id = ? ORDER BY fecha DESC')
     .all(workerId) as WorkerExam[];
-  
+
   if (!includeSensitive) {
     // Ley 1581/2012: no devolver datos sensibles en listados
     return rows.map((r) => ({
@@ -36,7 +36,7 @@ export function getExamsByWorker(
       resultado: r.resultado === 'no_apto' ? 'no_apto' : 'apto', // solo indicar si es apto o no
     }));
   }
-  
+
   // Descifrar campos sensibles para admin
   return rows.map((r) => decryptSensitiveFields(r) as WorkerExam);
 }
@@ -99,7 +99,11 @@ export function createExam(
   // Cifrar campos sensibles antes de guardar (Ley 1581/2012 - datos sensibles en reposo)
   const sensitiveInput: Record<string, any> = { ...input };
   for (const field of SENSITIVE_FIELDS) {
-    if (sensitiveInput[field] && typeof sensitiveInput[field] === 'string' && !isEncrypted(sensitiveInput[field])) {
+    if (
+      sensitiveInput[field] &&
+      typeof sensitiveInput[field] === 'string' &&
+      !isEncrypted(sensitiveInput[field])
+    ) {
       sensitiveInput[field] = encrypt(sensitiveInput[field]);
     }
   }
@@ -128,7 +132,11 @@ export function updateExam(db: any, id: string, patch: Partial<WorkerExam>): Wor
   // Cifrar campos sensibles en el patch
   const sensitivePatch: Record<string, any> = { ...patch };
   for (const field of SENSITIVE_FIELDS) {
-    if (sensitivePatch[field] && typeof sensitivePatch[field] === 'string' && !isEncrypted(sensitivePatch[field])) {
+    if (
+      sensitivePatch[field] &&
+      typeof sensitivePatch[field] === 'string' &&
+      !isEncrypted(sensitivePatch[field])
+    ) {
       sensitivePatch[field] = encrypt(sensitivePatch[field]);
     }
   }

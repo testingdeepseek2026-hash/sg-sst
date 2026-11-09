@@ -124,7 +124,7 @@ export function updatePolicy(
   return getPolicyById(db, id)!;
 }
 
-export function deletePolicy(db: any, id: string): void {
+export function deletePolicy(db: any, id: string): boolean {
   const existing = getPolicyById(db, id);
   if (!existing) throw new Error('Política no encontrada');
 
@@ -134,7 +134,8 @@ export function deletePolicy(db: any, id: string): void {
 
   // Eliminar objetivos asociados primero
   db.prepare('DELETE FROM objectives WHERE policy_id = ?').run(id);
-  db.prepare('DELETE FROM policies WHERE id = ?').run(id);
+  const result = db.prepare('DELETE FROM policies WHERE id = ?').run(id);
+  return result.changes > 0;
 }
 
 export function firmarPolicy(db: any, id: string, firmadoPor: string): Policy {

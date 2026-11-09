@@ -48,7 +48,9 @@ export function runMigrations(db: DatabaseSync) {
   }
 
   // Migración incremental: columnas de trazabilidad en contractors (servicio usa creado_en/actualizado_en)
-  const contractorColumns = db.prepare('PRAGMA table_info(contractors)').all() as { name: string }[];
+  const contractorColumns = db.prepare('PRAGMA table_info(contractors)').all() as {
+    name: string;
+  }[];
   if (!contractorColumns.some(({ name }) => name === 'creado_en')) {
     db.exec('ALTER TABLE contractors ADD COLUMN creado_en TEXT');
   }

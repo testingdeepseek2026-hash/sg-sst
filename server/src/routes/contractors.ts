@@ -8,7 +8,7 @@ import {
   getContractors,
   updateContractor,
 } from '../services/contractors.js';
-import * as UsersService from '../services/users.js';
+import { requireRole, getAuthUser, auditLog } from '../lib/auth.js';
 
 const contractorSchema = z.object({
   nombre: z.string().min(2),
@@ -24,72 +24,72 @@ const contractorSchema = z.object({
 });
 
 const contractorsRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/contractors', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  // GET /contractors - Solo administrador
+  fastify.get('/contractors', { preHandler: requireRole('administrador') }, async (request, reply) => {
     return getContractors(fastify.db);
   });
-  fastify.get('/contractors/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    const c = getContractorById(fastify.db, (request.params as any).id);
+
+  // GET /contractors/:id - Solo administrador
+  fastify.get('/contractors/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const c = getContractorById(fastify.db, id);
     if (!c) return reply.code(404).send({ error: 'Contratista no encontrado' });
     return c;
   });
-  fastify.post('/contractors', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  // POST /contractors - Solo administrador
+  fastify.post('/contractors', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parsed = contractorSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const c = createContractor(fastify.db, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'contractors',
       entidad_id: c.id,
       valores_nuevos: parsed.data,
     });
+
     return c;
   });
-  fastify.put('/contractors/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  // PUT /contractors/:id - Solo administrador
+  fastify.put('/contractors/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = contractorSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const updated = updateContractor(fastify.db, id, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'contractors',
       entidad_id: id,
       valores_nuevos: parsed.data,
     });
+
     return updated;
   });
-  fastify.delete('/contractors/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    deleteContractor(fastify.db, (request.params as any).id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+  // DELETE /contractors/:id - Solo administrador
+  fastify.delete('/contractors/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    deleteContractor(fastify.db, id);
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'contractors',
-      entidad_id: (request.params as any).id,
+      entidad_id: id,
     });
+
     return { ok: true };
   });
 };

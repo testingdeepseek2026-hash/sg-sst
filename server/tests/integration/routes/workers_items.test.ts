@@ -8,6 +8,7 @@ import * as examsService from '../../../src/services/workers_exams.js';
 import * as certsService from '../../../src/services/workers_certs.js';
 import * as eppService from '../../../src/services/workers_epp.js';
 import * as workersService from '../../../src/services/workers.js';
+import { requireAuth } from '../../../src/lib/auth.js';
 
 describe('Trabajadores - Exámenes, Certificados, EPP (Integración)', () => {
   let app: ReturnType<typeof Fastify>;
@@ -22,10 +23,8 @@ describe('Trabajadores - Exámenes, Certificados, EPP (Integración)', () => {
     db = createTestDb();
     app.decorate('db', db);
     
-    app.addHook('preHandler', async (request) => {
-      request.userId = request.cookies['sg_sst_user'] ?? undefined;
-      request.userEmail = request.cookies['sg_sst_email'] ?? undefined;
-    });
+    // Usar el hook de autenticación centralizado (igual que la app principal)
+    app.addHook('preHandler', requireAuth);
     
     await app.register(workersRoutes, { prefix: '/api' });
     await app.register(workersItemsRoutes, { prefix: '/api' });
@@ -40,12 +39,11 @@ describe('Trabajadores - Exámenes, Certificados, EPP (Integración)', () => {
     cleanDb(db);
     cookieJar = [];
     
+    // Usuario administrador
     db.prepare('INSERT INTO users (id, email, nombre, rol, password_hash) VALUES (?, ?, ?, ?, ?)')
       .run('user-admin', 'admin@test.com', 'Admin', 'administrador', 'hash');
     
-    cookieJar = ['sg_sst_user=user-admin', 'sg_sst_email=admin@test.com'];
-    
-    // Crear trabajador y consentimiento médico de prueba
+    // Usuario trabajador (mismo ID que el worker para autenticación)
     const worker = workersService.createWorker(db, {
       tipo_documento: 'CC',
       numero_documento: '1234567890',
@@ -55,6 +53,13 @@ describe('Trabajadores - Exámenes, Certificados, EPP (Integración)', () => {
       fecha_ingreso: '2025-01-15',
     });
     workerId = worker.id;
+    
+    // Crear usuario con mismo ID que el trabajador para autenticación como trabajador
+    db.prepare('INSERT INTO users (id, email, nombre, rol, password_hash) VALUES (?, ?, ?, ?, ?)')
+      .run(workerId, 'trabajador@test.com', 'Juan Pérez', 'trabajador', 'hash');
+    
+    // Cookie por defecto: admin
+    cookieJar = ['sg_sst_user=user-admin', 'sg_sst_email=admin@test.com'];
     
     // Consentimiento médico
     db.prepare('INSERT INTO consents (id, worker_id, tipo, autorizado, fecha) VALUES (?, ?, ?, 1, ?)')
@@ -74,6 +79,7 @@ describe('Trabajadores - Exámenes, Certificados, EPP (Integración)', () => {
         const res = await app.inject({
           method: 'GET',
           url: `/api/workers/${workerId}/exams`,
+          headers: getHeaders(),
         });
         
         expect(res.statusCode).toBe(200);
@@ -81,7 +87,7 @@ describe('Trabajadores - Exámenes, Certificados, EPP (Integración)', () => {
         expect(body).toHaveLength(2);
       });
 
-      it('debe ocultar datos sensibles por defecto', async () => {
+      it('debe ocultar datos sensibles por defecto (no admin)', async () => {
         examsService.createExam(db, { 
           worker_id: workerId, 
           tipo: 'periodico', 
@@ -90,9 +96,11 @@ describe('Trabajadores - Exámenes, Certificados, EPP (Integración)', () => {
           resultado: 'apto_con_restricciones',
         });
         
+        // Autenticar como trabajador (no admin)
         const res = await app.inject({
           method: 'GET',
           url: `/api/workers/${workerId}/exams`,
+          headers: { cookie: `sg_sst_user=${workerId}; sg_sst_email=trabajador@test.com` },
         });
         
         const body = JSON.parse(res.body);
@@ -166,7 +174,7 @@ describe('Trabajadores - Exámenes, Certificados, EPP (Integración)', () => {
         const res = await app.inject({
           method: 'GET',
           url: '/api/workers/exams/ingreso',
-          headers: { cookie: `sg_sst_user=${workerId}` },
+          headers: { cookie: `sg_sst_user=${workerId}; sg_sst_email=trabajador@test.com` },
         });
         
         expect(res.statusCode).toBe(200);
@@ -181,7 +189,7 @@ describe('Trabajadores - Exámenes, Certificados, EPP (Integración)', () => {
         const res = await app.inject({
           method: 'GET',
           url: '/api/workers/exams/ingreso',
-          headers: { cookie: `sg_sst_user=${workerId}` },
+          headers: { cookie: `sg_sst_user=${workerId}; sg_sst_email=trabajador@test.com` },
         });
         
         expect(res.statusCode).toBe(200);

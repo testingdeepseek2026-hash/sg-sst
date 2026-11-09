@@ -1,7 +1,13 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 
-import * as UsersService from '../services/users.js';
+import {
+  requireRole,
+  getAuthUser,
+  auditLog,
+  isAdmin,
+  checkOwnership,
+} from '../lib/auth.js';
 import {
   calcularVencimientoAlturas,
   crearCertificado,
@@ -83,21 +89,20 @@ const workersItemsRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /workers/:wid/exams - listar exámenes de un trabajador (sin datos sensibles por defecto)
   fastify.get('/workers/:wid/exams', async (request) => {
     const { wid } = request.params as { wid: string };
-    const userId = (request as any).userId as string | undefined;
-    const me = userId ? UsersService.getUserById(fastify.db, userId) : undefined;
-    const includeSensitive = me?.rol === 'administrador';
+    const user = request.user;
+    const includeSensitive = user?.rol === 'administrador';
     return getExamsByWorker(fastify.db, wid, includeSensitive);
   });
 
-  // GET /workers/exams/ingreso - verificar si tiene examen de ingreso
-  fastify.get('/workers/exams/ingreso', async (request, _reply) => {
-    const wid = (request as any).userId; // worker autenticado consulta el suyo
-    if (!wid) return _reply.code(401).send({ error: 'No autenticado' });
+  // GET /workers/exams/ingreso - verificar si tiene examen de ingreso (trabajador autenticado)
+  fastify.get('/workers/exams/ingreso', async (request, reply) => {
+    const user = request.user;
+    if (!user) return reply.code(401).send({ error: 'No autenticado' });
     const exam = fastify.db
       .prepare(
         'SELECT * FROM worker_exams WHERE worker_id = ? AND tipo = ? ORDER BY fecha DESC LIMIT 1'
       )
-      .get(wid, 'ingreso');
+      .get(user.id, 'ingreso');
     return {
       tiene_examen_ingreso: !!exam,
       examen: exam ? { id: exam.id, fecha: exam.fecha, vencimiento: exam.vencimiento } : null,
@@ -105,12 +110,7 @@ const workersItemsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // GET /workers/exams/detail/:id - detalle con datos sensibles (solo admin)
-  fastify.get('/workers/exams/detail/:id', async (request, reply) => {
-    const me = UsersService.getUserById(fastify.db, (request as any).userId!);
-    if (!me || me.rol !== 'administrador')
-      return reply
-        .code(403)
-        .send({ error: 'Solo administrador puede ver datos médicos sensibles' });
+  fastify.get('/workers/exams/detail/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const exam = getExamById(fastify.db, id, true);
     if (!exam) return reply.code(404).send({ error: 'Examen no encontrado' });
@@ -118,12 +118,7 @@ const workersItemsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // POST /workers/:wid/exams (admin) - crear examen
-  fastify.post('/workers/:wid/exams', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.post('/workers/:wid/exams', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { wid } = request.params as { wid: string };
     const body = request.body as Record<string, any>;
     const parsed = examSchema.safeParse({ ...body, worker_id: wid });
@@ -131,14 +126,17 @@ const workersItemsRoutes: FastifyPluginAsync = async (fastify) => {
 
     try {
       const exam = createExam(fastify.db, parsed.data);
-      UsersService.auditLog(fastify.db, {
-        usuario_id: uid,
-        usuario_email: me.email,
+
+      const user = getAuthUser(request);
+      auditLog(fastify.db, {
+        usuario_id: user.id,
+        usuario_email: user.email,
         accion: 'crear',
         entidad: 'worker_exams',
         entidad_id: exam.id,
         valores_nuevos: parsed.data,
       });
+
       return exam;
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
@@ -146,45 +144,41 @@ const workersItemsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // PUT /workers/exams/:id (admin) - actualizar examen
-  fastify.put('/workers/exams/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.put('/workers/exams/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = examSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
     const old = getExamById(fastify.db, id, true);
     const updated = updateExam(fastify.db, id, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'worker_exams',
       entidad_id: id,
       valores_anteriores: old,
       valores_nuevos: parsed.data,
     });
+
     return updated;
   });
 
   // DELETE /workers/exams/:id (admin)
-  fastify.delete('/workers/exams/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.delete('/workers/exams/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     deleteExam(fastify.db, (request.params as any).id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'worker_exams',
       entidad_id: (request.params as any).id,
     });
+
     return { ok: true };
   });
 
@@ -197,12 +191,7 @@ const workersItemsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // POST /workers/:wid/certs (admin)
-  fastify.post('/workers/:wid/certs', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.post('/workers/:wid/certs', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { wid } = request.params as { wid: string };
     const body = request.body as Record<string, any>;
     const parsed = certSchema.safeParse({ ...body, worker_id: wid });
@@ -210,14 +199,17 @@ const workersItemsRoutes: FastifyPluginAsync = async (fastify) => {
 
     try {
       const cert = crearCertificado(fastify.db, parsed.data);
-      UsersService.auditLog(fastify.db, {
-        usuario_id: uid,
-        usuario_email: me.email,
+
+      const user = getAuthUser(request);
+      auditLog(fastify.db, {
+        usuario_id: user.id,
+        usuario_email: user.email,
         accion: 'crear',
         entidad: 'worker_certs',
         entidad_id: cert.id,
         valores_nuevos: parsed.data,
       });
+
       return cert;
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
@@ -225,29 +217,28 @@ const workersItemsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // PUT /workers/certs/:id (admin)
-  fastify.put('/workers/certs/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.put('/workers/certs/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = certSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
     const old = getCertById(fastify.db, id);
     if (!old) return reply.code(404).send({ error: 'Certificado no encontrado' });
+
     try {
       const updated = updateCert(fastify.db, id, parsed.data);
-      UsersService.auditLog(fastify.db, {
-        usuario_id: uid,
-        usuario_email: me.email,
+
+      const user = getAuthUser(request);
+      auditLog(fastify.db, {
+        usuario_id: user.id,
+        usuario_email: user.email,
         accion: 'editar',
         entidad: 'worker_certs',
         entidad_id: id,
         valores_anteriores: old,
         valores_nuevos: parsed.data,
       });
+
       return updated;
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
@@ -255,20 +246,18 @@ const workersItemsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // DELETE /workers/certs/:id (admin)
-  fastify.delete('/workers/certs/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.delete('/workers/certs/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     deleteCert(fastify.db, (request.params as any).id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'worker_certs',
       entidad_id: (request.params as any).id,
     });
+
     return { ok: true };
   });
 
@@ -296,75 +285,71 @@ const workersItemsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // POST /workers/:wid/epp (admin)
-  fastify.post('/workers/:wid/epp', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.post('/workers/:wid/epp', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { wid } = request.params as { wid: string };
     const body = request.body as Record<string, any>;
     const parsed = eppSchema.safeParse({ ...body, worker_id: wid });
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
     const epp = createEpp(fastify.db, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'worker_epp',
       entidad_id: epp.id,
       valores_nuevos: parsed.data,
     });
+
     return epp;
   });
 
   // PUT /workers/epp/:id (admin)
-  fastify.put('/workers/epp/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.put('/workers/epp/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = eppSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
     const old = getEppById(fastify.db, id);
     const updated = updateEpp(fastify.db, id, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'worker_epp',
       entidad_id: id,
       valores_anteriores: old,
       valores_nuevos: parsed.data,
     });
+
     return updated;
   });
 
   // POST /workers/epp/:id/firmar - firma digital del trabajador (Res. 0312/2019 E19)
+  // El trabajador puede firmar su propio EPP, admin puede firmar cualquiera
   fastify.post('/workers/epp/:id/firmar', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
-
     const { id } = request.params as { id: string };
     const parsed = firmaEppSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
-    // Verificar propiedad: el trabajador solo puede firmar SU EPP, admin puede firmar cualquiera
     const epp = getEppById(fastify.db, id);
     if (!epp) return reply.code(404).send({ error: 'Entrega EPP no encontrada' });
-    if (me.rol !== 'administrador' && epp.worker_id !== me.id) {
+
+    // Verificar propiedad: trabajador solo firma SU EPP, admin cualquiera
+    const me = getAuthUser(request);
+    if (!isAdmin(request) && epp.worker_id !== me.id) {
       return reply.code(403).send({ error: 'Solo puede firmar sus propias entregas de EPP' });
     }
 
     const old = { ...epp };
     const updated = firmarEntregaEpp(fastify.db, id, parsed.data.firma_base64, epp.worker_id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
+
+    auditLog(fastify.db, {
+      usuario_id: me.id,
       usuario_email: me.email,
       accion: 'firmar',
       entidad: 'worker_epp',
@@ -372,24 +357,23 @@ const workersItemsRoutes: FastifyPluginAsync = async (fastify) => {
       valores_anteriores: old,
       valores_nuevos: { firmado_por_trabajador: 1, firma_url: 'base64...' },
     });
+
     return updated;
   });
 
   // DELETE /workers/epp/:id (admin)
-  fastify.delete('/workers/epp/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.delete('/workers/epp/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     deleteEpp(fastify.db, (request.params as any).id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'worker_epp',
       entidad_id: (request.params as any).id,
     });
+
     return { ok: true };
   });
 
@@ -406,11 +390,8 @@ const workersItemsRoutes: FastifyPluginAsync = async (fastify) => {
     return getWorkerVencimientos(fastify.db, parseInt(dias, 10));
   });
 
-  // GET /workers/epp/sin-firmar - EPP pendientes de firma
-  fastify.get('/workers/epp/sin-firmar', async (request, reply) => {
-    const me = UsersService.getUserById(fastify.db, (request as any).userId!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  // GET /workers/epp/sin-firmar - EPP pendientes de firma (solo admin)
+  fastify.get('/workers/epp/sin-firmar', { preHandler: requireRole('administrador') }, async (request) => {
     return getEppSinFirmar(fastify.db);
   });
 };

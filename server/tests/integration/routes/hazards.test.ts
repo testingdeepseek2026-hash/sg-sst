@@ -4,6 +4,7 @@ import cookie from '@fastify/cookie';
 import { createTestDb, cleanDb } from '../../setup.js';
 import hazardsRoutes from '../../../src/routes/hazards.js';
 import * as hazardsService from '../../../src/services/hazards.js';
+import { requireAuth } from '../../../src/lib/auth.js';
 
 describe('Peligros (IPERC) - Rutas API (Integración)', () => {
   let app: ReturnType<typeof Fastify>;
@@ -13,15 +14,13 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
   beforeAll(async () => {
     app = Fastify({ logger: false });
     await app.register(cookie, { secret: 'test-secret' });
-    
+
     db = createTestDb();
     app.decorate('db', db);
-    
-    app.addHook('preHandler', async (request) => {
-      request.userId = request.cookies['sg_sst_user'] ?? undefined;
-      request.userEmail = request.cookies['sg_sst_email'] ?? undefined;
-    });
-    
+
+    // Usar el hook de autenticación centralizado (igual que la app principal)
+    app.addHook('preHandler', requireAuth);
+
     await app.register(hazardsRoutes, { prefix: '/api' });
     await app.ready();
   });
@@ -33,10 +32,10 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
   beforeEach(() => {
     cleanDb(db);
     cookieJar = [];
-    
+
     db.prepare('INSERT INTO users (id, email, nombre, rol, password_hash) VALUES (?, ?, ?, ?, ?)')
       .run('user-admin', 'admin@test.com', 'Admin', 'administrador', 'hash');
-    
+
     cookieJar = ['sg_sst_user=user-admin', 'sg_sst_email=admin@test.com'];
   });
 
@@ -52,7 +51,7 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
           url: '/api/hazards/catalog',
           headers: getHeaders(),
         });
-        
+
         expect(res.statusCode).toBe(200);
         const body = JSON.parse(res.body);
         expect(body).toEqual([]);
@@ -62,13 +61,13 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
         hazardsService.createHazardCatalogItem(db, { codigo: 'EL-002', nombre: 'Zebra', categoria: 'electrico' });
         hazardsService.createHazardCatalogItem(db, { codigo: 'EL-001', nombre: 'Alpha', categoria: 'electrico' });
         hazardsService.createHazardCatalogItem(db, { codigo: 'AL-001', nombre: 'Beta', categoria: 'alturas' });
-        
+
         const res = await app.inject({
           method: 'GET',
           url: '/api/hazards/catalog',
           headers: getHeaders(),
         });
-        
+
         expect(res.statusCode).toBe(200);
         const body = JSON.parse(res.body);
         expect(body).toHaveLength(3);
@@ -94,7 +93,7 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
             control_sugerido: 'Desenergizar y bloquear',
           },
         });
-        
+
         expect(res.statusCode).toBe(200);
         const body = JSON.parse(res.body);
         expect(body.codigo).toBe('EL-001');
@@ -115,7 +114,7 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
             categoria: 'ergonomia',
           },
         });
-        
+
         expect(res.statusCode).toBe(200);
         const body = JSON.parse(res.body);
         expect(body.riesgo_por_defecto).toBe('medio');
@@ -129,7 +128,7 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
           headers: { ...getHeaders(), 'content-type': 'application/json' },
           payload: { nombre: 'Sin código' },
         });
-        
+
         expect(res.statusCode).toBe(400);
       });
 
@@ -144,7 +143,7 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
             categoria: 'invalida',
           },
         });
-        
+
         expect(res.statusCode).toBe(400);
       });
     });
@@ -156,13 +155,13 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
         hazardsService.createHazardAssessment(db, { cargo_oficio: 'A', fecha: '2026-01-01' });
         hazardsService.createHazardAssessment(db, { cargo_oficio: 'B', fecha: '2026-03-01' });
         hazardsService.createHazardAssessment(db, { cargo_oficio: 'C', fecha: '2026-02-01' });
-        
+
         const res = await app.inject({
           method: 'GET',
           url: '/api/hazards/assessments',
           headers: getHeaders(),
         });
-        
+
         expect(res.statusCode).toBe(200);
         const body = JSON.parse(res.body);
         expect(body).toHaveLength(3);
@@ -198,7 +197,7 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
             estado: 'vigente',
           },
         });
-        
+
         expect(res.statusCode).toBe(200);
         const body = JSON.parse(res.body);
         expect(body.cargo_oficio).toBe('Trabajador en alturas');
@@ -215,7 +214,7 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
             cargo_oficio: 'Electricista',
           },
         });
-        
+
         expect(res.statusCode).toBe(200);
         const body = JSON.parse(res.body);
         expect(body.valoracion_riesgo).toBe('medio');
@@ -230,7 +229,7 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
           headers: { ...getHeaders(), 'content-type': 'application/json' },
           payload: { area: 'Sin cargo' },
         });
-        
+
         expect(res.statusCode).toBe(400);
       });
 
@@ -244,7 +243,7 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
             valoracion_riesgo: 'invalido',
           },
         });
-        
+
         expect(res.statusCode).toBe(400);
       });
     });
@@ -253,7 +252,7 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
       it('debe actualizar evaluación', async () => {
         const { createHazardAssessment } = await import('../../../src/services/hazards.js');
         const assessment = createHazardAssessment(db, { cargo_oficio: 'Original', valoracion_riesgo: 'bajo' });
-        
+
         const res = await app.inject({
           method: 'PUT',
           url: `/api/hazards/assessments/${assessment.id}`,
@@ -264,7 +263,7 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
             controles: 'Nuevos controles',
           },
         });
-        
+
         expect(res.statusCode).toBe(200);
         const body = JSON.parse(res.body);
         expect(body.cargo_oficio).toBe('Actualizado');
@@ -278,15 +277,15 @@ describe('Peligros (IPERC) - Rutas API (Integración)', () => {
       it('debe eliminar evaluación', async () => {
         const { createHazardAssessment } = await import('../../../src/services/hazards.js');
         const assessment = createHazardAssessment(db, { cargo_oficio: 'Para borrar' });
-        
+
         const res = await app.inject({
           method: 'DELETE',
           url: `/api/hazards/assessments/${assessment.id}`,
           headers: getHeaders(),
         });
-        
+
         expect(res.statusCode).toBe(200);
-        
+
         const check = await app.inject({
           method: 'GET',
           url: '/api/hazards/assessments',

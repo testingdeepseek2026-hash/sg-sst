@@ -10,27 +10,29 @@
 
 La aplicación SG-SST trata datos personales para:
 
-| Finalidad | Base Legal | Datos Involucrados |
-|-----------|------------|-------------------|
-| Gestión del SG-SST (Decreto 1072/2015) | Obligación legal | Identificación, cargo, afiliaciones |
-| Exámenes médicos ocupacionales | Obligación legal + Consentimiento | **Datos sensibles**: salud, restricciones, diagnósticos |
-| Capacitaciones e inducciones | Obligación legal | Asistencia, firmas, evidencias |
-| Inspecciones y permisos | Obligación legal | Firmas, fotos, observaciones |
-| Reporte de incidentes/accidentes | Obligación legal | Lesiones, causas, acciones correctivas |
-| Gestión documental y trazabilidad | Obligación legal | Versiones, responsable, fechas |
-| Alertas de vencimientos | Interés legítimo | Fechas, tipos, prioridades |
+| Finalidad                              | Base Legal                        | Datos Involucrados                                      |
+| -------------------------------------- | --------------------------------- | ------------------------------------------------------- |
+| Gestión del SG-SST (Decreto 1072/2015) | Obligación legal                  | Identificación, cargo, afiliaciones                     |
+| Exámenes médicos ocupacionales         | Obligación legal + Consentimiento | **Datos sensibles**: salud, restricciones, diagnósticos |
+| Capacitaciones e inducciones           | Obligación legal                  | Asistencia, firmas, evidencias                          |
+| Inspecciones y permisos                | Obligación legal                  | Firmas, fotos, observaciones                            |
+| Reporte de incidentes/accidentes       | Obligación legal                  | Lesiones, causas, acciones correctivas                  |
+| Gestión documental y trazabilidad      | Obligación legal                  | Versiones, responsable, fechas                          |
+| Alertas de vencimientos                | Interés legítimo                  | Fechas, tipos, prioridades                              |
 
 ---
 
 ## 2. Categorías de Datos y Nivel de Sensibilidad
 
 ### Datos Personales (Ley 1581/2012 - Art. 5)
+
 - **Identificación:** Nombres, apellidos, tipo/no. documento, cargo, fecha ingreso
 - **Contacto:** Teléfono, email, dirección
 - **Afiliaciones:** EPS, AFP, ARL, Caja de compensación
 - **Laborales:** Certificados, capacitaciones, EPP entregado, firmas
 
 ### Datos Sensibles (Ley 1581/2012 - Art. 5, literal d) - **PROTECCIÓN REFORZADA**
+
 - **Exámenes médicos:** Tipo, fecha, vencimiento, resultado, **restricciones**, **médico**, **entidad**, **archivo_url**, **notas**
 - **Historia clínica ocupacional**
 - **Diagnósticos y tratamientos** (si aplican)
@@ -42,6 +44,7 @@ La aplicación SG-SST trata datos personales para:
 ## 3. Medidas Técnicas Implementadas
 
 ### 3.1 Cifrado en Reposo (Datos Sensibles)
+
 ```typescript
 // server/src/lib/crypto.ts
 // Algoritmo: AES-256-GCM (autenticación integrada)
@@ -51,6 +54,7 @@ La aplicación SG-SST trata datos personales para:
 ```
 
 **Campos cifrados automáticamente:**
+
 - `worker_exams.restricciones`
 - `worker_exams.medico`
 - `worker_exams.entidad`
@@ -59,30 +63,34 @@ La aplicación SG-SST trata datos personales para:
 
 ### 3.2 Control de Acceso Basado en Roles (RBAC)
 
-| Rol | Permisos |
-|-----|----------|
-| **administrador** | Acceso total: CRUD todas las entidades, bitácora, datos sensibles (con consentimiento), exportar, importar, configuración |
-| **trabajador** | Solo lectura: su ficha, sus certificados, sus exámenes (sin datos sensibles), firmar su EPP, reportar incidentes, ver alertas propias |
+| Rol               | Permisos                                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **administrador** | Acceso total: CRUD todas las entidades, bitácora, datos sensibles (con consentimiento), exportar, importar, configuración             |
+| **trabajador**    | Solo lectura: su ficha, sus certificados, sus exámenes (sin datos sensibles), firmar su EPP, reportar incidentes, ver alertas propias |
 
 **Validación server-side:** Cada endpoint verifica `me.rol === 'administrador'` antes de operaciones sensibles.
 
 ### 3.3 Bitácora de Auditoría (Trazabilidad)
+
 - **Tabla:** `audit_logs`
 - **Registra:** quién (usuario_id, email), qué (accion, entidad, entidad_id), cuándo (creado_en), valores antes/después (JSON sanitizado)
 - **Sanitización automática:** Campos sensibles se reemplazan por `[DATO SENSIBLE - PROTEGIDO LEY 1581/2012]`
 - **Acceso:** Solo administrador vía `/api/audit-logs` y UI `/bitacora`
 
 ### 3.4 Consentimiento para Datos Médicos
+
 - **Tabla:** `consents` (tipo: 'medico' | 'general')
 - **Validación:** No se permite crear examen médico sin consentimiento `autorizado = 1`
 - **Registro:** Fecha, medio (escrito/digital), trabajador
 
 ### 3.5 Cifrado en Tránsito
+
 - **HTTPS obligatorio** en producción (TLS 1.2+)
 - **Cookies seguras:** `Secure`, `HttpOnly`, `SameSite=Lax`
 - **Headers de seguridad:** CSP, HSTS, X-Frame-Options (configurar en reverse proxy)
 
 ### 3.6 Gestión de Secretos
+
 ```bash
 # Variables de entorno REQUERIDAS en producción:
 ENCRYPTION_SECRET="clave-32-bytes-minimo-aleatoria-segura"  # Para cifrado BD
@@ -96,6 +104,7 @@ SMTP_PASS="contraseña-email"                                 # Para alertas
 ## 4. Flujos de Datos y Ciclo de Vida
 
 ### 4.1 Examen Médico Ocupacional
+
 ```
 1. Trabajador firma consentimiento (físico/digital) → se registra en consents
 2. Administrador crea examen → valida consentimiento → cifra campos sensibles → guarda
@@ -106,6 +115,7 @@ SMTP_PASS="contraseña-email"                                 # Para alertas
 ```
 
 ### 4.2 Entrega de EPP
+
 ```
 1. Administrador registra entrega → guarda item, fecha, vencimiento
 2. Trabajador firma digital (canvas/base64) → valida propiedad (solo SU EPP)
@@ -114,6 +124,7 @@ SMTP_PASS="contraseña-email"                                 # Para alertas
 ```
 
 ### 4.3 Reporte de Incidente
+
 ```
 1. Cualquier usuario reporta → guarda datos básicos
 2. Administrador investiga → agrega causa raíz, acciones correctivas
@@ -125,14 +136,14 @@ SMTP_PASS="contraseña-email"                                 # Para alertas
 
 ## 5. Retención y Eliminación
 
-| Tipo de Dato | Retención Mínima | Fuente Normativa | Acción al Vencer |
-|--------------|------------------|------------------|------------------|
-| Exámenes médicos / exposición | **20 años** | Res. 0312/2019 Art. 2.2.4.6.38 | Archivar (no borrar) |
-| Registros SG-SST generales | 5 años | Decreto 1072/2015 | Evaluar / Archivar |
-| Bitácora auditoría | 5 años | ISO 27001 / Buena práctica | Archivar |
-| Documentos (procedimientos, formatos) | Según `retencion_anos` (5-20) | Configurable en `documents.retencion_anos` | Evaluar |
-| Alertas enviadas | 2 años | Operativo | Limpiar automático |
-| Consentimientos | Vigencia + 5 años | Ley 1581/2012 Art. 15 | Archivar |
+| Tipo de Dato                          | Retención Mínima              | Fuente Normativa                           | Acción al Vencer     |
+| ------------------------------------- | ----------------------------- | ------------------------------------------ | -------------------- |
+| Exámenes médicos / exposición         | **20 años**                   | Res. 0312/2019 Art. 2.2.4.6.38             | Archivar (no borrar) |
+| Registros SG-SST generales            | 5 años                        | Decreto 1072/2015                          | Evaluar / Archivar   |
+| Bitácora auditoría                    | 5 años                        | ISO 27001 / Buena práctica                 | Archivar             |
+| Documentos (procedimientos, formatos) | Según `retencion_anos` (5-20) | Configurable en `documents.retencion_anos` | Evaluar              |
+| Alertas enviadas                      | 2 años                        | Operativo                                  | Limpiar automático   |
+| Consentimientos                       | Vigencia + 5 años             | Ley 1581/2012 Art. 15                      | Archivar             |
 
 **Configuración en BD:** Campo `documents.retencion_anos` (default 5, 20 para médicos/exposición)
 
@@ -140,13 +151,13 @@ SMTP_PASS="contraseña-email"                                 # Para alertas
 
 ## 6. Derechos del Titular (Ley 1581/2012 - Art. 8)
 
-| Derecho | Implementación |
-|---------|----------------|
-| **Conocer** | Exportar datos del trabajador (PDF/Excel desde UI) |
-| **Actualizar/Rectificar** | Admin edita ficha trabajador; bitácora registra cambio |
-| **Suprimir** | Solo si no hay obligación legal de retención; `DELETE` con bitácora |
-| **Revocar consentimiento** | Admin marca `consents.autorizado = 0`; bloquea nuevos exámenes |
-| **Acceso en formato legible** | Exportación PDF/Excel desde módulos |
+| Derecho                       | Implementación                                                      |
+| ----------------------------- | ------------------------------------------------------------------- |
+| **Conocer**                   | Exportar datos del trabajador (PDF/Excel desde UI)                  |
+| **Actualizar/Rectificar**     | Admin edita ficha trabajador; bitácora registra cambio              |
+| **Suprimir**                  | Solo si no hay obligación legal de retención; `DELETE` con bitácora |
+| **Revocar consentimiento**    | Admin marca `consents.autorizado = 0`; bloquea nuevos exámenes      |
+| **Acceso en formato legible** | Exportación PDF/Excel desde módulos                                 |
 
 > **Nota:** La supresión de datos con obligación de retención legal (ej. exámenes médicos 20 años) NO procede hasta vencido el plazo.
 
@@ -154,19 +165,20 @@ SMTP_PASS="contraseña-email"                                 # Para alertas
 
 ## 7. Transferencia y Encargados
 
-| Destinatario | Finalidad | Base Legal | Medidas |
-|--------------|-----------|------------|---------|
-| **ARL** | Reporte accidentes, afiliaciones | Obligación legal | Canal seguro, datos mínimos |
-| **EPS** | Exámenes médicos, incapacidades | Obligación legal | Consentimiento trabajador |
-| **Ministerio del Trabajo** | Inspecciones, requerimientos | Obligación legal | Exportación controlada |
-| **Profesional SST (licenciado)** | Revisión matriz riesgos, auditoría | Interés vital / Consentimiento | Acceso temporal, NDA |
-| **Proveedor hosting/BD** | Almacenamiento | Encargado del tratamiento | Contrato DP, cifrado disco, acceso controlado |
+| Destinatario                     | Finalidad                          | Base Legal                     | Medidas                                       |
+| -------------------------------- | ---------------------------------- | ------------------------------ | --------------------------------------------- |
+| **ARL**                          | Reporte accidentes, afiliaciones   | Obligación legal               | Canal seguro, datos mínimos                   |
+| **EPS**                          | Exámenes médicos, incapacidades    | Obligación legal               | Consentimiento trabajador                     |
+| **Ministerio del Trabajo**       | Inspecciones, requerimientos       | Obligación legal               | Exportación controlada                        |
+| **Profesional SST (licenciado)** | Revisión matriz riesgos, auditoría | Interés vital / Consentimiento | Acceso temporal, NDA                          |
+| **Proveedor hosting/BD**         | Almacenamiento                     | Encargado del tratamiento      | Contrato DP, cifrado disco, acceso controlado |
 
 ---
 
 ## 8. Procedimientos Operativos
 
 ### 8.1 Alta de Trabajador
+
 1. Crear usuario (rol: trabajador) → envía credenciales
 2. Crear ficha trabajador (datos identificación, afiliaciones)
 3. Registrar consentimiento médico (físico/digital)
@@ -175,6 +187,7 @@ SMTP_PASS="contraseña-email"                                 # Para alertas
 6. Inducción SST → registro asistencia + firma
 
 ### 8.2 Baja de Trabajador
+
 1. Cambiar estado a `retirado` / `inactivo` (no borrar)
 2. Registrar examen de egreso (requiere consentimiento vigente)
 3. Recuperar EPP → registrar devolución
@@ -182,6 +195,7 @@ SMTP_PASS="contraseña-email"                                 # Para alertas
 5. Revocar acceso (desactivar usuario, no borrar por bitácora)
 
 ### 8.3 Incidente de Seguridad de la Información
+
 1. Detectar (alerta, auditoría, reporte)
 2. Contener (revocar credenciales, aislar BD)
 3. Evaluar alcance (datos afectados, titulares)
@@ -194,6 +208,7 @@ SMTP_PASS="contraseña-email"                                 # Para alertas
 ## 9. Configuración de Producción (Checklist)
 
 ### Servidor / Infraestructura
+
 - [ ] HTTPS con certificado válido (TLS 1.2+)
 - [ ] Headers de seguridad (HSTS, CSP, X-Frame-Options, Referrer-Policy)
 - [ ] Firewall: solo puertos 80/443 expuestos, BD y Redis internos
@@ -203,6 +218,7 @@ SMTP_PASS="contraseña-email"                                 # Para alertas
 - [ ] Actualizaciones de seguridad automatizadas (OS, Node.js, dependencias)
 
 ### Aplicación
+
 - [ ] `ENCRYPTION_SECRET` generado seguro (32+ bytes aleatorios)
 - [ ] `SESSION_SECRET` generado seguro
 - [ ] `SMTP_*` configurado para alertas
@@ -213,6 +229,7 @@ SMTP_PASS="contraseña-email"                                 # Para alertas
 - [ ] Clase de riesgo y estándares configurados según ARL real
 
 ### Datos
+
 - [ ] Semilla de demo **NO** usada en producción
 - [ ] Datos reales cargados tras aprobación y revisión SST
 - [ ] Consentimientos médicos firmados y registrados
@@ -222,24 +239,24 @@ SMTP_PASS="contraseña-email"                                 # Para alertas
 
 ## 10. Límites y Exclusiones de Responsabilidad
 
-| Aspecto | Límite |
-|---------|--------|
-| **Cifrado BD** | Protege datos en reposo; no protege contra acceso root al servidor ni claves comprometidas |
-| **Bitácora** | No registra consultas SELECT (solo CREATE/UPDATE/DELETE/FIRMAR/IMPORTAR/EXPORTAR) |
-| **Offline/PWA** | Cache estático solo; NO sincroniza formularios offline |
-| **Email alertas** | Simulación si SMTP no configurado; no garantiza entrega |
+| Aspecto                | Límite                                                                                             |
+| ---------------------- | -------------------------------------------------------------------------------------------------- |
+| **Cifrado BD**         | Protege datos en reposo; no protege contra acceso root al servidor ni claves comprometidas         |
+| **Bitácora**           | No registra consultas SELECT (solo CREATE/UPDATE/DELETE/FIRMAR/IMPORTAR/EXPORTAR)                  |
+| **Offline/PWA**        | Cache estático solo; NO sincroniza formularios offline                                             |
+| **Email alertas**      | Simulación si SMTP no configurado; no garantiza entrega                                            |
 | **Cumplimiento legal** | Herramienta de apoyo; **no reemplaza** criterio empleador, responsable SST, profesional licenciado |
-| **Datos médicos** | Cifrados en BD; enmascarados en logs/UI; profesional SST debe validar contenido |
+| **Datos médicos**      | Cifrados en BD; enmascarados en logs/UI; profesional SST debe validar contenido                    |
 
 ---
 
 ## 11. Contacto - Delegado de Protección de Datos
 
-| Rol | Nombre | Email | Teléfono |
-|-----|--------|-------|----------|
-| Responsable Tratamiento (Empleador) | [Nombre] | [email@empresa.com] | [Tel] |
-| Responsable SG-SST / DPD | [Nombre] | [email@empresa.com] | [Tel] |
-| Profesional SST Licenciado | [Nombre] | [email@profesional.com] | [Tel] |
+| Rol                                 | Nombre   | Email                   | Teléfono |
+| ----------------------------------- | -------- | ----------------------- | -------- |
+| Responsable Tratamiento (Empleador) | [Nombre] | [email@empresa.com]     | [Tel]    |
+| Responsable SG-SST / DPD            | [Nombre] | [email@empresa.com]     | [Tel]    |
+| Profesional SST Licenciado          | [Nombre] | [email@profesional.com] | [Tel]    |
 
 ---
 

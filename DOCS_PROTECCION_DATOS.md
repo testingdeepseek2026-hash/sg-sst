@@ -15,18 +15,19 @@
 
 ## 2. Clasificación de Datos
 
-| Categoría | Ejemplos | Tratamiento |
-|-----------|----------|-------------|
+| Categoría                     | Ejemplos                                                              | Tratamiento                                       |
+| ----------------------------- | --------------------------------------------------------------------- | ------------------------------------------------- |
 | **Datos Sensibles (Médicos)** | Exámenes ocupacionales, restricciones, diagnósticos, historia clínica | Cifrado AES-256-GCM en reposo + Acceso solo admin |
-| **Datos Personales** | Nombres, documento, cargo, EPS, ARL | Acceso por rol (admin/trabajador) |
-| **Datos de Seguridad** | Contraseñas (hash), tokens, claves API | Hash bcrypt + Variables de entorno |
-| **Evidencias** | Firmas digitales, fotos, PDFs | Cifrado en reposo + URLs firmadas |
+| **Datos Personales**          | Nombres, documento, cargo, EPS, ARL                                   | Acceso por rol (admin/trabajador)                 |
+| **Datos de Seguridad**        | Contraseñas (hash), tokens, claves API                                | Hash bcrypt + Variables de entorno                |
+| **Evidencias**                | Firmas digitales, fotos, PDFs                                         | Cifrado en reposo + URLs firmadas                 |
 
 ---
 
 ## 3. Controles Implementados
 
 ### 3.1 Cifrado en Reposo (AES-256-GCM)
+
 - **Archivo**: `server/src/lib/crypto.ts`
 - **Algoritmo**: AES-256-GCM (authenticated encryption)
 - **Clave**: Derivada de `ENCRYPTION_SECRET` (scrypt + salt)
@@ -41,20 +42,23 @@ getExamsByWorker(includeSensitive=false): devuelve null en campos sensibles
 ```
 
 ### 3.2 Control de Acceso por Rol
-| Endpoint | Admin | Trabajador |
-|----------|-------|------------|
-| `/workers/:wid/exams` | ✓ Datos completos | ✓ Solo datos no sensibles |
-| `/workers/exams/detail/:id` | ✓ Datos sensibles | ✗ 403 Forbidden |
-| `/workers/:wid/certs` | ✓ | ✓ |
-| `/workers/:wid/epp` | ✓ | ✓ (solo lectura) |
-| `/workers/epp/:id/firmar` | ✓ | ✓ (solo propio) |
+
+| Endpoint                    | Admin             | Trabajador                |
+| --------------------------- | ----------------- | ------------------------- |
+| `/workers/:wid/exams`       | ✓ Datos completos | ✓ Solo datos no sensibles |
+| `/workers/exams/detail/:id` | ✓ Datos sensibles | ✗ 403 Forbidden           |
+| `/workers/:wid/certs`       | ✓                 | ✓                         |
+| `/workers/:wid/epp`         | ✓                 | ✓ (solo lectura)          |
+| `/workers/epp/:id/firmar`   | ✓                 | ✓ (solo propio)           |
 
 ### 3.3 Consentimiento (Ley 1581/2012)
+
 - Tabla `consents` registra autorización por trabajador
 - `createExam()` valida consentimiento `tipo='medico'` y `autorizado=1`
 - Sin consentimiento → Error 400: "El trabajador no ha autorizado el tratamiento de datos médicos"
 
 ### 3.4 Bitácora Sanitizada (Audit Logs)
+
 - **Archivo**: `server/src/services/users.ts` → `sanitizeForAudit()`
 - Campos sensibles enmascarados: `[DATO SENSIBLE - PROTEGIDO LEY 1581/2012]`
 - No se filtran restricciones, diagnósticos, firmas, archivos médicos en logs
@@ -64,6 +68,7 @@ getExamsByWorker(includeSensitive=false): devuelve null en campos sensibles
 ## 4. Secretos y Configuración
 
 ### Variables de Entorno Requeridas (`.env`)
+
 ```bash
 # Base de datos
 DB_PATH=./data/sg-sst.db
@@ -93,6 +98,7 @@ VITE_APP_NAME=SG-SST
 ## 5. Procedimiento de Backup
 
 ### 5.1 Backup Manual (PowerShell)
+
 ```powershell
 # Backup completo
 .\scripts\backup.ps1 -BackupDir ".\backups"
@@ -101,6 +107,7 @@ VITE_APP_NAME=SG-SST
 ```
 
 ### 5.2 Backup Automatizado (Windows Task Scheduler)
+
 ```powershell
 # Crear tarea programada diaria 02:00 AM
 $Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-File C:\sg-sst\scripts\backup.ps1"
@@ -110,24 +117,27 @@ Register-ScheduledTask -TaskName "SG-SST-Backup" -Action $Action -Trigger $Trigg
 ```
 
 ### 5.3 Qué incluye el Backup
+
 - Base de datos SQLite (copia consistente via `.backup`)
 - Directorio `uploads/` (firmas, fotos, evidencias)
 - Manifiesto JSON con metadatos y lista de tablas
 - Verificación de integridad (PRAGMA integrity_check)
 
 ### 5.4 Retención
-| Tipo | Frecuencia | Retención |
-|------|------------|-----------|
-| Diario | 02:00 AM | 30 días |
-| Semanal | Domingo 03:00 AM | 12 semanas |
-| Mensual | Día 1 04:00 AM | 24 meses |
-| Anual | Enero 1 05:00 AM | 10 años (datos médicos: 20 años) |
+
+| Tipo    | Frecuencia       | Retención                        |
+| ------- | ---------------- | -------------------------------- |
+| Diario  | 02:00 AM         | 30 días                          |
+| Semanal | Domingo 03:00 AM | 12 semanas                       |
+| Mensual | Día 1 04:00 AM   | 24 meses                         |
+| Anual   | Enero 1 05:00 AM | 10 años (datos médicos: 20 años) |
 
 ---
 
 ## 6. Procedimiento de Restore
 
 ### 6.1 Restore Manual (PowerShell)
+
 ```powershell
 # Restaurar desde backup específico
 .\scripts\restore.ps1 -BackupFile ".\backups\sg-sst-backup-20260115_020000.zip"
@@ -137,6 +147,7 @@ Register-ScheduledTask -TaskName "SG-SST-Backup" -Action $Action -Trigger $Trigg
 ```
 
 ### 6.2 Pasos del Restore
+
 1. **Descomprime** backup en directorio temporal
 2. **Verifica** manifiesto e integridad del backup
 3. **Respalda** BD actual (pre-restore-YYYYMMDD_HHMMSS)
@@ -147,6 +158,7 @@ Register-ScheduledTask -TaskName "SG-SST-Backup" -Action $Action -Trigger $Trigg
 8. **Reinicia** aplicación
 
 ### 6.3 Prueba de Restore (Mensual Obligatoria)
+
 ```powershell
 # 1. Crear entorno de prueba
 .\scripts\restore.ps1 -BackupFile ".\backups\sg-sst-backup-LATEST.zip" -TargetDb ".\data\sg-sst-test.db" -TargetUploads ".\uploads-test"
@@ -171,6 +183,7 @@ Remove-Item .\data\sg-sst-test.db, .\uploads-test -Recurse -Force
 ## 7. Verificaciones de Seguridad
 
 ### Checklist Mensual
+
 - [ ] Backup diario ejecutado y verificado (últimos 30 días)
 - [ ] Prueba de restore exitosa (entorno aislado)
 - [ ] Integridad BD verificada (PRAGMA integrity_check)
@@ -179,6 +192,7 @@ Remove-Item .\data\sg-sst-test.db, .\uploads-test -Recurse -Force
 - [ ] Variables de entorno seguras (sin secretos en código)
 
 ### Checklist Trimestral
+
 - [ ] Rotación de `ENCRYPTION_SECRET` (re-cifrar datos)
 - [ ] Revisión de accesos y roles (principio menor privilegio)
 - [ ] Prueba de restore completa documentada
@@ -189,11 +203,11 @@ Remove-Item .\data\sg-sst-test.db, .\uploads-test -Recurse -Force
 
 ## 8. Contactos y Responsables
 
-| Rol | Responsable | Contacto |
-|-----|-------------|----------|
-| Responsable SG-SST | [Nombre] | [Email/Telefono] |
-| Admin Sistema | [Nombre] | [Email/Telefono] |
-| DPO (Datos Personales) | [Nombre] | [Email/Telefono] |
+| Rol                    | Responsable | Contacto         |
+| ---------------------- | ----------- | ---------------- |
+| Responsable SG-SST     | [Nombre]    | [Email/Telefono] |
+| Admin Sistema          | [Nombre]    | [Email/Telefono] |
+| DPO (Datos Personales) | [Nombre]    | [Email/Telefono] |
 
 ---
 
@@ -206,4 +220,4 @@ Remove-Item .\data\sg-sst-test.db, .\uploads-test -Recurse -Force
 
 ---
 
-*Documento versión 1.0 - Actualizar tras cada cambio en arquitectura de datos*
+_Documento versión 1.0 - Actualizar tras cada cambio en arquitectura de datos_

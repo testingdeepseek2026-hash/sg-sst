@@ -7,7 +7,17 @@ import {
   getCorrectiveActions,
   updateCorrectiveAction,
 } from '../services/actions.js';
-import { createAudit, deleteAudit, getAudits, updateAudit, createFinding, deleteFinding, getFindingsByAudit, getFindingsSummary, updateFinding } from '../services/audits_alerts.js';
+import {
+  createAudit,
+  createFinding,
+  deleteAudit,
+  deleteFinding,
+  getAudits,
+  getFindingsByAudit,
+  getFindingsSummary,
+  updateAudit,
+  updateFinding,
+} from '../services/audits_alerts.js';
 import {
   createDocument,
   deleteDocument,
@@ -15,7 +25,7 @@ import {
   getDocuments,
   updateDocument,
 } from '../services/documents.js';
-import * as UsersService from '../services/users.js';
+import { requireRole, getAuthUser, auditLog, isAdmin } from '../lib/auth.js';
 
 const docSchema = z.object({
   codigo: z.string().min(2),
@@ -32,77 +42,78 @@ const docSchema = z.object({
 
 const documentsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/documents', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    const user = request.user;
+    if (!user) return reply.code(401).send({ error: 'No autenticado' });
     // Admin ve todo; trabajador ve solo vigentes
-    if (me.rol !== 'administrador') {
+    if (user.rol !== 'administrador') {
       return getDocuments(fastify.db, { estado: 'vigente' });
     }
     return getDocuments(fastify.db);
   });
+
   fastify.get('/documents/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
-    const d = getDocumentById(fastify.db, (request.params as any).id);
+    const user = request.user;
+    if (!user) return reply.code(401).send({ error: 'No autenticado' });
+    const { id } = request.params as { id: string };
+    const d = getDocumentById(fastify.db, id);
     if (!d) return reply.code(404).send({ error: 'Documento no encontrado' });
     // Trabajador solo ve documentos vigentes
-    if (me.rol !== 'administrador' && d.estado !== 'vigente') {
+    if (user.rol !== 'administrador' && d.estado !== 'vigente') {
       return reply.code(403).send({ error: 'No autorizado' });
     }
     return d;
   });
-  fastify.post('/documents', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  fastify.post('/documents', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parsed = docSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const d = createDocument(fastify.db, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'documents',
       entidad_id: d.id,
       valores_nuevos: parsed.data,
     });
+
     return d;
   });
-  fastify.put('/documents/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  fastify.put('/documents/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = docSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const updated = updateDocument(fastify.db, id, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'documents',
       entidad_id: id,
       valores_nuevos: parsed.data,
     });
+
     return updated;
   });
-  fastify.delete('/documents/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    deleteDocument(fastify.db, (request.params as any).id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+  fastify.delete('/documents/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    deleteDocument(fastify.db, id);
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'documents',
-      entidad_id: (request.params as any).id,
+      entidad_id: id,
     });
+
     return { ok: true };
   });
 };
@@ -118,61 +129,61 @@ const actionSchema = z.object({
 
 const actionsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/actions', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+    const user = request.user;
+    if (!user) return reply.code(401).send({ error: 'No autenticado' });
     return getCorrectiveActions(fastify.db);
   });
-  fastify.post('/actions', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  fastify.post('/actions', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parsed = actionSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const a = createCorrectiveAction(fastify.db, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'corrective_actions',
       entidad_id: a.id,
       valores_nuevos: parsed.data,
     });
+
     return a;
   });
-  fastify.put('/actions/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  fastify.put('/actions/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = actionSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const updated = updateCorrectiveAction(fastify.db, id, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'corrective_actions',
       entidad_id: id,
       valores_nuevos: parsed.data,
     });
+
     return updated;
   });
-  fastify.delete('/actions/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    deleteCorrectiveAction(fastify.db, (request.params as any).id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+  fastify.delete('/actions/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    deleteCorrectiveAction(fastify.db, id);
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'corrective_actions',
-      entidad_id: (request.params as any).id,
+      entidad_id: id,
     });
+
     return { ok: true };
   });
 };
@@ -204,153 +215,139 @@ const findingSchema = z.object({
 });
 
 const auditsRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/audits', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+  fastify.get('/audits', { preHandler: requireRole('administrador') }, async (request, reply) => {
     return getAudits(fastify.db);
   });
-  fastify.post('/audits', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  fastify.post('/audits', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parsed = auditSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const a = createAudit(fastify.db, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'audits',
       entidad_id: a.id,
       valores_nuevos: parsed.data,
     });
+
     return a;
   });
-  fastify.put('/audits/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+
+  fastify.put('/audits/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = auditSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const updated = updateAudit(fastify.db, id, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'audits',
       entidad_id: id,
       valores_nuevos: parsed.data,
     });
+
     return updated;
   });
-  fastify.delete('/audits/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    deleteAudit(fastify.db, (request.params as any).id);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+  fastify.delete('/audits/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    deleteAudit(fastify.db, id);
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'audits',
-      entidad_id: (request.params as any).id,
+      entidad_id: id,
     });
+
     return { ok: true };
   });
 
   // ===== AUDIT FINDINGS (Hallazgos) =====
-  fastify.get('/audits/:id/findings', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+  fastify.get('/audits/:id/findings', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     return getFindingsByAudit(fastify.db, id);
   });
 
-  fastify.get('/audits/findings/summary', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me) return reply.code(401).send({ error: 'No autenticado' });
+  fastify.get('/audits/findings/summary', { preHandler: requireRole('administrador') }, async (request, reply) => {
     return getFindingsSummary(fastify.db);
   });
 
-  fastify.post('/audits/:id/findings', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.post('/audits/:id/findings', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as Record<string, any>;
     const parsed = findingSchema.safeParse({ ...body, audit_id: id });
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const f = createFinding(fastify.db, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'crear',
       entidad: 'audit_findings',
       entidad_id: f.id,
       valores_nuevos: parsed.data,
     });
+
     return f;
   });
 
-  fastify.put('/audits/:id/findings/:fid', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.put('/audits/:id/findings/:fid', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { fid } = request.params as { fid: string };
     const parsed = findingSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const updated = updateFinding(fastify.db, fid, parsed.data);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'audit_findings',
       entidad_id: fid,
       valores_nuevos: parsed.data,
     });
+
     return updated;
   });
 
-  fastify.delete('/audits/:id/findings/:fid', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-    deleteFinding(fastify.db, (request.params as any).fid);
-    UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+  fastify.delete('/audits/:id/findings/:fid', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const { fid } = request.params as { fid: string };
+    deleteFinding(fastify.db, fid);
+
+    const user = getAuthUser(request);
+    auditLog(fastify.db, {
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'audit_findings',
-      entidad_id: (request.params as any).fid,
+      entidad_id: fid,
     });
+
     return { ok: true };
   });
 
   // Export findings to Excel
-  fastify.get('/audits/:id/findings/export', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
+  fastify.get('/audits/:id/findings/export', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const findings = getFindingsByAudit(fastify.db, id);
     const audit = fastify.db.prepare('SELECT * FROM audits WHERE id = ?').get(id);
-    
+
     // Create Excel using ExcelJS
     const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Hallazgos');
-    
+
     ws.columns = [
       { header: 'ID', key: 'id', width: 12 },
       { header: 'Tipo', key: 'tipo', width: 20 },
@@ -364,7 +361,7 @@ const auditsRoutes: FastifyPluginAsync = async (fastify) => {
       { header: 'Evidencia Cierre', key: 'evidencia_cierre', width: 30 },
       { header: 'Fecha Cierre', key: 'fecha_cierre', width: 15 },
     ];
-    
+
     for (const f of findings) {
       ws.addRow({
         id: f.id,
@@ -380,10 +377,13 @@ const auditsRoutes: FastifyPluginAsync = async (fastify) => {
         fecha_cierre: f.fecha_cierre || '',
       });
     }
-    
+
     const buf = await wb.xlsx.writeBuffer();
     reply.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    reply.header('Content-Disposition', `attachment; filename=hallazgos_auditoria_${audit?.anio}_${audit?.tipo}.xlsx`);
+    reply.header(
+      'Content-Disposition',
+      `attachment; filename=hallazgos_auditoria_${audit?.anio}_${audit?.tipo}.xlsx`
+    );
     return buf;
   });
 };
@@ -391,13 +391,16 @@ const auditsRoutes: FastifyPluginAsync = async (fastify) => {
 // ===== AUDIT LOGS (Bitácora de trazabilidad) =====
 const auditLogsRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /audit-logs - Solo administrador puede ver la bitácora completa
-  fastify.get('/audit-logs', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador puede consultar la bitácora de auditoría' });
-
-    const { limit = '100', offset = '0', entidad, accion, usuario_id, desde, hasta } = request.query as {
+  fastify.get('/audit-logs', { preHandler: requireRole('administrador') }, async (request, reply) => {
+    const {
+      limit = '100',
+      offset = '0',
+      entidad,
+      accion,
+      usuario_id,
+      desde,
+      hasta,
+    } = request.query as {
       limit?: string;
       offset?: string;
       entidad?: string;
@@ -432,21 +435,19 @@ const auditLogsRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const logs = fastify.db
-      .prepare(
-        `SELECT * FROM audit_logs WHERE ${where} ORDER BY creado_en DESC LIMIT ? OFFSET ?`
-      )
+      .prepare(`SELECT * FROM audit_logs WHERE ${where} ORDER BY creado_en DESC LIMIT ? OFFSET ?`)
       .all(...params, parseInt(limit, 10), parseInt(offset, 10)) as Array<{
-        id: string;
-        usuario_id: string | null;
-        usuario_email: string | null;
-        accion: string;
-        entidad: string;
-        entidad_id: string | null;
-        valores_anteriores: string | null;
-        valores_nuevos: string | null;
-        ip: string | null;
-        creado_en: string;
-      }>;
+      id: string;
+      usuario_id: string | null;
+      usuario_email: string | null;
+      accion: string;
+      entidad: string;
+      entidad_id: string | null;
+      valores_anteriores: string | null;
+      valores_nuevos: string | null;
+      ip: string | null;
+      creado_en: string;
+    }>;
 
     const total = fastify.db
       .prepare(`SELECT COUNT(*) as c FROM audit_logs WHERE ${where}`)
@@ -456,12 +457,7 @@ const auditLogsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // GET /audit-logs/stats - Resumen estadístico de la bitácora
-  fastify.get('/audit-logs/stats', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
-      return reply.code(403).send({ error: 'Solo administrador' });
-
+  fastify.get('/audit-logs/stats', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const total = fastify.db.prepare('SELECT COUNT(*) as c FROM audit_logs').get() as { c: number };
     const porEntidad = fastify.db
       .prepare('SELECT entidad, COUNT(*) as c FROM audit_logs GROUP BY entidad ORDER BY c DESC')
@@ -479,4 +475,4 @@ const auditLogsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 };
 
-export { actionsRoutes, auditsRoutes, auditLogsRoutes, documentsRoutes };
+export { actionsRoutes, auditLogsRoutes, auditsRoutes, documentsRoutes };

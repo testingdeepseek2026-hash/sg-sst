@@ -9,5 +9,11 @@ declare module 'fastify' {
   interface FastifyRequest {
     userId?: string;
     userEmail?: string;
+    user?: {
+      id: string;
+      email: string;
+      nombre: string;
+      rol: 'administrador' | 'trabajador';
+    };
   }
 }

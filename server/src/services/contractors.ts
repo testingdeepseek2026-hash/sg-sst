@@ -17,7 +17,9 @@ export interface Contractor {
 }
 
 export function getContractors(db: any) {
-  return db.prepare('SELECT * FROM contractors ORDER BY fecha_evaluacion DESC, creado_en DESC').all() as Contractor[];
+  return db
+    .prepare('SELECT * FROM contractors ORDER BY fecha_evaluacion DESC, creado_en DESC')
+    .all() as Contractor[];
 }
 
 export function getContractorById(db: any, id: string) {

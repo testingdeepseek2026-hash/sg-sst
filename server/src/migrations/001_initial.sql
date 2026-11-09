@@ -524,11 +524,70 @@ CREATE TABLE IF NOT EXISTS alerts (
 CREATE TABLE IF NOT EXISTS consents (
   id TEXT PRIMARY KEY,
   worker_id TEXT NOT NULL,
-  tipo TEXT NOT NULL CHECK (tipo IN ('medico','general')),
+  tipo TEXT NOT NULL CHECK (tipo IN ('medico','biometrico','general','marketing','transferencia')),
+  finalidad TEXT,
   autorizado INTEGER NOT NULL DEFAULT 0,
   fecha TEXT NOT NULL DEFAULT (datetime('now')),
-  medio TEXT,                         -- escrito | digital
+  medio TEXT,                         -- escrito | digital | verbal
+  version_aviso TEXT,
+  ip TEXT,
+  user_agent TEXT,
+  retirado_en TEXT,
+  creado_en TEXT NOT NULL DEFAULT (datetime('now')),
+  actualizado_en TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (worker_id) REFERENCES workers(id)
+);
+
+-- ------------------------------------------------------------------
+-- 22. Avisos de Privacidad (Ley 1581/2012 - Art. 17)
+-- ------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS privacy_notices (
+  id TEXT PRIMARY KEY,
+  version INTEGER NOT NULL DEFAULT 1,
+  titulo TEXT NOT NULL,
+  contenido TEXT NOT NULL,
+  fecha_vigencia TEXT NOT NULL,
+  estado TEXT NOT NULL DEFAULT 'borrador', -- borrador | vigente | archivado
+  creado_en TEXT NOT NULL DEFAULT (datetime('now')),
+  actualizado_en TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ------------------------------------------------------------------
+-- 23. Solicitudes ARCO (Ley 1581/2012 - Art. 8, 15, 16, 17)
+-- Acceso, Rectificación, Cancelación, Oposición
+-- ------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS arco_requests (
+  id TEXT PRIMARY KEY,
+  worker_id TEXT NOT NULL,
+  tipo TEXT NOT NULL CHECK (tipo IN ('acceso','rectificacion','cancelacion','oposicion')),
+  descripcion TEXT NOT NULL,
+  estado TEXT NOT NULL DEFAULT 'pendiente', -- pendiente | en_proceso | resuelto | rechazado
+  respuesta TEXT,
+  evidencia_respuesta TEXT,
+  fecha_solicitud TEXT NOT NULL DEFAULT (datetime('now')),
+  fecha_respuesta TEXT,
+  responsable TEXT NOT NULL,
+  creado_en TEXT NOT NULL DEFAULT (datetime('now')),
+  actualizado_en TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (worker_id) REFERENCES workers(id)
+);
+
+-- ------------------------------------------------------------------
+-- 24. Registro de Tratamiento de Datos (Ley 1581/2012 - Art. 18, Dec. 1377/2013)
+-- ------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS data_processing_records (
+  id TEXT PRIMARY KEY,
+  entidad TEXT NOT NULL,
+  finalidad TEXT NOT NULL,
+  categorias_datos TEXT NOT NULL, -- JSON array: ['identificacion','medicos','biometricos','laborales']
+  base_legal TEXT NOT NULL, -- consentimiento | contrato | obligacion_legal | interes_vital | interes_publico | interes_legitimo
+  destinatarios TEXT, -- JSON array
+  transferencias_internacionales INTEGER NOT NULL DEFAULT 0,
+  pais_destino TEXT,
+  medidas_seguridad TEXT NOT NULL, -- JSON array
+  retencion_dias INTEGER NOT NULL,
+  creado_en TEXT NOT NULL DEFAULT (datetime('now')),
+  actualizado_en TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_worker_exams_worker ON worker_exams(worker_id);

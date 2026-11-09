@@ -358,12 +358,26 @@ export function getAlertStats(db: any, workerId?: string) {
   }
 
   const baseWhere = where ? `${where}` : '1=1';
-  const total = db.prepare(`SELECT COUNT(*) as c FROM alerts WHERE ${baseWhere}`).get(...params) as { c: number };
-  const pendientes = db.prepare(`SELECT COUNT(*) as c FROM alerts WHERE ${baseWhere} AND enviado = 0`).get(...params) as { c: number };
-  const enviadas = db.prepare(`SELECT COUNT(*) as c FROM alerts WHERE ${baseWhere} AND enviado = 1`).get(...params) as { c: number };
-  const vencidas = db.prepare(`SELECT COUNT(*) as c FROM alerts WHERE ${baseWhere} AND enviado = 0 AND date(fecha_vencimiento) < date('now')`).get(...params) as { c: number };
-  const porTipo = db.prepare(`SELECT tipo, COUNT(*) as c FROM alerts WHERE ${baseWhere} GROUP BY tipo`).all(...params) as { tipo: string; c: number }[];
-  const porPrioridad = db.prepare(`SELECT prioridad, COUNT(*) as c FROM alerts WHERE ${baseWhere} GROUP BY prioridad`).all(...params) as { prioridad: string; c: number }[];
+  const total = db
+    .prepare(`SELECT COUNT(*) as c FROM alerts WHERE ${baseWhere}`)
+    .get(...params) as { c: number };
+  const pendientes = db
+    .prepare(`SELECT COUNT(*) as c FROM alerts WHERE ${baseWhere} AND enviado = 0`)
+    .get(...params) as { c: number };
+  const enviadas = db
+    .prepare(`SELECT COUNT(*) as c FROM alerts WHERE ${baseWhere} AND enviado = 1`)
+    .get(...params) as { c: number };
+  const vencidas = db
+    .prepare(
+      `SELECT COUNT(*) as c FROM alerts WHERE ${baseWhere} AND enviado = 0 AND date(fecha_vencimiento) < date('now')`
+    )
+    .get(...params) as { c: number };
+  const porTipo = db
+    .prepare(`SELECT tipo, COUNT(*) as c FROM alerts WHERE ${baseWhere} GROUP BY tipo`)
+    .all(...params) as { tipo: string; c: number }[];
+  const porPrioridad = db
+    .prepare(`SELECT prioridad, COUNT(*) as c FROM alerts WHERE ${baseWhere} GROUP BY prioridad`)
+    .all(...params) as { prioridad: string; c: number }[];
 
   return {
     total: total.c,

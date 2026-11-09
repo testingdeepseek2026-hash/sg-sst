@@ -20,18 +20,15 @@ const AUTH_TAG_LENGTH = 16;
  */
 export function encrypt(plaintext: string): string {
   if (!plaintext) return '';
-  
+
   const key = getEncryptionKey();
   const iv = randomBytes(IV_LENGTH);
   const cipher = createCipheriv(ALGORITHM, key, iv);
-  
-  const ciphertext = Buffer.concat([
-    cipher.update(plaintext, 'utf8'),
-    cipher.final()
-  ]);
-  
+
+  const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+
   const authTag = cipher.getAuthTag();
-  
+
   // Formato: IV (12) + ciphertext + authTag (16)
   const result = Buffer.concat([iv, ciphertext, authTag]);
   return result.toString('base64');
@@ -42,27 +39,24 @@ export function encrypt(plaintext: string): string {
  */
 export function decrypt(encryptedBase64: string): string {
   if (!encryptedBase64) return '';
-  
+
   try {
     const key = getEncryptionKey();
     const data = Buffer.from(encryptedBase64, 'base64');
-    
+
     if (data.length < IV_LENGTH + AUTH_TAG_LENGTH) {
       throw new Error('Datos cifrados inválidos');
     }
-    
+
     const iv = data.subarray(0, IV_LENGTH);
     const authTag = data.subarray(data.length - AUTH_TAG_LENGTH);
     const ciphertext = data.subarray(IV_LENGTH, data.length - AUTH_TAG_LENGTH);
-    
+
     const decipher = createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
-    
-    const plaintext = Buffer.concat([
-      decipher.update(ciphertext),
-      decipher.final()
-    ]);
-    
+
+    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+
     return plaintext.toString('utf8');
   } catch (err) {
     console.error('[CRYPTO] Error descifrando:', err);
@@ -106,19 +100,32 @@ export function isEncrypted(value: string): boolean {
 
 /**
  * Middleware para cifrar/descifrar campos sensibles automáticamente
+ * Ley 1581/2012 - Datos sensibles: médicos, biométricos, hábitos, etc.
  */
 export const SENSITIVE_FIELDS = [
+  // Datos médicos (worker_exams)
   'restricciones',
-  'archivo_url', // si contiene datos médicos
+  'archivo_url', // puede contener rutas a archivos médicos
   'notas', // puede contener info médica
   'diagnostico',
   'tratamiento',
+  'medico', // nombre del médico tratante
+  'entidad', // IPS/entidad médica
+  // Certificados (worker_certs) - archivo_url y notas pueden contener info sensible
+  'archivo_url',
+  'notas',
+  // EPP (worker_epp) - firma es dato biométrico
+  'firma_url',
+  'notas',
 ];
 
 /**
  * Cifra campos sensibles de un objeto antes de guardar en BD
  */
-export function encryptSensitiveFields(obj: Record<string, any>, fields: string[] = SENSITIVE_FIELDS): Record<string, any> {
+export function encryptSensitiveFields(
+  obj: Record<string, any>,
+  fields: string[] = SENSITIVE_FIELDS
+): Record<string, any> {
   const result = { ...obj };
   for (const field of fields) {
     if (result[field] && typeof result[field] === 'string' && !isEncrypted(result[field])) {
@@ -131,7 +138,10 @@ export function encryptSensitiveFields(obj: Record<string, any>, fields: string[
 /**
  * Descifra campos sensibles de un objeto leído de BD
  */
-export function decryptSensitiveFields(obj: Record<string, any>, fields: string[] = SENSITIVE_FIELDS): Record<string, any> {
+export function decryptSensitiveFields(
+  obj: Record<string, any>,
+  fields: string[] = SENSITIVE_FIELDS
+): Record<string, any> {
   const result = { ...obj };
   for (const field of fields) {
     if (result[field] && typeof result[field] === 'string' && isEncrypted(result[field])) {

@@ -9,13 +9,14 @@ import Fastify from 'fastify';
 
 import { DB_PATH, openDb, runMigrations } from './lib/db.js';
 import { startAlertScheduler } from './lib/scheduler.js';
+import { requireAuth } from './lib/auth.js';
 import alertsRoutes from './routes/alerts.js';
 import companiesRoutes from './routes/companies.js';
 import contractorsRoutes from './routes/contractors.js';
 import {
   actionsRoutes,
-  auditsRoutes,
   auditLogsRoutes,
+  auditsRoutes,
   documentsRoutes,
 } from './routes/documents_actions_audits_alerts.js';
 import emergenciesRoutes from './routes/emergencies.js';
@@ -27,6 +28,8 @@ import indicatorsRoutes from './routes/indicators.js';
 import inspectionsRoutes, { alturaRoutes } from './routes/inspections.js';
 import plansRoutes from './routes/plans.js';
 import policiesRoutes from './routes/policies.js';
+import privacyRoutes from './routes/privacy.js';
+import restoreRoutes from './routes/restore.js';
 import rolesRoutes from './routes/roles.js';
 import standardsRoutes from './routes/standards.js';
 import uploadsRoutes from './routes/uploads.js';
@@ -49,10 +52,9 @@ const db = openDb();
 runMigrations(db);
 app.decorate('db', db);
 
-app.addHook('preHandler', async (request) => {
-  request.userId = request.cookies['sg_sst_user'] ?? undefined;
-  request.userEmail = request.cookies['sg_sst_email'] ?? undefined;
-});
+// Hook global: autenticación y adjuntar request.user tipado
+// Las rutas individuales usan requireRole/requireOwnership para autorización
+app.addHook('preHandler', requireAuth);
 
 app.register(companiesRoutes, { prefix: '/api' });
 app.register(usersRoutes, { prefix: '/api' });
@@ -77,6 +79,8 @@ app.register(uploadsRoutes, { prefix: '/api' });
 app.register(contractorsRoutes, { prefix: '/api' });
 app.register(emergenciesRoutes, { prefix: '/api' });
 app.register(policiesRoutes, { prefix: '/api' });
+app.register(privacyRoutes, { prefix: '/api' });
+app.register(restoreRoutes, { prefix: '/api' });
 
 app.get('/api/health', async () => {
   try {
