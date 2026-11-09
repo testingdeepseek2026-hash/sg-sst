@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { CalendarDays, GraduationCap, ListChecks } from 'lucide-react';
+
 import { SignaturePad } from '@/components/SignaturePad';
 
 import { api } from '../lib/api';
@@ -517,67 +519,54 @@ export default function Planes() {
   ];
 
   return (
-    <div style={{ padding: 20, maxWidth: 1200 }}>
-      <h1 style={{ marginBottom: 12, color: '#0f766e' }}>
-        Plan Anual de Trabajo y Cronograma de Capacitación
-      </h1>
-
-      <p style={{ color: '#6b7280', fontSize: 12, marginBottom: 16 }}>
-        Gestión de actividades anuales y capacitaciones SST conforme a Resoluciones 0312/2019, 1581/2012, 4272/2021.
-      </p>
+    <div className="ui-page plans-page">
+      <header className="plans-page-heading">
+        <h1 className="ui-page-title">Plan Anual de Trabajo y Cronograma de Capacitación</h1>
+        <p className="ui-page-description">
+          Gestión de actividades anuales y capacitaciones SST conforme a Resoluciones 0312/2019,
+          1581/2012, 4272/2021.
+        </p>
+      </header>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: 16 }}>
+      <div aria-label="Secciones del plan anual" className="ui-tabs plans-tabs" role="tablist">
         {[
-          { id: 'planes', label: '📋 Plan Anual de Trabajo' },
-          { id: 'capacitacion', label: '🎓 Cronograma de Capacitación' },
-          { id: 'ejecucion', label: '📝 Ejecución Capacitaciones' },
+          { id: 'planes' as const, label: 'Plan anual', icon: CalendarDays },
+          { id: 'capacitacion' as const, label: 'Capacitaciones', icon: GraduationCap },
+          { id: 'ejecucion' as const, label: 'Ejecución', icon: ListChecks },
         ].map((tab) => (
           <button
+            aria-selected={activeTab === tab.id}
+            aria-controls={activeTab === tab.id ? `plans-panel-${tab.id}` : undefined}
+            className="ui-tab"
+            id={`plans-tab-${tab.id}`}
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            style={{
-              padding: '12px 20px',
-              border: 'none',
-              background: activeTab === tab.id ? 'transparent' : 'transparent',
-              color: activeTab === tab.id ? '#0f766e' : '#6b7280',
-              fontWeight: activeTab === tab.id ? '600' : '400',
-              fontSize: 14,
-              cursor: 'pointer',
-              borderBottom: activeTab === tab.id ? '3px solid #0f766e' : 'transparent',
-              marginBottom: '-1px',
-            }}
+            onClick={() => setActiveTab(tab.id)}
+            role="tab"
+            type="button"
           >
-            {tab.label}
+            <tab.icon aria-hidden="true" size={16} />
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>
 
       {/* Plan Anual Tab */}
       {activeTab === 'planes' && (
-        <>
+        <section
+          aria-labelledby="plans-tab-planes"
+          className="plans-tab-panel"
+          id="plans-panel-planes"
+          role="tabpanel"
+          tabIndex={0}
+        >
           {/* KPIs */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
-            <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>Total Actividades</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#0f766e' }}>{getPlanKPIs().total}</div>
-            </div>
-            <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>Cumplidas</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#16a34a' }}>{getPlanKPIs().porEstado.cumplido || 0}</div>
-            </div>
-            <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>En Proceso</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ea580c' }}>{getPlanKPIs().porEstado.en_proceso || 0}</div>
-            </div>
-            <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>Vencidas</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#dc2626' }}>{getPlanKPIs().vencidas}</div>
-            </div>
-            <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>Alertas (30 días)</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#f59e0b' }}>{getPlanKPIs().alertadas}</div>
-            </div>
+          <div className="plans-kpi-grid plans-kpi-grid--annual">
+            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Total Actividades</div><div className="plans-kpi-card-value" style={{ color: '#0f766e' }}>{getPlanKPIs().total}</div></div>
+            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Cumplidas</div><div className="plans-kpi-card-value" style={{ color: '#16a34a' }}>{getPlanKPIs().porEstado.cumplido || 0}</div></div>
+            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">En Proceso</div><div className="plans-kpi-card-value" style={{ color: '#ea580c' }}>{getPlanKPIs().porEstado.en_proceso || 0}</div></div>
+            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Vencidas</div><div className="plans-kpi-card-value" style={{ color: '#dc2626' }}>{getPlanKPIs().vencidas}</div></div>
+            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Alertas (30 días)</div><div className="plans-kpi-card-value" style={{ color: '#f59e0b' }}>{getPlanKPIs().alertadas}</div></div>
           </div>
 
           {/* Filters */}
@@ -866,30 +855,24 @@ export default function Planes() {
               </tbody>
             </table>
           </div>
-        </>
+        </section>
       )}
 
       {/* Cronograma de Capacitación Tab */}
       {activeTab === 'capacitacion' && (
-        <>
+        <section
+          aria-labelledby="plans-tab-capacitacion"
+          className="plans-tab-panel"
+          id="plans-panel-capacitacion"
+          role="tabpanel"
+          tabIndex={0}
+        >
           {/* Training KPIs */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
-            <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>Total Capacitaciones</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#0f766e' }}>{getTrainingKPIs().total}</div>
-            </div>
-            <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>Programadas</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#3b82f6' }}>{getTrainingKPIs().programadas}</div>
-            </div>
-            <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>Realizadas</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#16a34a' }}>{getTrainingKPIs().realizadas}</div>
-            </div>
-            <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>Alertas (30 días)</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#f59e0b' }}>{getTrainingKPIs().alertasCapacitacion}</div>
-            </div>
+          <div className="plans-kpi-grid">
+            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Total Capacitaciones</div><div className="plans-kpi-card-value" style={{ color: '#0f766e' }}>{getTrainingKPIs().total}</div></div>
+            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Programadas</div><div className="plans-kpi-card-value" style={{ color: '#3b82f6' }}>{getTrainingKPIs().programadas}</div></div>
+            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Realizadas</div><div className="plans-kpi-card-value" style={{ color: '#16a34a' }}>{getTrainingKPIs().realizadas}</div></div>
+            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Alertas (30 días)</div><div className="plans-kpi-card-value" style={{ color: '#f59e0b' }}>{getTrainingKPIs().alertasCapacitacion}</div></div>
           </div>
 
           {/* Filters */}
@@ -1160,30 +1143,24 @@ export default function Planes() {
               })}
             </div>
           </div>
-        </>
+        </section>
       )}
 
       {/* TAB 3: EJECUCIÓN DE CAPACITACIONES */}
       {activeTab === 'ejecucion' && (
-        <>
+        <section
+          aria-labelledby="plans-tab-ejecucion"
+          className="plans-tab-panel"
+          id="plans-panel-ejecucion"
+          role="tabpanel"
+          tabIndex={0}
+        >
           {/* KPIs */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
-            <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>Total Ejecuciones</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#0f766e' }}>{executions.length}</div>
-            </div>
-            <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>Realizadas</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#16a34a' }}>{executions.filter(e => e.estado === 'realizada').length}</div>
-            </div>
-            <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>Programadas</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#3b82f6' }}>{executions.filter(e => e.estado === 'programada').length}</div>
-            </div>
-            <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>Con Evidencia</div>
-              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#f59e0b' }}>{executions.filter(e => e.archivo_evidencia).length}</div>
-            </div>
+          <div className="plans-kpi-grid">
+            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Total Ejecuciones</div><div className="plans-kpi-card-value" style={{ color: '#0f766e' }}>{executions.length}</div></div>
+            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Realizadas</div><div className="plans-kpi-card-value" style={{ color: '#16a34a' }}>{executions.filter(e => e.estado === 'realizada').length}</div></div>
+            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Programadas</div><div className="plans-kpi-card-value" style={{ color: '#3b82f6' }}>{executions.filter(e => e.estado === 'programada').length}</div></div>
+            <div className="ui-surface plans-kpi-card"><div className="plans-kpi-card-label">Con Evidencia</div><div className="plans-kpi-card-value" style={{ color: '#f59e0b' }}>{executions.filter(e => e.archivo_evidencia).length}</div></div>
           </div>
 
           {/* Message */}
@@ -1570,7 +1547,7 @@ export default function Planes() {
             </div>
           )}
 
-        </>
+        </section>
       )}
 
       {/* Legal Note */}

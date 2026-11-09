@@ -1,237 +1,385 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+
+import {
+  AlertTriangle,
+  ArrowRight,
+  CalendarDays,
+  ClipboardCheck,
+  FilePlus2,
+  ListChecks,
+  UsersRound,
+  type LucideIcon,
+} from 'lucide-react';
 
 import { api } from '../lib/api';
 
-function card(title: string, value: React.ReactNode, sub?: string) {
+interface ComplianceSummary {
+  total?: number;
+  cumplidos?: number;
+  incumplidos?: number;
+  porcentaje?: number;
+}
+
+interface ActionSummary {
+  id: string | number;
+  descripcion: string;
+  estado: string;
+  fecha_limite?: string | null;
+}
+
+interface IncidentSummary {
+  id: string | number;
+  tipo: string;
+  descripcion: string;
+  estado: string;
+}
+
+interface MetricCardProps {
+  detail: string;
+  icon: LucideIcon;
+  label: string;
+  to: string;
+  value: number;
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  pendiente: 'Pendiente',
+  en_proceso: 'En proceso',
+  completada: 'Completada',
+  abierto: 'Abierto',
+  investigando: 'En investigación',
+  cerrado: 'Cerrado',
+};
+
+const DASHBOARD_SHORTCUTS = [
+  { to: '/trabajadores', label: 'Trabajadores', icon: UsersRound },
+  { to: '/estandar', label: 'Estándares mínimos', icon: ClipboardCheck },
+  { to: '/planes', label: 'Plan anual', icon: CalendarDays },
+  { to: '/incidentes', label: 'Registrar incidente', icon: FilePlus2 },
+];
+
+function getStatusLabel(status: string) {
+  return STATUS_LABELS[status] ?? status.replace(/_/g, ' ');
+}
+
+function formatDate(value: string) {
+  const date = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return date ? `${date[3]}/${date[2]}/${date[1]}` : value;
+}
+
+function MetricCard({ detail, icon: Icon, label, to, value }: MetricCardProps) {
   return (
-    <div
-      style={{
-        background: '#fff',
-        padding: 16,
-        borderRadius: 10,
-        boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-      }}
-    >
-      <div
-        style={{
-          fontSize: 12,
-          color: '#6b7280',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          marginBottom: 8,
-        }}
-      >
-        {title}
+    <article className="ui-surface dashboard-metric">
+      <div className="dashboard-metric-heading">
+        <Icon aria-hidden="true" size={18} />
+        <span>{label}</span>
       </div>
-      <div style={{ fontSize: 26, fontWeight: 'bold', color: '#111827' }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{sub}</div>}
+      <strong className="dashboard-metric-value">{value}</strong>
+      <p className="dashboard-metric-detail">{detail}</p>
+      <Link className="dashboard-card-link" to={to}>
+        Ver módulo <ArrowRight aria-hidden="true" size={15} />
+      </Link>
+    </article>
+  );
+}
+
+function DashboardShortcuts() {
+  return (
+    <div className="dashboard-quick-links">
+      {DASHBOARD_SHORTCUTS.map(({ icon: Icon, label, to }) => (
+        <Link className="dashboard-quick-link" key={to} to={to}>
+          <Icon aria-hidden="true" size={18} />
+          {label}
+          <ArrowRight aria-hidden="true" size={15} />
+        </Link>
+      ))}
     </div>
   );
 }
 
 export default function Dashboard() {
-  const [std, setStd] = useState<any>(null);
-  const [workers, setWorkers] = useState<any[]>([]);
-  const [actions, setActions] = useState<any[]>([]);
-  const [incidents, setIncidents] = useState<any[]>([]);
+  const [std, setStd] = useState<ComplianceSummary | null>(null);
+  const [workers, setWorkers] = useState<unknown[]>([]);
+  const [actions, setActions] = useState<ActionSummary[]>([]);
+  const [incidents, setIncidents] = useState<IncidentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const [s, w, a, i] = await Promise.all([
+        const [compliance, workerList, actionList, incidentList] = await Promise.all([
           api.get('/standards/cumplimiento'),
           api.get('/workers'),
           api.get('/actions'),
           api.get('/incidents'),
         ]);
-        setStd(s);
-        setWorkers(w);
-        setActions(a);
-        setIncidents(i);
-      } catch (err: any) {
+        setStd(compliance);
+        setWorkers(workerList);
+        setActions(actionList);
+        setIncidents(incidentList);
+      } catch (err) {
         console.error('Error cargando datos del dashboard:', err);
-        setError(err.message || 'Error cargando datos');
+        setError(err instanceof Error ? err.message : 'No fue posible cargar los datos.');
       } finally {
         setLoading(false);
       }
     })();
   }, []);
 
-  if (loading) return <div style={{ padding: 20, color: '#6b7280' }}>Cargando tablero...</div>;
-
-  if (error)
+  if (loading) {
     return (
-      <div style={{ padding: 20, textAlign: 'center' }}>
-        <div
-          style={{
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            padding: 20,
-            borderRadius: 10,
-            color: '#991b1b',
-            maxWidth: 600,
-            margin: '0 auto',
-          }}
-        >
-          <h3 style={{ marginTop: 0 }}>⚠️ Error al cargar los datos</h3>
-          <p>{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              padding: '8px 16px',
-              background: '#0f766e',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              cursor: 'pointer',
-            }}
-          >
-            Intentar recargar
-          </button>
-        </div>
-      </div>
-    );
-
-  // Si no hay datos, mostrar estado vacío
-  if (!std && !workers.length && !actions.length && !incidents.length) {
-    return (
-      <div style={{ padding: 20, textAlign: 'center' }}>
-        <h2 style={{ color: '#0f766e', marginBottom: 16 }}>📊 Bienvenido al Tablero SG-SST</h2>
-        <p style={{ color: '#6b7280', marginBottom: 20 }}>
-          Aún no hay datos registrados. Comienza cargando información en los módulos
-          correspondientes.
-        </p>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 12,
-            maxWidth: 600,
-            margin: '0 auto',
-          }}
-        >
-          <div
-            style={{
-              background: '#fff',
-              padding: 16,
-              borderRadius: 10,
-              boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-            }}
-          >
-            <h4 style={{ margin: '0 0 8px', color: '#0f766e' }}>🔐 Registro Usuario</h4>
-            <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>
-              Crea un usuario administrador desde la base de datos o semilla
-            </p>
-          </div>
-          <div
-            style={{
-              background: '#fff',
-              padding: 16,
-              borderRadius: 10,
-              boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-            }}
-          >
-            <h4 style={{ margin: '0 0 8px', color: '#0f766e' }}>📋 Trabajadores</h4>
-            <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>
-              Registra trabajadores, exámenes médicos y certificaciones
-            </p>
-          </div>
-        </div>
+      <div className="ui-page dashboard-page" role="status">
+        Cargando tablero...
       </div>
     );
   }
 
-  const vencidos = (actions || []).filter(
-    (x: any) => x.estado === 'pendiente' || x.estado === 'en_proceso'
-  ).length;
-  const abiertos = (incidents || []).filter((x: any) => x.estado !== 'cerrado').length;
-  const pct = std?.porcentaje ?? 0;
-  const color = pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
+  if (error) {
+    return (
+      <div className="ui-page dashboard-page">
+        <section
+          aria-labelledby="dashboard-error-title"
+          className="ui-surface dashboard-feedback"
+          role="alert"
+        >
+          <div className="dashboard-feedback-icon dashboard-feedback-icon--error">
+            <AlertTriangle aria-hidden="true" size={22} />
+          </div>
+          <h1 className="ui-page-title" id="dashboard-error-title">
+            No fue posible cargar el tablero
+          </h1>
+          <p className="ui-page-description">{error}</p>
+          <button
+            className="ui-primary-button"
+            onClick={() => window.location.reload()}
+            type="button"
+          >
+            Intentar de nuevo
+          </button>
+        </section>
+      </div>
+    );
+  }
+
+  if (!std && !workers.length && !actions.length && !incidents.length) {
+    return (
+      <div className="ui-page dashboard-page">
+        <header className="dashboard-header">
+          <div>
+            <p className="dashboard-eyebrow">Inicio</p>
+            <h1 className="ui-page-title">Bienvenido al Tablero SG-SST</h1>
+            <p className="ui-page-description">
+              Aún no hay datos registrados. Elige un módulo para comenzar a organizar la información
+              del sistema.
+            </p>
+          </div>
+        </header>
+
+        <section aria-labelledby="dashboard-empty-title" className="ui-surface dashboard-empty">
+          <div className="dashboard-empty-icon">
+            <ClipboardCheck aria-hidden="true" size={24} />
+          </div>
+          <div>
+            <h2 id="dashboard-empty-title">Empieza por registrar la información básica</h2>
+            <p>Los indicadores aparecerán aquí cuando haya datos disponibles.</p>
+          </div>
+          <DashboardShortcuts />
+        </section>
+      </div>
+    );
+  }
+
+  const pendingActions = actions.filter(
+    (action) => action.estado === 'pendiente' || action.estado === 'en_proceso'
+  );
+  const openIncidents = incidents.filter((incident) => incident.estado !== 'cerrado');
+  const hasEvaluation = (std?.total ?? 0) > 0;
+  const percentage =
+    typeof std?.porcentaje === 'number' && Number.isFinite(std.porcentaje) ? std.porcentaje : null;
+  const progressWidth = Math.min(100, Math.max(0, percentage ?? 0));
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1 style={{ marginBottom: 20, color: '#0f766e' }}>Tablero de Control SG-SST</h1>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 14,
-          marginBottom: 24,
-        }}
-      >
-        {card(
-          'Cumplimiento Estándares Mínimos',
-          <span style={{ color }}>{pct}%</span>,
-          'Estado general del SG-SST'
-        )}
-        {card('Trabajadores registrados', workers?.length ?? 0, 'Fichas activas')}
-        {card('Acciones pendientes', vencidos, 'Correctivas / preventivas')}
-        {card('Incidentes abiertos', abiertos, 'Sin cerrar')}
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div
-          style={{
-            background: '#fff',
-            padding: 16,
-            borderRadius: 10,
-            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-          }}
-        >
-          <h3 style={{ marginBottom: 10, fontSize: 15, color: '#0f766e' }}>Acciones recientes</h3>
-          <ul style={{ paddingLeft: 18, color: '#4b5563' }}>
-            {(actions || []).slice(0, 5).map((x: any) => (
-              <li key={x.id} style={{ marginBottom: 6 }}>
-                {x.descripcion}{' '}
-                <span style={{ color: '#6b7280', fontSize: 12 }}>
-                  ({x.estado}, vence {x.fecha_limite})
-                </span>
-              </li>
-            ))}
-            {!actions?.length && <li style={{ color: '#9ca3af' }}>Sin acciones registradas</li>}
-          </ul>
+    <div className="ui-page dashboard-page">
+      <header className="dashboard-header">
+        <div>
+          <p className="dashboard-eyebrow">Inicio</p>
+          <h1 className="ui-page-title">Tablero de Control SG-SST</h1>
+          <p className="ui-page-description">
+            Un resumen de la información registrada y de los módulos que puedes revisar.
+          </p>
         </div>
-        <div
-          style={{
-            background: '#fff',
-            padding: 16,
-            borderRadius: 10,
-            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-          }}
-        >
-          <h3 style={{ marginBottom: 10, fontSize: 15, color: '#0f766e' }}>Últimos incidentes</h3>
-          <ul style={{ paddingLeft: 18, color: '#4b5563' }}>
-            {(incidents || []).slice(0, 5).map((x: any) => (
-              <li key={x.id} style={{ marginBottom: 6 }}>
-                {x.tipo} - {x.descripcion}{' '}
-                <span style={{ color: '#6b7280', fontSize: 12 }}>({x.estado})</span>
-              </li>
-            ))}
-            {!incidents?.length && <li style={{ color: '#9ca3af' }}>Sin incidentes registrados</li>}
-          </ul>
-        </div>
-      </div>
+        <Link className="ui-primary-button dashboard-header-action" to="/planes">
+          <CalendarDays aria-hidden="true" size={17} />
+          Ver plan anual
+        </Link>
+      </header>
 
-      <div
-        style={{
-          marginTop: 24,
-          background: '#fff',
-          padding: 16,
-          borderRadius: 10,
-          boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-        }}
+      <section aria-label="Indicadores principales" className="dashboard-overview">
+        <article className="ui-surface dashboard-compliance">
+          <div className="dashboard-compliance-heading">
+            <div className="dashboard-compliance-icon">
+              <ClipboardCheck aria-hidden="true" size={20} />
+            </div>
+            <div>
+              <p className="dashboard-eyebrow">Estándares mínimos</p>
+              <h2>Avance registrado</h2>
+            </div>
+          </div>
+          {!hasEvaluation ? (
+            <p className="dashboard-compliance-empty" role="status">
+              No hay una evaluación de estándares registrada.
+            </p>
+          ) : percentage === null ? (
+            <p className="dashboard-compliance-empty" role="status">
+              Hay estándares evaluados, pero no se reportó el porcentaje de avance.
+            </p>
+          ) : (
+            <>
+              <p className="dashboard-compliance-value">{percentage}%</p>
+              <div
+                aria-label={`Avance reportado: ${percentage}%`}
+                aria-valuemax={100}
+                aria-valuemin={0}
+                aria-valuenow={progressWidth}
+                className="dashboard-progress"
+                role="progressbar"
+              >
+                <span style={{ width: `${progressWidth}%` }} />
+              </div>
+              <p className="dashboard-compliance-detail">
+                {std?.cumplidos ?? 0} de {std?.total ?? 0} estándares evaluados como cumplidos
+              </p>
+            </>
+          )}
+          <Link className="dashboard-card-link" to="/estandar">
+            Revisar estándares <ArrowRight aria-hidden="true" size={15} />
+          </Link>
+        </article>
+
+        <div className="dashboard-metrics">
+          <MetricCard
+            detail="En el sistema"
+            icon={UsersRound}
+            label="Trabajadores"
+            to="/trabajadores"
+            value={workers.length}
+          />
+          <MetricCard
+            detail="Pendientes o en proceso"
+            icon={ListChecks}
+            label="Acciones abiertas"
+            to="/acciones"
+            value={pendingActions.length}
+          />
+          <MetricCard
+            detail="Sin cerrar"
+            icon={AlertTriangle}
+            label="Incidentes abiertos"
+            to="/incidentes"
+            value={openIncidents.length}
+          />
+        </div>
+      </section>
+
+      <section aria-label="Accesos rápidos" className="dashboard-shortcuts">
+        <DashboardShortcuts />
+      </section>
+
+      <section aria-label="Actividad reciente" className="dashboard-section-grid">
+        <article className="ui-surface dashboard-panel">
+          <header className="dashboard-panel-header">
+            <div>
+              <p className="dashboard-eyebrow">Seguimiento</p>
+              <h2>Acciones recientes</h2>
+            </div>
+            <Link className="dashboard-panel-link" to="/acciones">
+              Ver todas <ArrowRight aria-hidden="true" size={15} />
+            </Link>
+          </header>
+          {actions.length ? (
+            <ul className="dashboard-record-list">
+              {actions.slice(0, 5).map((action) => (
+                <li className="dashboard-record" key={action.id}>
+                  <div className="dashboard-record-content">
+                    <strong>{action.descripcion}</strong>
+                    {action.fecha_limite && (
+                      <span className="dashboard-record-detail">
+                        Fecha límite: {formatDate(action.fecha_limite)}
+                      </span>
+                    )}
+                  </div>
+                  <span className={`dashboard-status dashboard-status--${action.estado}`}>
+                    {getStatusLabel(action.estado)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="dashboard-panel-empty">
+              <p>No hay acciones registradas.</p>
+              <Link to="/acciones">Revisar acciones correctivas</Link>
+            </div>
+          )}
+        </article>
+
+        <article className="ui-surface dashboard-panel">
+          <header className="dashboard-panel-header">
+            <div>
+              <p className="dashboard-eyebrow">Registro</p>
+              <h2>Últimos incidentes</h2>
+            </div>
+            <Link className="dashboard-panel-link" to="/incidentes">
+              Ver todos <ArrowRight aria-hidden="true" size={15} />
+            </Link>
+          </header>
+          {incidents.length ? (
+            <ul className="dashboard-record-list">
+              {incidents.slice(0, 5).map((incident) => (
+                <li className="dashboard-record" key={incident.id}>
+                  <div className="dashboard-record-content">
+                    <strong>{incident.tipo}</strong>
+                    <span className="dashboard-record-detail">{incident.descripcion}</span>
+                  </div>
+                  <span className={`dashboard-status dashboard-status--${incident.estado}`}>
+                    {getStatusLabel(incident.estado)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="dashboard-panel-empty">
+              <p>No hay incidentes registrados.</p>
+              <Link to="/incidentes">Abrir módulo de incidentes</Link>
+            </div>
+          )}
+        </article>
+      </section>
+
+      <section
+        aria-labelledby="dashboard-compliance-detail"
+        className="ui-surface dashboard-summary"
       >
-        <h3 style={{ marginBottom: 10, fontSize: 15, color: '#0f766e' }}>
-          Resumen de cumplimiento
-        </h3>
-        <p>
-          Estándares evaluados: <b>{std?.total ?? 0}</b> | Cumplidos:{' '}
-          <b style={{ color: '#10b981' }}>{std?.cumplidos ?? 0}</b> | Incumplidos:{' '}
-          <b style={{ color: '#ef4444' }}>{std?.incumplidos ?? 0}</b>
-        </p>
-      </div>
+        <div>
+          <p className="dashboard-eyebrow">Estándares mínimos</p>
+          <h2 id="dashboard-compliance-detail">Detalle del registro</h2>
+        </div>
+        <dl className="dashboard-summary-list">
+          <div>
+            <dt>Evaluados</dt>
+            <dd>{std?.total ?? '—'}</dd>
+          </div>
+          <div>
+            <dt>Cumplidos</dt>
+            <dd className="dashboard-summary-success">{std?.cumplidos ?? '—'}</dd>
+          </div>
+          <div>
+            <dt>Incumplidos</dt>
+            <dd className="dashboard-summary-danger">{std?.incumplidos ?? '—'}</dd>
+          </div>
+        </dl>
+      </section>
     </div>
   );
 }

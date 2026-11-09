@@ -2,7 +2,7 @@
 
 **Fecha:** 9 de noviembre de 2026
 
-**Estado:** Fases 0 y 1 completadas; Fase 2 en progreso
+**Estado:** Fases 0, 1, 2 y 3 completadas; Fase 4 pendiente
 
 **Punto de partida:** commit `e939e8ccc818101acd4fdaf92384d09dda5524e2`
 
@@ -106,25 +106,25 @@ Es una dirección de trabajo, no una identidad de marca aprobada. Podrá ajustar
 **Estimación:** 2–4 días-persona.
 
 - [x] Definir tokens y reglas compartidas para color, tipografía, escala de espaciado, bordes, elevación y estados semánticos.
-- [ ] Normalizar títulos, descripciones, acciones principales, botones, campos, tablas, tarjetas, etiquetas y mensajes. (En curso: patrones comunes aplicados a Trabajadores, Alertas e Inspecciones.)
-- [ ] Establecer estados de carga, error, vacío y confirmación con texto claro en español de Colombia. (En curso: mensajes accesibles y estilos comunes; estados vacíos móviles en Trabajadores y Alertas.)
-- [ ] Aplicar primero los patrones al marco de navegación y a componentes reutilizables; evitar una reescritura masiva de pantallas. (En curso: clases compartidas aplicadas a las tres pantallas priorizadas.)
+- [x] Normalizar títulos, descripciones, acciones principales, botones, campos, tablas, tarjetas, etiquetas y mensajes en las cinco pantallas priorizadas: Trabajadores, Alertas, Inspecciones, Plan anual y Acciones.
+- [x] Establecer estados de carga, error y vacío con texto claro y accesible; conservar el feedback de confirmación de los flujos existentes.
+- [x] Aplicar primero los patrones al marco de navegación y a componentes reutilizables, evitando cambiar reglas de negocio o persistencia.
 - [x] Comprobar contraste, foco visible, etiquetas accesibles y controles utilizables con teclado.
 
-**Aceptación:** pendiente hasta extender los patrones comunes, revisar los estados visuales restantes y validar todos los componentes que adopten el sistema.
+**Aceptación:** ✅ las cinco pantallas prioritarias usan patrones compartidos; las vistas de escritorio y móvil, estados vacíos y acciones principales fueron revisados en navegador. Pruebas frontend, typecheck, lint focalizado y build validados.
 
 ### Fase 3 — Tablero útil y verificable
 
 **Estimación:** 2–4 días-persona.
 
-- [ ] Reordenar el contenido para priorizar vencimientos, tareas pendientes, alertas y acciones inmediatas.
-- [ ] Mostrar únicamente indicadores respaldados por datos reales disponibles y definir claramente su periodo y significado.
-- [ ] Añadir accesos directos a las acciones frecuentes que el usuario puede completar con sus permisos.
-- [ ] Diseñar estados vacíos útiles que expliquen cómo comenzar, sin fabricar porcentajes, tendencias o nombres.
-- [ ] Revisar la distribución de tarjetas y listas en móvil, tableta y escritorio.
-- [ ] Probar que los enlaces del tablero abren el módulo correspondiente y que los valores coinciden con la API o base persistida.
+- [x] Reordenar el contenido para priorizar el avance registrado, acciones e incidentes pendientes y accesos a módulos.
+- [x] Mostrar indicadores respaldados por las API; no presentar un porcentaje cuando no hay estándares evaluados y aclarar qué cuenta cada métrica.
+- [x] Añadir accesos directos a módulos disponibles para el usuario autenticado.
+- [x] Diseñar un estado vacío útil que explique cómo comenzar, sin fabricar porcentajes, tendencias o nombres.
+- [x] Revisar la distribución de tarjetas y listas en escritorio (1280×800) y móvil (390×844).
+- [x] Probar los enlaces y verificar los valores mostrados frente a respuestas de API reales y ficticias controladas.
 
-**Aceptación:** cada bloque informa algo verificable o explica por qué aún no hay datos; las tareas prioritarias conducen a una acción real y autorizada.
+**Aceptación:** ✅ cada bloque informa algo verificable o explica por qué aún no hay datos; los accesos conducen a módulos reales. Revisión autenticada de estados con datos persistidos y respuestas ficticias interceptadas, sin escrituras de validación.
 
 ### Fase 4 — Aplicación gradual a los módulos
 
@@ -172,6 +172,10 @@ La Fase 2 debe empezar por componentes comunes y atacar primero el desbordamient
 
 | Fecha      | Fase                  | Resultado / siguiente paso                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ---------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-09 | Fase 3 — Tablero      | El tablero prioriza el avance disponible, acciones/incidentes abiertos y accesos rápidos; distingue ausencia de evaluación de un 0% y explica estados sin información. En navegador autenticado a 1280×800 y 390×844 se revisaron datos del entorno y estado vacío con respuestas ficticias interceptadas (sin escrituras), enlaces, listas y ausencia de overflow. Suite web 62/62, typecheck, build, ESLint focalizado y Prettier pasan. Build conserva el aviso de chunk >500 kB. Fase 3 cerrada; continuar Fase 4 con módulos restantes. |
+| 2026-11-09 | Fase 2 completada    | Se consolidaron patrones compartidos en Trabajadores, Alertas, Inspecciones, Plan anual y Acciones, con estados, foco y controles adaptables revisados en navegador a 1280×800 y 390×844. Suite web 62/62, typecheck, build, ESLint focalizado y formato del código/pruebas pasan. Fase 4 extiende el sistema visual al resto de módulos. |
+| 2026-11-09 | Fase 2 — Acciones     | Acciones usa encabezado y feedback comunes, formularios con etiquetas y controles legibles, filtros agrupados y una lista móvil en tarjetas con origen, responsable, vencimiento, prioridad, estado, evidencia y firma; escritorio conserva su tabla con scroll contenido. Pruebas con respuesta ficticia y navegador autenticado a 1280×800 y 390×844: estado vacío, tabla y tarjeta, filtros, controles de 44 px y sin overflow del documento. Suite frontend 60/60, typecheck, build y Prettier pasan; ESLint sin errores (8 advertencias existentes). La Fase 2 sigue abierta. |
+| 2026-11-09 | Fase 2 — Plan anual   | Planes adoptó el encabezado común, pestañas con iconos y paneles accesibles, además de tarjetas KPI consistentes en las tres vistas. En 390×844 se acomodan cinco KPI anuales en dos columnas con el quinto centrado, cuatro KPI de capacitación/ejecución en dos columnas y las tres pestañas caben sin recorte; a 1280×800 se distribuyen en una fila. Revisión autenticada en navegador: estado vacío, cambios entre pestañas y documento sin overflow horizontal. Prueba focalizada, suite frontend 58/58, typecheck, build y Prettier de CSS/prueba pasan; ESLint sin errores (15 advertencias preexistentes en Planes). La Fase 2 continúa abierta. |
 | 2026-11-09 | Plan creado           | Propuesta documentada a partir de la revisión visual del tablero y la navegación.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | 2026-11-09 | Fase 2 — continuación | Inspecciones adoptó el título, botones, superficie, mensajes accesibles, etiquetas más legibles y controles táctiles de 44 px; las acciones se apilan en móvil y la tabla mantiene desplazamiento horizontal propio. Suite frontend 57/57, typecheck, build y formato pasan; ESLint sin errores (8 advertencias existentes en Inspecciones). Revisión autenticada en navegador a 1280×800 y 390×844: ancho del documento igual al viewport, controles de 44 px y tabla móvil desplazable en su propio contenedor. Falta extender los patrones antes de cerrar la fase.                               |
 | 2026-11-09 | Fase 2 en progreso    | Se añadieron tokens y clases visuales compartidas; Trabajadores muestra tarjetas con acciones móviles y mantiene la tabla en escritorio, y Alertas usa tarjetas móviles para pendientes e historial. Se corrigió la acción Editar desde tarjeta y se añadieron pruebas de ambas vistas. Validación: 56 pruebas, typecheck y build web pasan; ESLint focalizado no reporta errores (30 advertencias existentes); revisión responsive en navegador a 1280×800 y 390×844 sin overflow del documento. Pendiente completar la normalización de componentes y estados compartidos antes de cerrar la fase. |

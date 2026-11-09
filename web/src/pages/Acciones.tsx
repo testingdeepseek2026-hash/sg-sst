@@ -1,25 +1,46 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import {
+  AlertTriangle,
+  ClipboardCheck,
+  FileText,
+  Paperclip,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  UsersRound,
+} from 'lucide-react';
+
 import { SignaturePad } from '@/components/SignaturePad';
 import { api } from '@/lib/api';
 
 const ORIGEN_LABELS: Record<string, string> = {
-  auditoria: '🔍 Auditoría',
-  inspeccion: '🔎 Inspección',
-  incidente: '🚨 Incidente',
-  estandar: '✅ Estándar',
-  revision_direccion: '👔 Revisión Dirección',
-  otro: '📝 Otro',
+  auditoria: 'Auditoría',
+  inspeccion: 'Inspección',
+  incidente: 'Incidente',
+  estandar: 'Estándar',
+  revision_direccion: 'Revisión Dirección',
+  otro: 'Otro',
 };
 
 const ORIGEN_OPTIONS = [
-  { value: 'auditoria', label: '🔍 Auditoría' },
-  { value: 'inspeccion', label: '🔎 Inspección' },
-  { value: 'incidente', label: '🚨 Incidente' },
-  { value: 'estandar', label: '✅ Estándar' },
-  { value: 'revision_direccion', label: '👔 Revisión Dirección' },
-  { value: 'otro', label: '📝 Otro' },
+  { value: 'auditoria', label: 'Auditoría' },
+  { value: 'inspeccion', label: 'Inspección' },
+  { value: 'incidente', label: 'Incidente' },
+  { value: 'estandar', label: 'Estándar' },
+  { value: 'revision_direccion', label: 'Revisión Dirección' },
+  { value: 'otro', label: 'Otro' },
 ];
+
+const ORIGEN_ICONS = {
+  auditoria: ClipboardCheck,
+  inspeccion: Search,
+  incidente: AlertTriangle,
+  estandar: ClipboardCheck,
+  revision_direccion: UsersRound,
+  otro: FileText,
+};
 
 const PRIORIDAD_LABELS: Record<string, string> = {
   baja: 'Baja',
@@ -108,6 +129,10 @@ export default function Acciones() {
       setActions(data as Action[]);
     } catch (err: any) {
       console.error('Error cargando acciones:', err);
+      setMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'No fue posible cargar las acciones.',
+      });
     }
   }, []);
 
@@ -121,7 +146,7 @@ export default function Acciones() {
   };
 
   const handleInputChange = (field: string, value: any) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const openAction = (a: Action) => {
@@ -130,7 +155,12 @@ export default function Acciones() {
 
   const editAction = (a: Action) => {
     setEditingAction(a);
-    setForm({ ...initialForm, ...a, origen_detalle: a.origen_detalle || '', origen_id: a.origen_id || '' });
+    setForm({
+      ...initialForm,
+      ...a,
+      origen_detalle: a.origen_detalle || '',
+      origen_id: a.origen_id || '',
+    });
   };
 
   const newAction = () => {
@@ -207,89 +237,219 @@ export default function Acciones() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setForm(prev => ({ ...prev, evidencia_url: reader.result as string }));
+      setForm((prev) => ({ ...prev, evidencia_url: reader.result as string }));
     };
     reader.readAsDataURL(file);
   };
 
-  const filteredActions = actions.filter(a => {
+  const filteredActions = actions.filter((a) => {
     if (filterOrigen !== 'all' && a.origen !== filterOrigen) return false;
     if (filterEstado !== 'all' && a.estado !== filterEstado) return false;
     return true;
   });
 
   const isOverdue = (action: Action) => {
-    return action.fecha_limite < new Date().toISOString().slice(0, 10) && action.estado !== 'completada';
+    return (
+      action.fecha_limite < new Date().toISOString().slice(0, 10) && action.estado !== 'completada'
+    );
   };
 
-  return (
-    <div style={{ padding: 20, maxWidth: 1100 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h1 style={{ margin: 0, color: '#0f766e' }}>
-          Acciones Correctivas, Preventivas y de Mejora
-        </h1>
-        <button onClick={newAction} style={{ padding: '10px 16px', background: '#0f766e', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>
-          + Nueva Acción
+  const renderActionControls = (action: Action) => (
+    <>
+      <button
+        className="actions-icon-button"
+        aria-label={`Ver acción: ${action.descripcion}`}
+        onClick={() => openAction(action)}
+        type="button"
+      >
+        Ver
+      </button>
+      <button
+        className="actions-icon-button actions-icon-button--edit"
+        aria-label={`Editar acción: ${action.descripcion}`}
+        onClick={() => editAction(action)}
+        type="button"
+      >
+        <Pencil aria-hidden="true" size={16} />
+        <span>Editar</span>
+      </button>
+      {!action.firma_url && action.estado === 'completada' && (
+        <button
+          className="actions-icon-button actions-icon-button--sign"
+          onClick={() => handleSign(action)}
+          type="button"
+        >
+          Firmar
         </button>
-      </div>
+      )}
+      <button
+        className="actions-icon-button actions-icon-button--delete"
+        aria-label={`Eliminar acción: ${action.descripcion}`}
+        onClick={() => handleDelete(action.id)}
+        type="button"
+      >
+        <Trash2 aria-hidden="true" size={16} />
+        <span>Eliminar</span>
+      </button>
+    </>
+  );
+
+  return (
+    <div className="ui-page actions-page">
+      <header className="ui-page-header actions-page-header">
+        <div>
+          <h1 className="ui-page-title">Acciones Correctivas, Preventivas y de Mejora</h1>
+          <p className="ui-page-description">
+            Seguimiento de responsables, fechas límite y evidencias.
+          </p>
+        </div>
+        <button className="ui-primary-button" onClick={newAction} type="button">
+          <Plus aria-hidden="true" size={18} />
+          Nueva acción
+        </button>
+      </header>
 
       {message && (
-        <div style={{ background: message.type === 'success' ? '#ecfdf5' : '#fef2f2', border: `1px solid ${message.type === 'success' ? '#a7f3d0' : '#fecaca'}`, color: message.type === 'success' ? '#065f46' : '#991b1b', padding: 10, borderRadius: 8, marginBottom: 14 }}>
+        <div
+          className={`ui-feedback ui-feedback--${message.type}`}
+          role={message.type === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+        >
           {message.text}
         </div>
       )}
 
-      {/* Filtros */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <select value={filterOrigen} onChange={e => setFilterOrigen(e.target.value)} style={{ padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}>
-          <option value="all">Todos los orígenes</option>
-          {ORIGEN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-        <select value={filterEstado} onChange={e => setFilterEstado(e.target.value)} style={{ padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}>
-          <option value="all">Todos los estados</option>
-          <option value="pendiente">Pendiente</option>
-          <option value="en_proceso">En Proceso</option>
-          <option value="completada">Completada</option>
-          <option value="vencida">Vencida</option>
-        </select>
+      <div aria-label="Filtros de acciones" className="ui-surface actions-filters">
+        <label className="actions-filter-field">
+          <span className="ui-field-label">Origen</span>
+          <select value={filterOrigen} onChange={(e) => setFilterOrigen(e.target.value)}>
+            <option value="all">Todos los orígenes</option>
+            {ORIGEN_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="actions-filter-field">
+          <span className="ui-field-label">Estado</span>
+          <select value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)}>
+            <option value="all">Todos los estados</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="en_proceso">En Proceso</option>
+            <option value="completada">Completada</option>
+            <option value="vencida">Vencida</option>
+          </select>
+        </label>
       </div>
 
-      {/* Formulario */}
-      <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', marginBottom: 16 }}>
-        <h3 style={{ margin: '0 0 16px', color: '#0f766e' }}>{editingAction ? 'Editar Acción' : viewingAction ? 'Ver Acción' : 'Nueva Acción Correctiva / Preventiva / Mejora'}</h3>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12 }}>
+      <section aria-labelledby="actions-form-title" className="ui-surface actions-form">
+        <h2 className="actions-section-title" id="actions-form-title">
+          {editingAction ? 'Editar acción' : viewingAction ? 'Ver acción' : 'Nueva acción'}
+        </h2>
+        <form onSubmit={handleSubmit} className="actions-form-fields">
+          <div className="actions-field-grid">
             <div>
-              <label htmlFor="action-origen" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Origen *</label>
-              <select id="action-origen" value={form.origen} onChange={e => handleInputChange('origen', e.target.value)} required style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}>
-                {ORIGEN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              <label className="ui-field-label" htmlFor="action-origen">
+                Origen *
+              </label>
+              <select
+                id="action-origen"
+                value={form.origen}
+                onChange={(e) => handleInputChange('origen', e.target.value)}
+                required
+                style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
+              >
+                {ORIGEN_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label htmlFor="action-origen-detalle" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Detalle Origen</label>
-              <input id="action-origen-detalle" value={form.origen_detalle} onChange={e => handleInputChange('origen_detalle', e.target.value)} placeholder="Ej: Aud. Interna 2024, Inspección Obra Norte, Inc. #INC-001" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
+              <label className="ui-field-label" htmlFor="action-origen-detalle">
+                Detalle del origen
+              </label>
+              <input
+                id="action-origen-detalle"
+                value={form.origen_detalle}
+                onChange={(e) => handleInputChange('origen_detalle', e.target.value)}
+                placeholder="Ej: Aud. Interna 2024, Inspección Obra Norte, Inc. #INC-001"
+                style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
+              />
             </div>
             <div>
-              <label htmlFor="action-origen-id" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>ID Referencia</label>
-              <input id="action-origen-id" value={form.origen_id} onChange={e => handleInputChange('origen_id', e.target.value)} placeholder="ID de la auditoría, inspección, incidente..." style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
+              <label className="ui-field-label" htmlFor="action-origen-id">
+                ID de referencia
+              </label>
+              <input
+                id="action-origen-id"
+                value={form.origen_id}
+                onChange={(e) => handleInputChange('origen_id', e.target.value)}
+                placeholder="ID de la auditoría, inspección, incidente..."
+                style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
+              />
             </div>
           </div>
           <div>
-            <label htmlFor="action-descripcion" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Descripción *</label>
-            <textarea id="action-descripcion" value={form.descripcion} onChange={e => handleInputChange('descripcion', e.target.value)} rows={3} placeholder="Describa la acción a implementar..." required style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'inherit', resize: 'vertical' }} />
+            <label className="ui-field-label" htmlFor="action-descripcion">
+              Descripción *
+            </label>
+            <textarea
+              id="action-descripcion"
+              value={form.descripcion}
+              onChange={(e) => handleInputChange('descripcion', e.target.value)}
+              rows={3}
+              placeholder="Describa la acción a implementar..."
+              required
+              style={{
+                width: '100%',
+                padding: 8,
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                fontFamily: 'inherit',
+                resize: 'vertical',
+              }}
+            />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+          <div className="actions-field-grid">
             <div>
-              <label htmlFor="action-responsable" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Responsable *</label>
-              <input id="action-responsable" value={form.responsable} onChange={e => handleInputChange('responsable', e.target.value)} placeholder="Nombre del responsable" required style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
+              <label className="ui-field-label" htmlFor="action-responsable">
+                Responsable *
+              </label>
+              <input
+                id="action-responsable"
+                value={form.responsable}
+                onChange={(e) => handleInputChange('responsable', e.target.value)}
+                placeholder="Nombre del responsable"
+                required
+                style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
+              />
             </div>
             <div>
-              <label htmlFor="action-fecha-limite" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Fecha Límite *</label>
-              <input id="action-fecha-limite" type="date" value={form.fecha_limite} onChange={e => handleInputChange('fecha_limite', e.target.value)} required style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
+              <label className="ui-field-label" htmlFor="action-fecha-limite">
+                Fecha límite *
+              </label>
+              <input
+                id="action-fecha-limite"
+                type="date"
+                value={form.fecha_limite}
+                onChange={(e) => handleInputChange('fecha_limite', e.target.value)}
+                required
+                style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
+              />
             </div>
             <div>
-              <label htmlFor="action-prioridad" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Prioridad</label>
-              <select id="action-prioridad" value={form.prioridad} onChange={e => handleInputChange('prioridad', e.target.value as any)} style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}>
+              <label className="ui-field-label" htmlFor="action-prioridad">
+                Prioridad
+              </label>
+              <select
+                id="action-prioridad"
+                value={form.prioridad}
+                onChange={(e) => handleInputChange('prioridad', e.target.value as any)}
+                style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
+              >
                 <option value="baja">Baja</option>
                 <option value="media">Media</option>
                 <option value="alta">Alta</option>
@@ -297,8 +457,15 @@ export default function Acciones() {
               </select>
             </div>
             <div>
-              <label htmlFor="action-estado" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Estado</label>
-              <select id="action-estado" value={form.estado} onChange={e => handleInputChange('estado', e.target.value as any)} style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}>
+              <label className="ui-field-label" htmlFor="action-estado">
+                Estado
+              </label>
+              <select
+                id="action-estado"
+                value={form.estado}
+                onChange={(e) => handleInputChange('estado', e.target.value as any)}
+                style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
+              >
                 <option value="pendiente">Pendiente</option>
                 <option value="en_proceso">En Proceso</option>
                 <option value="completada">Completada</option>
@@ -307,32 +474,69 @@ export default function Acciones() {
             </div>
           </div>
           <div>
-            <label htmlFor="action-evidencia-input" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>📎 Evidencia (archivo/imagen)</label>
-            <input type="file" accept="image/*,application/pdf" onChange={handleEvidenciaChange} style={{ display: 'none' }} id="action-evidencia-input" />
-            <button type="button" onClick={() => document.getElementById('action-evidencia-input')?.click()} style={{ padding: '8px 16px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: 6, cursor: 'pointer', fontSize: 13, marginBottom: 8 }}>
-              📎 Adjuntar evidencia
+            <label className="ui-field-label" htmlFor="action-evidencia-input">
+              Evidencia (archivo o imagen)
+            </label>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={handleEvidenciaChange}
+              style={{ display: 'none' }}
+              id="action-evidencia-input"
+            />
+            <button
+              className="ui-action-button actions-upload-button"
+              type="button"
+              onClick={() => document.getElementById('action-evidencia-input')?.click()}
+            >
+              <Paperclip aria-hidden="true" size={16} />
+              Adjuntar evidencia
             </button>
             {form.evidencia_url && (
-              <div style={{ marginTop: 8 }}>
-                <a href={form.evidencia_url} target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1', textDecoration: 'underline' }}>Ver evidencia adjunta</a>
-                <button type="button" onClick={() => setForm(prev => ({ ...prev, evidencia_url: '' }))} style={{ marginLeft: 12, padding: '4px 8px', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>Eliminar</button>
+              <div className="actions-evidence-preview">
+                <a
+                  href={form.evidencia_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#0369a1', textDecoration: 'underline' }}
+                >
+                  Ver evidencia adjunta
+                </a>
+                <button
+                  className="actions-icon-button actions-icon-button--delete"
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, evidencia_url: '' }))}
+                >
+                  Eliminar
+                </button>
               </div>
             )}
           </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-            <button type="button" onClick={newAction} style={{ padding: '10px 16px', background: '#e5e7eb', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Cancelar</button>
-            <button type="submit" disabled={loading} style={{ padding: '10px 16px', background: loading ? '#94a3b8' : '#0f766e', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer' }}>
+          <div className="actions-form-actions">
+            <button
+              type="button"
+              onClick={newAction}
+              style={{
+                padding: '10px 16px',
+                background: '#e5e7eb',
+                border: 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+              }}
+            >
+              Cancelar
+            </button>
+            <button className="ui-primary-button" type="submit" disabled={loading}>
               {loading ? 'Guardando...' : editingAction ? 'Actualizar' : 'Registrar Acción'}
             </button>
           </div>
         </form>
-      </div>
+      </section>
 
-      {/* Lista de acciones */}
-      <div style={{ overflowX: 'auto', background: '#fff', borderRadius: 8, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
+      <div aria-label="Acciones registradas" className="ui-surface actions-table-wrap">
+        <table className="actions-table">
           <thead>
-            <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
+            <tr>
               <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Origen</th>
               <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Descripción</th>
               <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Responsable</th>
@@ -347,70 +551,296 @@ export default function Acciones() {
           <tbody>
             {filteredActions.map((a) => {
               const estadoColor = ESTADO_COLORS[a.estado] || { bg: '#f3f4f6', text: '#374151' };
-              const prioridadColor = PRIORIDAD_COLORS[a.prioridad] || { bg: '#f3f4f6', text: '#374151' };
+              const prioridadColor = PRIORIDAD_COLORS[a.prioridad] || {
+                bg: '#f3f4f6',
+                text: '#374151',
+              };
               const overdue = isOverdue(a);
               const hasEvidencia = !!a.evidencia_url;
               const hasFirma = !!a.firma_url;
               return (
-                <tr key={a.id} style={{ borderBottom: '1px solid #f3f4f6', background: overdue ? '#fff1f2' : '' }}>
-                  <td style={{ padding: 10, fontSize: 12 }}>{ORIGEN_LABELS[a.origen] || a.origen} {a.origen_detalle && <span style={{ fontSize: 10, color: '#6b7280', marginLeft: 4 }}>({a.origen_detalle})</span>}</td>
-                  <td style={{ padding: 10, fontSize: 12, maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.descripcion}</td>
+                <tr
+                  key={a.id}
+                  style={{
+                    borderBottom: '1px solid #f3f4f6',
+                    background: overdue ? '#fff1f2' : '',
+                  }}
+                >
+                  <td style={{ padding: 10, fontSize: 12 }}>
+                    {ORIGEN_LABELS[a.origen] || a.origen}{' '}
+                    {a.origen_detalle && (
+                      <span style={{ fontSize: 10, color: '#6b7280', marginLeft: 4 }}>
+                        ({a.origen_detalle})
+                      </span>
+                    )}
+                  </td>
+                  <td
+                    style={{
+                      padding: 10,
+                      fontSize: 12,
+                      maxWidth: '300px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {a.descripcion}
+                  </td>
                   <td style={{ padding: 10, fontSize: 12 }}>{a.responsable}</td>
-                  <td style={{ padding: 10, fontSize: 12, color: overdue ? '#dc2626' : '#374151' }}>{a.fecha_limite} {overdue && ' ⚠️'}</td>
+                  <td style={{ padding: 10, fontSize: 12, color: overdue ? '#dc2626' : '#374151' }}>
+                    {a.fecha_limite} {overdue && <span aria-label="Vencida">· Vencida</span>}
+                  </td>
                   <td style={{ padding: 10, textAlign: 'center' }}>
-                    <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 'bold', background: prioridadColor.bg, color: prioridadColor.text }}>{PRIORIDAD_LABELS[a.prioridad]}</span>
+                    <span
+                      className={`actions-badge actions-badge--${a.prioridad}`}
+                      style={{ background: prioridadColor.bg, color: prioridadColor.text }}
+                    >
+                      {PRIORIDAD_LABELS[a.prioridad]}
+                    </span>
                   </td>
                   <td style={{ padding: 10 }}>
-                    <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold', background: estadoColor.bg, color: estadoColor.text }}>{ESTADO_LABELS[a.estado]}</span>
+                    <span
+                      className={`actions-badge actions-badge--${a.estado}`}
+                      style={{ background: estadoColor.bg, color: estadoColor.text }}
+                    >
+                      {ESTADO_LABELS[a.estado]}
+                    </span>
                   </td>
-                  <td style={{ padding: 10, textAlign: 'center' }}>{hasEvidencia ? '📎' : '—'}</td>
-                  <td style={{ padding: 10, textAlign: 'center' }}>{hasFirma ? '✅' : a.estado === 'completada' ? '⏳' : '—'}</td>
-                  <td style={{ padding: 10, display: 'flex', gap: 6 }}>
-                    <button onClick={() => openAction(a)} style={{ padding: '4px 8px', background: '#0f766e', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>Ver</button>
-                    <button onClick={() => editAction(a)} style={{ padding: '4px 8px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>Editar</button>
-                    {!a.firma_url && a.estado === 'completada' && (
-                      <button onClick={() => handleSign(a)} style={{ padding: '4px 8px', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>🖊️ Firmar</button>
-                    )}
-                    <button onClick={() => handleDelete(a.id)} style={{ padding: '4px 8px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>✕</button>
+                  <td style={{ padding: 10, textAlign: 'center' }}>
+                    {hasEvidencia ? <Paperclip aria-label="Con evidencia" size={16} /> : '—'}
+                  </td>
+                  <td style={{ padding: 10, textAlign: 'center' }}>
+                    {hasFirma ? 'Firmada' : a.estado === 'completada' ? 'Pendiente de firma' : '—'}
+                  </td>
+                  <td style={{ padding: 10 }}>
+                    <div className="actions-table-controls">{renderActionControls(a)}</div>
                   </td>
                 </tr>
               );
             })}
-            {filteredActions.length === 0 && <tr><td colSpan={9} style={{ padding: 30, textAlign: 'center', color: '#9ca3af' }}>No hay acciones registradas</td></tr>}
+            {filteredActions.length === 0 && (
+              <tr>
+                <td className="actions-empty" colSpan={9}>
+                  No hay acciones que coincidan con los filtros.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
+      </div>
+      <div aria-label="Acciones registradas" className="actions-mobile-list">
+        {filteredActions.map((action) => {
+          const OriginIcon = ORIGEN_ICONS[action.origen as keyof typeof ORIGEN_ICONS] || FileText;
+          const overdue = isOverdue(action);
+          const hasEvidence = Boolean(action.evidencia_url);
+          const hasSignature = Boolean(action.firma_url);
+          return (
+            <article className="actions-mobile-card" key={action.id}>
+              <div className="actions-mobile-card-header">
+                <span className="actions-origin">
+                  <OriginIcon aria-hidden="true" size={16} />
+                  {ORIGEN_LABELS[action.origen] || action.origen}
+                </span>
+                <span className={`actions-badge actions-badge--${action.prioridad}`}>
+                  {PRIORIDAD_LABELS[action.prioridad]}
+                </span>
+              </div>
+              {action.origen_detalle && (
+                <p className="actions-origin-detail">{action.origen_detalle}</p>
+              )}
+              <h3>{action.descripcion}</h3>
+              <dl className="actions-mobile-details">
+                <div>
+                  <dt>Responsable</dt>
+                  <dd>{action.responsable}</dd>
+                </div>
+                <div>
+                  <dt>Fecha límite</dt>
+                  <dd className={overdue ? 'actions-overdue' : undefined}>
+                    {action.fecha_limite}
+                    {overdue ? ' · Vencida' : ''}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Estado</dt>
+                  <dd>
+                    <span className={`actions-badge actions-badge--${action.estado}`}>
+                      {ESTADO_LABELS[action.estado]}
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Evidencia y firma</dt>
+                  <dd>
+                    {hasEvidence ? 'Con evidencia' : 'Sin evidencia'} ·{' '}
+                    {hasSignature
+                      ? 'Firmada'
+                      : action.estado === 'completada'
+                        ? 'Firma pendiente'
+                        : 'Sin firma'}
+                  </dd>
+                </div>
+              </dl>
+              <div className="actions-mobile-controls">{renderActionControls(action)}</div>
+            </article>
+          );
+        })}
+        {filteredActions.length === 0 && (
+          <p className="ui-surface actions-empty">No hay acciones que coincidan con los filtros.</p>
+        )}
       </div>
 
       {/* Modal Ver Acción */}
       {viewingAction && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20, overflow: 'auto' }}>
-          <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 800, maxHeight: '90vh', overflow: 'auto' }}>
-            <div style={{ padding: 20, borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, color: '#0f766e' }}>Acción - {ORIGEN_LABELS[viewingAction.origen] || viewingAction.origen}</h3>
-              <button onClick={() => setViewingAction(null)} style={{ padding: '8px 12px', background: '#e5e7eb', border: 'none', borderRadius: 6, cursor: 'pointer' }}>✕ Cerrar</button>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 20,
+            overflow: 'auto',
+          }}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: 12,
+              width: '100%',
+              maxWidth: 800,
+              maxHeight: '90vh',
+              overflow: 'auto',
+            }}
+          >
+            <div
+              style={{
+                padding: 20,
+                borderBottom: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <h3 style={{ margin: 0, color: '#0f766e' }}>
+                Acción - {ORIGEN_LABELS[viewingAction.origen] || viewingAction.origen}
+              </h3>
+              <button
+                onClick={() => setViewingAction(null)}
+                style={{
+                  padding: '8px 12px',
+                  background: '#e5e7eb',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                ✕ Cerrar
+              </button>
             </div>
             <div style={{ padding: 20, maxHeight: '70vh', overflow: 'auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12, marginBottom: 16 }}>
-                <div><strong>Origen:</strong> {ORIGEN_LABELS[viewingAction.origen] || viewingAction.origen}</div>
-                <div><strong>Detalle:</strong> {viewingAction.origen_detalle || '—'}</div>
-                <div><strong>ID Referencia:</strong> {viewingAction.origen_id || '—'}</div>
-                <div><strong>Responsable:</strong> {viewingAction.responsable}</div>
-                <div><strong>Fecha Límite:</strong> {viewingAction.fecha_limite}</div>
-                <div><strong>Prioridad:</strong> <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold', background: PRIORIDAD_COLORS[viewingAction.prioridad]?.bg, color: PRIORIDAD_COLORS[viewingAction.prioridad]?.text }}>{PRIORIDAD_LABELS[viewingAction.prioridad]}</span></div>
-                <div><strong>Estado:</strong> <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold', background: ESTADO_COLORS[viewingAction.estado]?.bg, color: ESTADO_COLORS[viewingAction.estado]?.text }}>{ESTADO_LABELS[viewingAction.estado]}</span></div>
-                <div><strong>Creada:</strong> {new Date(viewingAction.creado_en).toLocaleString('es-CO')}</div>
-                {viewingAction.actualizado_en && <div><strong>Actualizada:</strong> {new Date(viewingAction.actualizado_en).toLocaleString('es-CO')}</div>}
-                {viewingAction.completada_en && <div><strong>Completada:</strong> {new Date(viewingAction.completada_en).toLocaleString('es-CO')}</div>}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                  gap: 12,
+                  marginBottom: 16,
+                }}
+              >
+                <div>
+                  <strong>Origen:</strong>{' '}
+                  {ORIGEN_LABELS[viewingAction.origen] || viewingAction.origen}
+                </div>
+                <div>
+                  <strong>Detalle:</strong> {viewingAction.origen_detalle || '—'}
+                </div>
+                <div>
+                  <strong>ID Referencia:</strong> {viewingAction.origen_id || '—'}
+                </div>
+                <div>
+                  <strong>Responsable:</strong> {viewingAction.responsable}
+                </div>
+                <div>
+                  <strong>Fecha Límite:</strong> {viewingAction.fecha_limite}
+                </div>
+                <div>
+                  <strong>Prioridad:</strong>{' '}
+                  <span
+                    style={{
+                      padding: '2px 8px',
+                      borderRadius: 12,
+                      fontSize: 11,
+                      fontWeight: 'bold',
+                      background: PRIORIDAD_COLORS[viewingAction.prioridad]?.bg,
+                      color: PRIORIDAD_COLORS[viewingAction.prioridad]?.text,
+                    }}
+                  >
+                    {PRIORIDAD_LABELS[viewingAction.prioridad]}
+                  </span>
+                </div>
+                <div>
+                  <strong>Estado:</strong>{' '}
+                  <span
+                    style={{
+                      padding: '2px 8px',
+                      borderRadius: 12,
+                      fontSize: 11,
+                      fontWeight: 'bold',
+                      background: ESTADO_COLORS[viewingAction.estado]?.bg,
+                      color: ESTADO_COLORS[viewingAction.estado]?.text,
+                    }}
+                  >
+                    {ESTADO_LABELS[viewingAction.estado]}
+                  </span>
+                </div>
+                <div>
+                  <strong>Creada:</strong>{' '}
+                  {new Date(viewingAction.creado_en).toLocaleString('es-CO')}
+                </div>
+                {viewingAction.actualizado_en && (
+                  <div>
+                    <strong>Actualizada:</strong>{' '}
+                    {new Date(viewingAction.actualizado_en).toLocaleString('es-CO')}
+                  </div>
+                )}
+                {viewingAction.completada_en && (
+                  <div>
+                    <strong>Completada:</strong>{' '}
+                    {new Date(viewingAction.completada_en).toLocaleString('es-CO')}
+                  </div>
+                )}
               </div>
               <div style={{ marginBottom: 16 }}>
                 <strong>Descripción:</strong>
-                <p style={{ marginTop: 8, whiteSpace: 'pre-wrap', background: '#f9fafb', padding: 12, borderRadius: 6 }}>{viewingAction.descripcion}</p>
+                <p
+                  style={{
+                    marginTop: 8,
+                    whiteSpace: 'pre-wrap',
+                    background: '#f9fafb',
+                    padding: 12,
+                    borderRadius: 6,
+                  }}
+                >
+                  {viewingAction.descripcion}
+                </p>
               </div>
               {viewingAction.evidencia_url && (
                 <div style={{ marginBottom: 16 }}>
                   <strong>Evidencia:</strong>
                   <div style={{ marginTop: 8 }}>
-                    <a href={viewingAction.evidencia_url} target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1', textDecoration: 'underline' }}>Ver evidencia</a>
+                    <a
+                      href={viewingAction.evidencia_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: '#0369a1', textDecoration: 'underline' }}
+                    >
+                      Ver evidencia
+                    </a>
                   </div>
                 </div>
               )}
@@ -418,13 +848,20 @@ export default function Acciones() {
                 <div style={{ marginBottom: 16 }}>
                   <strong>Firma:</strong>
                   <div style={{ marginTop: 8 }}>
-                    <img src={viewingAction.firma_url} alt="Firma" style={{ maxHeight: 80, border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    <img
+                      src={viewingAction.firma_url}
+                      alt="Firma"
+                      style={{ maxHeight: 80, border: '1px solid #d1d5db', borderRadius: 4 }}
+                    />
                   </div>
                 </div>
               )}
               {viewingAction.firmado_por && (
                 <div>
-                  <strong>Firmado por:</strong> {viewingAction.firmado_por} el {viewingAction.completada_en ? new Date(viewingAction.completada_en).toLocaleString('es-CO') : '—'}
+                  <strong>Firmado por:</strong> {viewingAction.firmado_por} el{' '}
+                  {viewingAction.completada_en
+                    ? new Date(viewingAction.completada_en).toLocaleString('es-CO')
+                    : '—'}
                 </div>
               )}
             </div>
@@ -434,9 +871,33 @@ export default function Acciones() {
 
       {/* Modal Firma */}
       {signingAction && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001, padding: 20 }}>
-          <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 500, padding: 20 }}>
-            <h3 style={{ margin: '0 0 16px', color: '#0f766e' }}>Firma digital - {signingAction.responsable}</h3>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1001,
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: 12,
+              width: '100%',
+              maxWidth: 500,
+              padding: 20,
+            }}
+          >
+            <h3 style={{ margin: '0 0 16px', color: '#0f766e' }}>
+              Firma digital - {signingAction.responsable}
+            </h3>
             <SignaturePad onSave={handleSaveSignature} onCancel={() => setSigningAction(null)} />
           </div>
         </div>
