@@ -47,6 +47,15 @@ export function runMigrations(db: DatabaseSync) {
     db.exec('ALTER TABLE companies ADD COLUMN alerts_enabled INTEGER NOT NULL DEFAULT 0');
   }
 
+  // Migración incremental: columnas de trazabilidad en contractors (servicio usa creado_en/actualizado_en)
+  const contractorColumns = db.prepare('PRAGMA table_info(contractors)').all() as { name: string }[];
+  if (!contractorColumns.some(({ name }) => name === 'creado_en')) {
+    db.exec('ALTER TABLE contractors ADD COLUMN creado_en TEXT');
+  }
+  if (!contractorColumns.some(({ name }) => name === 'actualizado_en')) {
+    db.exec('ALTER TABLE contractors ADD COLUMN actualizado_en TEXT');
+  }
+
   const alertColumns = db.prepare('PRAGMA table_info(alerts)').all() as { name: string }[];
   if (!alertColumns.some(({ name }) => name === 'prioridad')) {
     db.exec(

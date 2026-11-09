@@ -467,7 +467,9 @@ CREATE TABLE IF NOT EXISTS contractors (
   epp INTEGER NOT NULL DEFAULT 0,
   estado TEXT NOT NULL DEFAULT 'pendiente', -- pendiente | aprobado | rechazado
   fecha_evaluacion TEXT,
-  notas TEXT
+  notas TEXT,
+  creado_en TEXT,
+  actualizado_en TEXT
 );
 
 -- ------------------------------------------------------------------
