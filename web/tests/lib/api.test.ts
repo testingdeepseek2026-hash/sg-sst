@@ -11,7 +11,7 @@ describe('API Client (lib/api)', () => {
     vi.restoreAllMocks();
   });
 
-  it('debe hacer GET request', async () => {
+  it('debe hacer GET request sin content-type', async () => {
     (global.fetch as vi.Mock).mockResolvedValue({
       ok: true,
       status: 200,
@@ -24,12 +24,14 @@ describe('API Client (lib/api)', () => {
     expect(global.fetch).toHaveBeenCalledWith('/api/test', expect.objectContaining({
       method: 'GET',
       credentials: 'include',
-      headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
     }));
+    // Un GET no debe declarar content-type: el servidor responde 400 si se envía sin cuerpo.
+    const [, options] = (global.fetch as vi.Mock).mock.calls[0];
+    expect(options?.headers).not.toHaveProperty('Content-Type');
     expect(result).toEqual({ data: 'test' });
   });
 
-  it('debe hacer POST request con body', async () => {
+  it('debe hacer POST request con body y content-type JSON', async () => {
     (global.fetch as vi.Mock).mockResolvedValue({
       ok: true,
       status: 201,
@@ -43,11 +45,12 @@ describe('API Client (lib/api)', () => {
       method: 'POST',
       body: JSON.stringify({ name: 'Test' }),
       credentials: 'include',
+      headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
     }));
     expect(result).toEqual({ id: 'new-id', name: 'Test' });
   });
 
-  it('debe hacer PUT request', async () => {
+  it('debe hacer PUT request con content-type JSON', async () => {
     (global.fetch as vi.Mock).mockResolvedValue({
       ok: true,
       status: 200,
@@ -60,11 +63,12 @@ describe('API Client (lib/api)', () => {
     expect(global.fetch).toHaveBeenCalledWith('/api/test/1', expect.objectContaining({
       method: 'PUT',
       body: JSON.stringify({ name: 'Updated' }),
+      headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
     }));
     expect(result).toEqual({ id: '1', name: 'Updated' });
   });
 
-  it('debe hacer DELETE request', async () => {
+  it('debe hacer DELETE request sin content-type', async () => {
     (global.fetch as vi.Mock).mockResolvedValue({
       ok: true,
       status: 204,
@@ -74,7 +78,11 @@ describe('API Client (lib/api)', () => {
 
     expect(global.fetch).toHaveBeenCalledWith('/api/test/1', expect.objectContaining({
       method: 'DELETE',
+      credentials: 'include',
     }));
+    // Fastify responde 400 a un DELETE con content-type application/json y cuerpo vacío.
+    const [, options] = (global.fetch as vi.Mock).mock.calls[0];
+    expect(options?.headers).not.toHaveProperty('Content-Type');
     expect(result).toBeNull();
   });
 

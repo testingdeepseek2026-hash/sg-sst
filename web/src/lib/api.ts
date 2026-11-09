@@ -19,12 +19,16 @@ async function handleResponse(res: Response): Promise<any> {
 
 async function request(path: string, opts: RequestInit = {}): Promise<any> {
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...((opts.headers as Record<string, string> | undefined) ?? {}),
   };
+  // Solo declarar content-type JSON cuando se envía cuerpo: Fastify responde 400
+  // a un DELETE/GET con content-type application/json y cuerpo vacío.
+  if (opts.body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+  }
   const responseType = (opts as any).responseType;
   const res = await fetch(`${API_BASE}${path}`, { ...opts, headers, credentials: 'include' });
-  
+
   if (responseType === 'blob') {
     if (!res.ok) throw new Error(`Error ${res.status}`);
     return res.blob();
@@ -33,12 +37,13 @@ async function request(path: string, opts: RequestInit = {}): Promise<any> {
     if (!res.ok) throw new Error(`Error ${res.status}`);
     return res.arrayBuffer();
   }
-  
+
   return handleResponse(res);
 }
 
 export const api = {
-  get: (path: string, opts?: { responseType?: 'blob' | 'arrayBuffer' }) => request(path, { method: 'GET', ...(opts ? { responseType: opts.responseType } : {}) }),
+  get: (path: string, opts?: { responseType?: 'blob' | 'arrayBuffer' }) =>
+    request(path, { method: 'GET', ...(opts ? { responseType: opts.responseType } : {}) }),
   post: (path: string, body?: any) =>
     request(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
   put: (path: string, body?: any) => request(path, { method: 'PUT', body: JSON.stringify(body) }),
