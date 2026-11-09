@@ -1,122 +1,226 @@
 import { useEffect, useState } from 'react';
 
-import { api } from '../lib/api';
+import { api } from '@/lib/api';
+
+interface Rol {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  licencia_sst_numero: string | null;
+  licencia_sst_vence: string | null;
+  curso_50h: number;
+  curso_50h_vence: string | null;
+}
+
+const initialForm = {
+  nombre: '',
+  descripcion: '',
+  licencia_sst_numero: '',
+  licencia_sst_vence: '',
+  curso_50h_vence: '',
+  curso_50h: false,
+};
 
 export default function Roles() {
-  const [roles, setRoles] = useState<any[]>([]);
-  const [form, setForm] = useState<any>({});
-  useEffect(() => {
-    api.get('/roles').then(setRoles);
-  }, []);
+  const [roles, setRoles] = useState<Rol[]>([]);
+  const [form, setForm] = useState(initialForm);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const loadRoles = () => {
+    api
+      .get('/roles')
+      .then((data) => setRoles(data as Rol[]))
+      .catch(() => setRoles([]));
+  };
+
+  useEffect(loadRoles, []);
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setMessage(null);
     try {
-      await api.post('/roles', form);
-      setForm({});
-      api.get('/roles').then(setRoles);
+      await api.post('/roles', {
+        ...form,
+        curso_50h: form.curso_50h ? 1 : 0,
+      });
+      setForm(initialForm);
+      loadRoles();
+      setMessage({ type: 'success', text: 'Rol registrado correctamente' });
     } catch (err: any) {
-      alert(err.message || 'Error');
+      setMessage({ type: 'error', text: err.message || 'Error registrando el rol' });
+    } finally {
+      setLoading(false);
     }
   };
+
+  const formatFecha = (fecha: string | null) => {
+    if (!fecha) return '—';
+    const [fechaCorta] = fecha.split('T');
+    return fechaCorta;
+  };
+
   return (
-    <div style={{ padding: 20, maxWidth: 900 }}>
-      <h1 style={{ marginBottom: 12, color: '#0f766e' }}>Roles y Responsabilidades SST</h1>
-      <p style={{ color: '#6b7280', fontSize: 12, marginBottom: 14 }}>
-        Responsable SG-SST (licencia + curso 50 h), Vigía SST, Comité de Convivencia.
-      </p>
-      <form
-        onSubmit={save}
-        style={{
-          background: '#fff',
-          padding: 14,
-          borderRadius: 10,
-          boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-          gap: 10,
-          marginBottom: 16,
-        }}
-      >
-        <input
-          value={form.nombre}
-          onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-          placeholder="Nombre del rol"
-          style={{ padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
-          required
-        />
-        <input
-          value={form.descripcion}
-          onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-          placeholder="Descripción"
-          style={{ padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
-        />
-        <input
-          value={form.licencia_sst_numero}
-          onChange={(e) => setForm({ ...form, licencia_sst_numero: e.target.value })}
-          placeholder="Nro. licencia SST"
-          style={{ padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
-        />
-        <input
-          value={form.licencia_sst_vence}
-          onChange={(e) => setForm({ ...form, licencia_sst_vence: e.target.value })}
-          type="date"
-          style={{ padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
-        />
-        <input
-          value={form.curso_50h_vence}
-          onChange={(e) => setForm({ ...form, curso_50h_vence: e.target.value })}
-          type="date"
-          style={{ padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
-        />
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <input
-            type="checkbox"
-            checked={!!form.curso_50h}
-            onChange={(e) => setForm({ ...form, curso_50h: e.target.checked })}
-          />{' '}
-          Curso 50 h
-        </label>
-        <button
-          type="submit"
-          style={{
-            padding: '8px 14px',
-            background: '#0f766e',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 6,
-            fontWeight: 'bold',
-          }}
+    <div className="ui-page roles-page">
+      <header className="ui-page-header roles-page-header">
+        <div>
+          <h1 className="ui-page-title">Roles y Responsabilidades SST</h1>
+          <p className="ui-page-description">
+            Responsable SG-SST (licencia y curso de 50 horas), Vigía SST y Comité de Convivencia.
+          </p>
+        </div>
+      </header>
+
+      {message && (
+        <div
+          className={`ui-feedback ui-feedback--${message.type}`}
+          role={message.type === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
         >
-          Guardar rol
-        </button>
-      </form>
-      <table
-        style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          background: '#fff',
-          borderRadius: 8,
-          overflow: 'hidden',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-        }}
-      >
-        <thead>
-          <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-            <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Rol</th>
-            <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Licencia SST vence</th>
-            <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Curso 50 h vence</th>
-          </tr>
-        </thead>
-        <tbody>
+          {message.text}
+        </div>
+      )}
+
+      <section aria-labelledby="roles-form-title" className="ui-surface roles-form">
+        <h2 id="roles-form-title" className="roles-form-title">
+          Registrar rol
+        </h2>
+        <form onSubmit={save}>
+          <div className="ui-form-grid">
+            <div>
+              <label className="ui-field-label" htmlFor="rol-nombre">
+                Nombre del rol *
+              </label>
+              <input
+                id="rol-nombre"
+                value={form.nombre}
+                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                placeholder="Ej: Responsable SG-SST"
+                required
+              />
+            </div>
+            <div>
+              <label className="ui-field-label" htmlFor="rol-descripcion">
+                Descripción
+              </label>
+              <input
+                id="rol-descripcion"
+                value={form.descripcion}
+                onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+                placeholder="Funciones y responsabilidades"
+              />
+            </div>
+            <div>
+              <label className="ui-field-label" htmlFor="rol-licencia">
+                Nro. licencia SST
+              </label>
+              <input
+                id="rol-licencia"
+                value={form.licencia_sst_numero}
+                onChange={(e) => setForm({ ...form, licencia_sst_numero: e.target.value })}
+                placeholder="Número de licencia"
+              />
+            </div>
+            <div>
+              <label className="ui-field-label" htmlFor="rol-licencia-vence">
+                Licencia SST vence
+              </label>
+              <input
+                id="rol-licencia-vence"
+                type="date"
+                value={form.licencia_sst_vence}
+                onChange={(e) => setForm({ ...form, licencia_sst_vence: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="ui-field-label" htmlFor="rol-curso-vence">
+                Curso 50 h vence
+              </label>
+              <input
+                id="rol-curso-vence"
+                type="date"
+                value={form.curso_50h_vence}
+                onChange={(e) => setForm({ ...form, curso_50h_vence: e.target.value })}
+              />
+            </div>
+            <div>
+              <span className="ui-field-label">Formación</span>
+              <label className="roles-check" htmlFor="rol-curso">
+                <input
+                  id="rol-curso"
+                  type="checkbox"
+                  checked={form.curso_50h}
+                  onChange={(e) => setForm({ ...form, curso_50h: e.target.checked })}
+                />
+                Curso de 50 horas aprobado
+              </label>
+            </div>
+          </div>
+          <div className="ui-form-actions">
+            <button type="submit" className="ui-primary-button" disabled={loading}>
+              {loading ? 'Guardando...' : 'Guardar rol'}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section aria-label="Roles registrados">
+        <div className="ui-surface ui-table-wrap">
+          <table className="ui-table roles-table">
+            <thead>
+              <tr>
+                <th scope="col">Rol</th>
+                <th scope="col">Descripción</th>
+                <th scope="col">Licencia SST vence</th>
+                <th scope="col">Curso 50 h vence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {roles.map((r) => (
+                <tr key={r.id}>
+                  <td>{r.nombre}</td>
+                  <td>{r.descripcion || '—'}</td>
+                  <td>{formatFecha(r.licencia_sst_vence)}</td>
+                  <td>{formatFecha(r.curso_50h_vence)}</td>
+                </tr>
+              ))}
+              {roles.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="ui-empty">
+                    No hay roles registrados
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="ui-mobile-list">
+          {roles.length === 0 && <p className="ui-empty">No hay roles registrados</p>}
           {roles.map((r) => (
-            <tr key={r.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-              <td style={{ padding: 10 }}>{r.nombre}</td>
-              <td style={{ padding: 10 }}>{r.licencia_sst_vence ?? '-'}</td>
-              <td style={{ padding: 10 }}>{r.curso_50h_vence ?? '-'}</td>
-            </tr>
+            <article className="ui-surface ui-mobile-card" key={r.id}>
+              <header className="ui-mobile-card-header">
+                <div>
+                  <h2>{r.nombre}</h2>
+                  {r.descripcion && <p>{r.descripcion}</p>}
+                </div>
+                {r.curso_50h ? <span className="ui-badge">Curso 50 h</span> : null}
+              </header>
+              <dl className="ui-mobile-details">
+                <div>
+                  <dt>Licencia SST vence</dt>
+                  <dd>{formatFecha(r.licencia_sst_vence)}</dd>
+                </div>
+                <div>
+                  <dt>Curso 50 h vence</dt>
+                  <dd>{formatFecha(r.curso_50h_vence)}</dd>
+                </div>
+              </dl>
+            </article>
           ))}
-        </tbody>
-      </table>
+        </div>
+      </section>
     </div>
   );
 }

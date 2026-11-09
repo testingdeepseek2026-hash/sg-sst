@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Check, Plus, Trash2, X } from 'lucide-react';
 
 import { api } from '@/lib/api';
 
@@ -80,13 +80,25 @@ export default function Contratistas() {
 
   const openContractor = (c: Contractor) => {
     setViewingContractor(c);
-    setForm({ ...initialForm, ...c, examen_medico: c.examen_medico, capacitacion_sst: c.capacitacion_sst, epp: c.epp });
+    setForm({
+      ...initialForm,
+      ...c,
+      examen_medico: c.examen_medico,
+      capacitacion_sst: c.capacitacion_sst,
+      epp: c.epp,
+    });
   };
 
   const editContractor = (c: Contractor) => {
     setEditingContractor(c);
     setViewingContractor(null);
-    setForm({ ...initialForm, ...c, examen_medico: c.examen_medico, capacitacion_sst: c.capacitacion_sst, epp: c.epp });
+    setForm({
+      ...initialForm,
+      ...c,
+      examen_medico: c.examen_medico,
+      capacitacion_sst: c.capacitacion_sst,
+      epp: c.epp,
+    });
   };
 
   const newContractor = () => {
@@ -135,8 +147,16 @@ export default function Contratistas() {
   const isApto = (c: Contractor) => c.examen_medico && c.capacitacion_sst && c.epp;
 
   const requisitos = [
-    { key: 'examen_medico', label: 'Examen médico ocupacional vigente (ingreso/periódico)', checked: form.examen_medico === 1 },
-    { key: 'capacitacion_sst', label: 'Capacitación SST / Inducción / Trabajo seguro', checked: form.capacitacion_sst === 1 },
+    {
+      key: 'examen_medico',
+      label: 'Examen médico ocupacional vigente (ingreso/periódico)',
+      checked: form.examen_medico === 1,
+    },
+    {
+      key: 'capacitacion_sst',
+      label: 'Capacitación SST / Inducción / Trabajo seguro',
+      checked: form.capacitacion_sst === 1,
+    },
     { key: 'epp', label: 'EPP entregado según riesgo de la actividad', checked: form.epp === 1 },
   ] as const;
 
@@ -145,10 +165,18 @@ export default function Contratistas() {
       <button type="button" className="contratistas-icon-button" onClick={() => openContractor(c)}>
         Ver
       </button>
-      <button type="button" className="contratistas-icon-button contratistas-icon-button--edit" onClick={() => editContractor(c)}>
+      <button
+        type="button"
+        className="contratistas-icon-button contratistas-icon-button--edit"
+        onClick={() => editContractor(c)}
+      >
         Editar
       </button>
-      <button type="button" className="contratistas-icon-button contratistas-icon-button--delete" onClick={() => handleDelete(c.id)}>
+      <button
+        type="button"
+        className="contratistas-icon-button contratistas-icon-button--delete"
+        onClick={() => handleDelete(c.id)}
+      >
         <Trash2 aria-hidden="true" size={16} />
         <span>Eliminar</span>
       </button>
@@ -161,8 +189,8 @@ export default function Contratistas() {
         <div>
           <h1 className="ui-page-title">Gestión de Contratistas y Proveedores</h1>
           <p className="ui-page-description">
-            Evaluación de requisitos SST para contratistas (Res. 0312/2019 E14, E15, E19): examen médico vigente,
-            capacitación SST y EPP entregado.
+            Evaluación de requisitos SST para contratistas (Res. 0312/2019 E14, E15, E19): examen
+            médico vigente, capacitación SST y EPP entregado.
           </p>
         </div>
         <button className="ui-primary-button" onClick={newContractor} type="button">
@@ -183,7 +211,11 @@ export default function Contratistas() {
 
       <section aria-labelledby="contratistas-form-title" className="ui-surface contratistas-form">
         <h2 id="contratistas-form-title" className="contratistas-form-title">
-          {editingContractor ? 'Editar contratista' : viewingContractor ? 'Ver contratista' : 'Nuevo contratista'}
+          {editingContractor
+            ? 'Editar contratista'
+            : viewingContractor
+              ? 'Ver contratista'
+              : 'Nuevo contratista'}
         </h2>
         <form onSubmit={handleSubmit} className="contratistas-form-fields">
           <div className="contratistas-field-grid">
@@ -236,7 +268,9 @@ export default function Contratistas() {
           </div>
 
           <div className="contratistas-requisitos">
-            <strong className="contratistas-requisitos-title">Requisitos SST (Res. 0312/2019 E14, E15, E19)</strong>
+            <strong className="contratistas-requisitos-title">
+              Requisitos SST (Res. 0312/2019 E14, E15, E19)
+            </strong>
             <div className="contratistas-requisitos-grid">
               {requisitos.map((r) => (
                 <label className="contratistas-requisito" key={r.key}>
@@ -251,7 +285,9 @@ export default function Contratistas() {
               <label className="contratistas-requisito">
                 <select
                   value={form.estado}
-                  onChange={(e) => setForm({ ...form, estado: e.target.value as ContractorForm['estado'] })}
+                  onChange={(e) =>
+                    setForm({ ...form, estado: e.target.value as ContractorForm['estado'] })
+                  }
                   aria-label="Estado de evaluación"
                 >
                   <option value="pendiente">Pendiente de evaluación</option>
@@ -295,7 +331,11 @@ export default function Contratistas() {
               Cancelar
             </button>
             <button type="submit" className="ui-primary-button" disabled={loading}>
-              {loading ? 'Guardando...' : editingContractor ? 'Actualizar' : 'Registrar contratista'}
+              {loading
+                ? 'Guardando...'
+                : editingContractor
+                  ? 'Actualizar'
+                  : 'Registrar contratista'}
             </button>
           </div>
         </form>
@@ -328,7 +368,9 @@ export default function Contratistas() {
                     <td>{c.arl || '—'}</td>
                     <td>
                       <div className="contratistas-requisitos-badges">
-                        <span className={`contratistas-requisito-badge${c.examen_medico ? ' contratistas-requisito-badge--ok' : ''}`}>
+                        <span
+                          className={`contratistas-requisito-badge${c.examen_medico ? ' contratistas-requisito-badge--ok' : ''}`}
+                        >
                           Examen médico
                         </span>
                         <span
@@ -336,7 +378,9 @@ export default function Contratistas() {
                         >
                           Capacitación SST
                         </span>
-                        <span className={`contratistas-requisito-badge${c.epp ? ' contratistas-requisito-badge--ok' : ''}`}>
+                        <span
+                          className={`contratistas-requisito-badge${c.epp ? ' contratistas-requisito-badge--ok' : ''}`}
+                        >
                           EPP entregado
                         </span>
                       </div>
@@ -346,9 +390,15 @@ export default function Contratistas() {
                       </div>
                     </td>
                     <td>
-                      <span className={`contratistas-badge contratistas-badge--${c.estado}`}>{ESTADO_LABELS[c.estado]}</span>
+                      <span className={`contratistas-badge contratistas-badge--${c.estado}`}>
+                        {ESTADO_LABELS[c.estado]}
+                      </span>
                     </td>
-                    <td>{c.fecha_evaluacion ? new Date(c.fecha_evaluacion).toLocaleDateString('es-CO') : '—'}</td>
+                    <td>
+                      {c.fecha_evaluacion
+                        ? new Date(c.fecha_evaluacion).toLocaleDateString('es-CO')
+                        : '—'}
+                    </td>
                     <td>
                       <div className="contratistas-fila-acciones">{renderAcciones(c)}</div>
                     </td>
@@ -379,7 +429,9 @@ export default function Contratistas() {
                     <h2>{c.nombre}</h2>
                     <p>{c.servicio}</p>
                   </div>
-                  <span className={`contratistas-badge contratistas-badge--${c.estado}`}>{ESTADO_LABELS[c.estado]}</span>
+                  <span className={`contratistas-badge contratistas-badge--${c.estado}`}>
+                    {ESTADO_LABELS[c.estado]}
+                  </span>
                 </header>
                 <dl className="contratistas-mobile-details">
                   <div>
@@ -392,7 +444,11 @@ export default function Contratistas() {
                   </div>
                   <div>
                     <dt>Fecha de evaluación</dt>
-                    <dd>{c.fecha_evaluacion ? new Date(c.fecha_evaluacion).toLocaleDateString('es-CO') : '—'}</dd>
+                    <dd>
+                      {c.fecha_evaluacion
+                        ? new Date(c.fecha_evaluacion).toLocaleDateString('es-CO')
+                        : '—'}
+                    </dd>
                   </div>
                   <div>
                     <dt>Requisitos</dt>
@@ -410,17 +466,30 @@ export default function Contratistas() {
       </section>
 
       {viewingContractor && (
-        <div className="contratistas-modal-backdrop" onClick={() => setViewingContractor(null)}>
+        <div
+          className="contratistas-modal-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setViewingContractor(null);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') setViewingContractor(null);
+          }}
+          role="presentation"
+        >
           <div
             className="contratistas-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="contratistas-view-title"
-            onClick={(e) => e.stopPropagation()}
+            tabIndex={-1}
           >
             <header className="contratistas-modal-header">
               <h3 id="contratistas-view-title">{viewingContractor.nombre}</h3>
-              <button type="button" className="ui-action-button" onClick={() => setViewingContractor(null)}>
+              <button
+                type="button"
+                className="ui-action-button"
+                onClick={() => setViewingContractor(null)}
+              >
                 <X aria-hidden="true" size={16} />
                 Cerrar
               </button>
@@ -450,7 +519,9 @@ export default function Contratistas() {
                 <div>
                   <dt>Estado</dt>
                   <dd>
-                    <span className={`contratistas-badge contratistas-badge--${viewingContractor.estado}`}>
+                    <span
+                      className={`contratistas-badge contratistas-badge--${viewingContractor.estado}`}
+                    >
                       {ESTADO_LABELS[viewingContractor.estado]}
                     </span>
                   </dd>

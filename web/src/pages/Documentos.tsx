@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { Plus, X } from 'lucide-react';
+
 import { api } from '@/lib/api';
 
 interface Document {
@@ -31,15 +33,15 @@ interface DocumentForm {
 }
 
 const TIPO_DOC_OPTIONS = [
-  { value: 'formato', label: '📋 Formato' },
-  { value: 'procedimiento', label: '📖 Procedimiento' },
-  { header: 'instruccion', label: '📝 Instrucción' },
-  { value: 'registro', label: '📊 Registro' },
-  { value: 'manual', label: '📚 Manual' },
-  { value: 'politica', label: '📋 Política' },
-  { value: 'plan', label: '📅 Plan' },
-  { value: 'informe', label: '📊 Informe' },
-  { value: 'otro', label: '📄 Otro' },
+  { value: 'formato', label: 'Formato' },
+  { value: 'procedimiento', label: 'Procedimiento' },
+  { value: 'instruccion', label: 'Instrucción' },
+  { value: 'registro', label: 'Registro' },
+  { value: 'manual', label: 'Manual' },
+  { value: 'politica', label: 'Política' },
+  { value: 'plan', label: 'Plan' },
+  { value: 'informe', label: 'Informe' },
+  { value: 'otro', label: 'Otro' },
 ];
 
 const ESTADO_OPTIONS = [
@@ -48,23 +50,15 @@ const ESTADO_OPTIONS = [
   { value: 'en_revision', label: 'En Revisión' },
 ];
 
-const ESTADO_COLORS: Record<string, { bg: string; text: string }> = {
-  vigente: { bg: '#dcfce7', text: '#166534' },
-  obsoleto: { bg: '#fef2f2', text: '#991b1b' },
-  en_revision: { bg: '#fef3c7', text: '#92400e' },
+const ESTADO_LABELS: Record<string, string> = {
+  vigente: 'Vigente',
+  obsoleto: 'Obsoleto',
+  en_revision: 'En revisión',
 };
 
-const TIPO_LABELS: Record<string, string> = {
-  formato: '📋 Formato',
-  procedimiento: '📖 Procedimiento',
-  instruccion: '📝 Instrucción',
-  registro: '📊 Registro',
-  manual: '📚 Manual',
-  politica: '📋 Política',
-  plan: '📅 Plan',
-  informe: '📊 Informe',
-  otro: '📄 Otro',
-};
+const TIPO_LABELS: Record<string, string> = Object.fromEntries(
+  TIPO_DOC_OPTIONS.map((t) => [t.value, t.label])
+);
 
 const RETENCION_SUGERIDA: Record<string, number> = {
   formato: 5,
@@ -93,19 +87,6 @@ const initialForm: DocumentForm = {
   estado: 'vigente',
 };
 
-interface DocumentForm {
-  codigo: string;
-  nombre: string;
-  version: string;
-  tipo: string;
-  archivo_url: string;
-  fecha_emision: string;
-  fecha_revision: string;
-  retencion_anos: number;
-  responsable: string;
-  estado: Document['estado'];
-}
-
 export default function Documentos() {
   const [docs, setDocs] = useState<Document[]>([]);
   const [form, setForm] = useState<DocumentForm>(initialForm);
@@ -118,13 +99,18 @@ export default function Documentos() {
   const [showVersionHistory, setShowVersionHistory] = useState<string | null>(null);
   const [versionHistory, setVersionHistory] = useState<Document[]>([]);
 
+  const showToast = (msg: string, isError = false) => {
+    setMessage({ type: isError ? 'error' : 'success', text: msg });
+    setTimeout(() => setMessage(null), 4000);
+  };
+
   const loadDocs = useCallback(async () => {
     try {
       setLoading(true);
       const data = await api.get('/documents');
       setDocs(data as Document[]);
     } catch (err: any) {
-      console.error('Error cargando documentos:', err);
+      showToast(err.message || 'Error cargando documentos', true);
     } finally {
       setLoading(false);
     }
@@ -140,21 +126,16 @@ export default function Documentos() {
       setVersionHistory(data as Document[]);
       setShowVersionHistory(codigo);
     } catch (err: any) {
-      console.error('Error cargando historial:', err);
+      showToast(err.message || 'Error cargando historial de versiones', true);
     }
   };
 
-  const showToast = (msg: string, isError = false) => {
-    setMessage({ type: isError ? 'error' : 'success', text: msg });
-    setTimeout(() => setMessage(null), 4000);
-  };
-
   const handleInputChange = (field: string, value: any) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const onTipoChange = (tipo: string) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       tipo,
       retencion_anos: RETENCION_SUGERIDA[tipo] ?? 5,
@@ -219,7 +200,7 @@ export default function Documentos() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setForm(prev => ({ ...prev, archivo_url: reader.result as string }));
+      setForm((prev) => ({ ...prev, archivo_url: reader.result as string }));
     };
     reader.readAsDataURL(file);
   };
@@ -241,297 +222,667 @@ export default function Documentos() {
       estado: 'en_revision',
     });
     setViewingDoc(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const filteredDocs = docs.filter(d => {
+  const filteredDocs = docs.filter((d) => {
     if (filterTipo !== 'all' && d.tipo !== filterTipo) return false;
     if (filterEstado !== 'all' && d.estado !== filterEstado) return false;
     return true;
   });
 
-  const getTipoStats = () => {
-    const stats: Record<string, number> = {};
-    docs.forEach(d => {
-      stats[d.tipo] = (stats[d.tipo] || 0) + 1;
-    });
-    return stats;
-  };
+  const tipoStats: Record<string, number> = {};
+  docs.forEach((d) => {
+    tipoStats[d.tipo] = (tipoStats[d.tipo] || 0) + 1;
+  });
 
-  const tipoStats = getTipoStats();
+  const kpis = [
+    { label: 'Total documentos', value: docs.length, tone: 'brand' },
+    { label: 'Vigentes', value: docs.filter((d) => d.estado === 'vigente').length, tone: 'ok' },
+    {
+      label: 'En revisión',
+      value: docs.filter((d) => d.estado === 'en_revision').length,
+      tone: 'warn',
+    },
+    {
+      label: 'Obsoletos',
+      value: docs.filter((d) => d.estado === 'obsoleto').length,
+      tone: 'danger',
+    },
+  ] as const;
+
+  const renderAcciones = (d: Document) => (
+    <>
+      <button type="button" className="documentos-mini-button" onClick={() => openDoc(d)}>
+        Ver
+      </button>
+      <button
+        type="button"
+        className="documentos-mini-button documentos-mini-button--edit"
+        onClick={() => editDoc(d)}
+      >
+        Editar
+      </button>
+      <button
+        type="button"
+        className="documentos-mini-button documentos-mini-button--version"
+        onClick={() => createNewVersion(d)}
+        aria-label={`Crear nueva versión de ${d.codigo}`}
+      >
+        Nueva versión
+      </button>
+      <button
+        type="button"
+        className="documentos-mini-button documentos-mini-button--history"
+        onClick={() => loadVersionHistory(d.codigo)}
+        aria-label={`Historial de versiones de ${d.codigo}`}
+      >
+        Historial
+      </button>
+      <button
+        type="button"
+        className="documentos-mini-button documentos-mini-button--delete"
+        onClick={() => handleDelete(d.id)}
+      >
+        <span aria-hidden="true">
+          <X size={14} />
+        </span>
+        <span className="documentos-sr-only">Eliminar</span>
+      </button>
+    </>
+  );
 
   return (
-    <div style={{ padding: 20, maxWidth: 1200 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h1 style={{ margin: 0, color: '#0f766e' }}>Gestión Documental y Retención Legal</h1>
-        <button onClick={newDoc} style={{ padding: '10px 16px', background: '#0f766e', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>
-          + Nuevo Documento
+    <div className="ui-page documentos-page">
+      <header className="ui-page-header documentos-page-header">
+        <div>
+          <h1 className="ui-page-title">Gestión Documental y Retención Legal</h1>
+          <p className="ui-page-description">
+            Registros médicos y de exposición: hasta 20 años (Ley 1581/2012, Dec. 1072/2015).
+            Control de versiones, listado maestro, estados y retención legal.
+          </p>
+        </div>
+        <button className="ui-primary-button" onClick={newDoc} type="button">
+          <Plus aria-hidden="true" size={18} />
+          Nuevo documento
         </button>
-      </div>
-
-      <p style={{ color: '#6b7280', fontSize: 12, marginBottom: 16 }}>
-        Registros médicos y de exposición: hasta 20 años (Ley 1581/2012, Dec. 1072/2015). 
-        Control de versiones, listado maestro, estados y retención legal.
-      </p>
+      </header>
 
       {message && (
-        <div style={{ background: message.type === 'success' ? '#ecfdf5' : '#fef2f2', border: `1px solid ${message.type === 'success' ? '#a7f3d0' : '#fecaca'}`, color: message.type === 'success' ? '#065f46' : '#991b1b', padding: 10, borderRadius: 8, marginBottom: 14 }}>
+        <div
+          className={`ui-feedback ui-feedback--${message.type}`}
+          role={message.type === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+        >
           {message.text}
         </div>
       )}
 
-      {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
-        <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center', borderLeft: '4px solid #0f766e' }}>
-          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>Total Documentos</div>
-          <div style={{ fontSize: 28, fontWeight: 'bold', color: '#0f766e' }}>{docs.length}</div>
-        </div>
-        <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center', borderLeft: '4px solid #16a34a' }}>
-          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>Vigentes</div>
-          <div style={{ fontSize: 28, fontWeight: 'bold', color: '#16a34a' }}>{docs.filter(d => d.estado === 'vigente').length}</div>
-        </div>
-        <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center', borderLeft: '4px solid #f59e0b' }}>
-          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>En Revisión</div>
-          <div style={{ fontSize: 28, fontWeight: 'bold', color: '#f59e0b' }}>{docs.filter(d => d.estado === 'en_revision').length}</div>
-        </div>
-        <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', textAlign: 'center', borderLeft: '4px solid #ef4444' }}>
-          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase' }}>Obsoletos</div>
-          <div style={{ fontSize: 28, fontWeight: 'bold', color: '#ef4444' }}>{docs.filter(d => d.estado === 'obsoleto').length}</div>
-        </div>
-      </div>
+      <section aria-label="Resumen documental" className="documentos-kpis">
+        {kpis.map((k) => (
+          <div className={`documentos-kpi documentos-kpi--${k.tone}`} key={k.label}>
+            <span className="documentos-kpi-label">{k.label}</span>
+            <span className="documentos-kpi-value">{k.value}</span>
+          </div>
+        ))}
+      </section>
 
-      {/* Filtros y Stats por Tipo */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <select value={filterTipo} onChange={e => setFilterTipo(e.target.value)} style={{ padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}>
-          <option value="all">Todos los tipos</option>
-          {TIPO_DOC_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-        <select value={filterEstado} onChange={e => setFilterEstado(e.target.value)} style={{ padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}>
-          <option value="all">Todos los estados</option>
-          <option value="vigente">Vigente</option>
-          <option value="en_revision">En Revisión</option>
-          <option value="obsoleto">Obsoleto</option>
-        </select>
-        <div style={{ marginLeft: 'auto', fontSize: 12, color: '#6b7280' }}>
+      <div aria-label="Filtros de documentos" className="ui-surface documentos-filters">
+        <div>
+          <label className="ui-field-label" htmlFor="doc-filter-tipo">
+            Tipo
+          </label>
+          <select
+            id="doc-filter-tipo"
+            value={filterTipo}
+            onChange={(e) => setFilterTipo(e.target.value)}
+          >
+            <option value="all">Todos los tipos</option>
+            {TIPO_DOC_OPTIONS.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="ui-field-label" htmlFor="doc-filter-estado">
+            Estado
+          </label>
+          <select
+            id="doc-filter-estado"
+            value={filterEstado}
+            onChange={(e) => setFilterEstado(e.target.value)}
+          >
+            <option value="all">Todos los estados</option>
+            <option value="vigente">Vigente</option>
+            <option value="en_revision">En revisión</option>
+            <option value="obsoleto">Obsoleto</option>
+          </select>
+        </div>
+        <div className="documentos-stats" aria-label="Documentos por tipo">
           {Object.entries(tipoStats).map(([tipo, count]) => (
-            <span key={tipo} style={{ marginRight: 16, display: 'inline-flex', alignItems: 'center', gap: 4, background: '#f0fdf4', padding: '4px 8px', borderRadius: 6 }}>
-              <span style={{ fontWeight: 'bold', color: '#166534' }}>{count}</span> {TIPO_LABELS[tipo] || tipo}
+            <span key={tipo} className="documentos-stat-pill">
+              <strong>{count}</strong> {TIPO_LABELS[tipo] ?? tipo}
             </span>
           ))}
         </div>
       </div>
 
-      {/* Formulario */}
-      <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', marginBottom: 16 }}>
-        <h3 style={{ margin: '0 0 16px', color: '#0f766e' }}>{editingDoc ? 'Editar Documento' : viewingDoc ? 'Ver Documento' : 'Nuevo Documento / Nueva Versión'}</h3>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12 }}>
+      <section aria-labelledby="documentos-form-title" className="ui-surface documentos-form">
+        <h2 id="documentos-form-title" className="documentos-form-title">
+          {editingDoc
+            ? 'Editar documento'
+            : viewingDoc
+              ? 'Ver documento'
+              : 'Nuevo documento / nueva versión'}
+        </h2>
+        <form onSubmit={handleSubmit} className="documentos-form-fields">
+          <div className="documentos-field-grid">
             <div>
-              <label htmlFor="doc-codigo" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Código *</label>
-              <input id="doc-codigo" value={form.codigo} onChange={e => handleInputChange('codigo', e.target.value)} placeholder="Ej: PROC-SST-001" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} required />
+              <label className="ui-field-label" htmlFor="doc-codigo">
+                Código *
+              </label>
+              <input
+                id="doc-codigo"
+                value={form.codigo}
+                onChange={(e) => handleInputChange('codigo', e.target.value)}
+                placeholder="Ej: PROC-SST-001"
+                required
+              />
             </div>
             <div>
-              <label htmlFor="doc-tipo" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Tipo *</label>
-              <select id="doc-tipo" value={form.tipo} onChange={e => { handleInputChange('tipo', e.target.value); onTipoChange(e.target.value); }} required style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}>
-                {TIPO_DOC_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              <label className="ui-field-label" htmlFor="doc-tipo">
+                Tipo *
+              </label>
+              <select
+                id="doc-tipo"
+                value={form.tipo}
+                onChange={(e) => {
+                  handleInputChange('tipo', e.target.value);
+                  onTipoChange(e.target.value);
+                }}
+                required
+              >
+                {TIPO_DOC_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label htmlFor="doc-version" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Versión *</label>
-              <input id="doc-version" value={form.version} onChange={e => handleInputChange('version', e.target.value)} placeholder="Ej: 1.0, 1.1, 2.0" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} required />
+              <label className="ui-field-label" htmlFor="doc-version">
+                Versión *
+              </label>
+              <input
+                id="doc-version"
+                value={form.version}
+                onChange={(e) => handleInputChange('version', e.target.value)}
+                placeholder="Ej: 1.0, 1.1, 2.0"
+                required
+              />
             </div>
             <div>
-              <label htmlFor="doc-estado" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Estado</label>
-              <select id="doc-estado" value={form.estado} onChange={e => handleInputChange('estado', e.target.value as any)} style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}>
-                {ESTADO_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              <label className="ui-field-label" htmlFor="doc-estado">
+                Estado
+              </label>
+              <select
+                id="doc-estado"
+                value={form.estado}
+                onChange={(e) => handleInputChange('estado', e.target.value)}
+              >
+                {ESTADO_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label htmlFor="doc-retencion" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Retención (años) *</label>
-              <input id="doc-retencion" type="number" min="1" max="50" value={form.retencion_anos} onChange={e => handleInputChange('retencion_anos', parseInt(e.target.value) || 5)} style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} required />
+              <label className="ui-field-label" htmlFor="doc-retencion">
+                Retención (años) *
+              </label>
+              <input
+                id="doc-retencion"
+                type="number"
+                min={1}
+                max={50}
+                value={form.retencion_anos}
+                onChange={(e) => handleInputChange('retencion_anos', parseInt(e.target.value) || 5)}
+                required
+              />
             </div>
             <div>
-              <label htmlFor="doc-responsable" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Responsable</label>
-              <input id="doc-responsable" value={form.responsable} onChange={e => handleInputChange('responsable', e.target.value)} placeholder="Nombre/Área responsable" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
+              <label className="ui-field-label" htmlFor="doc-responsable">
+                Responsable
+              </label>
+              <input
+                id="doc-responsable"
+                value={form.responsable}
+                onChange={(e) => handleInputChange('responsable', e.target.value)}
+                placeholder="Nombre / Área responsable"
+              />
             </div>
           </div>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <label htmlFor="doc-nombre" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Nombre del Documento *</label>
-            <input id="doc-nombre" value={form.nombre} onChange={e => handleInputChange('nombre', e.target.value)} placeholder="Ej: Procedimiento de Trabajo en Alturas" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} required />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12 }}>
-            <div>
-              <label htmlFor="doc-fecha-emision" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Fecha Emisión *</label>
-              <input id="doc-fecha-emision" type="date" value={form.fecha_emision} onChange={e => handleInputChange('fecha_emision', e.target.value)} style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} required />
-            </div>
-            <div>
-              <label htmlFor="doc-fecha-revision" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Fecha Revisión</label>
-              <input id="doc-fecha-revision" type="date" value={form.fecha_revision} onChange={e => handleInputChange('fecha_revision', e.target.value)} style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
-            </div>
-          </div>
+
           <div>
-            <label htmlFor="doc-file-input" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>📎 Archivo del Documento (PDF/Word/Excel)</label>
-            <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={handleFileChange} style={{ display: 'none' }} id="doc-file-input" />
-            <button type="button" onClick={() => document.getElementById('doc-file-input')?.click()} style={{ padding: '8px 16px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: 6, cursor: 'pointer', fontSize: 13, marginBottom: 8 }}>
-              📎 Adjuntar archivo
+            <label className="ui-field-label" htmlFor="doc-nombre">
+              Nombre del documento *
+            </label>
+            <input
+              id="doc-nombre"
+              value={form.nombre}
+              onChange={(e) => handleInputChange('nombre', e.target.value)}
+              placeholder="Ej: Procedimiento de Trabajo en Alturas"
+              required
+            />
+          </div>
+
+          <div className="documentos-field-grid">
+            <div>
+              <label className="ui-field-label" htmlFor="doc-fecha-emision">
+                Fecha de emisión *
+              </label>
+              <input
+                id="doc-fecha-emision"
+                type="date"
+                value={form.fecha_emision}
+                onChange={(e) => handleInputChange('fecha_emision', e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="ui-field-label" htmlFor="doc-fecha-revision">
+                Fecha de revisión
+              </label>
+              <input
+                id="doc-fecha-revision"
+                type="date"
+                value={form.fecha_revision}
+                onChange={(e) => handleInputChange('fecha_revision', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="documentos-archivo">
+            <span id="doc-archivo-label" className="ui-field-label">
+              Archivo del documento (PDF / Word / Excel)
+            </span>
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.xls,.xlsx"
+              onChange={handleFileChange}
+              className="documentos-sr-only"
+              id="doc-file-input"
+              aria-labelledby="doc-archivo-label"
+            />
+            <button
+              type="button"
+              className="documentos-archivo-button"
+              onClick={() => document.getElementById('doc-file-input')?.click()}
+            >
+              Adjuntar archivo
             </button>
             {form.archivo_url && (
-              <div style={{ marginTop: 8 }}>
-                <a href={form.archivo_url} target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1', textDecoration: 'underline' }}>Ver archivo adjunto</a>
-                <button type="button" onClick={() => setForm(prev => ({ ...prev, archivo_url: '' }))} style={{ marginLeft: 12, padding: '4px 8px', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>Eliminar</button>
+              <div className="documentos-archivo-preview">
+                <a href={form.archivo_url} target="_blank" rel="noopener noreferrer">
+                  Ver archivo adjunto
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, archivo_url: '' }))}
+                  className="documentos-mini-button documentos-mini-button--delete"
+                >
+                  Quitar
+                </button>
               </div>
             )}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-            <button type="button" onClick={newDoc} style={{ padding: '10px 16px', background: '#e5e7eb', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Cancelar</button>
-            <button type="submit" disabled={loading} style={{ padding: '10px 16px', background: loading ? '#94a3b8' : '#0f766e', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer' }}>
-              {loading ? 'Guardando...' : editingDoc ? 'Actualizar' : 'Registrar Documento'}
+          <div className="documentos-form-actions">
+            <button type="button" className="ui-action-button" onClick={newDoc}>
+              Cancelar
+            </button>
+            <button type="submit" className="ui-primary-button" disabled={loading}>
+              {loading ? 'Guardando...' : editingDoc ? 'Actualizar' : 'Registrar documento'}
             </button>
           </div>
         </form>
-      </div>
+      </section>
 
-      {/* Lista de documentos */}
-      <div style={{ overflowX: 'auto', background: '#fff', borderRadius: 8, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1300 }}>
-          <thead>
-            <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Código</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Nombre</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Tipo</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Versión</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Estado</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Responsable</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Emisión</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Revisión</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Retención</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Archivo</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Versiones</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredDocs.map((d) => {
-              const estadoColor = ESTADO_COLORS[d.estado] || { bg: '#f3f4f6', text: '#374151' };
-              const hasFile = !!d.archivo_url;
-              const versionCount = docs.filter(x => x.codigo === d.codigo).length;
-              return (
-                <tr key={d.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: 10, fontSize: 12, fontWeight: 500 }}>{d.codigo}</td>
-                  <td style={{ padding: 10, fontSize: 12, maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.nombre}</td>
-                  <td style={{ padding: 10, fontSize: 12 }}>{TIPO_LABELS[d.tipo] || d.tipo}</td>
-                  <td style={{ padding: 10, fontSize: 12, fontWeight: 500, fontFamily: 'monospace' }}>{d.version}</td>
-                  <td style={{ padding: 10 }}>
-                    <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold', background: estadoColor.bg, color: estadoColor.text }}>{d.estado}</span>
-                  </td>
-                  <td style={{ padding: 10, fontSize: 12 }}>{d.responsable || '—'}</td>
-                  <td style={{ padding: 10, fontSize: 12 }}>{d.fecha_emision?.slice(0, 10) || '—'}</td>
-                  <td style={{ padding: 10, fontSize: 12 }}>{d.fecha_revision?.slice(0, 10) || '—'}</td>
-                  <td style={{ padding: 10, fontSize: 12, fontWeight: 500, color: d.retencion_anos >= 20 ? '#ef4444' : '#374151' }}>{d.retencion_anos} años</td>
-                  <td style={{ padding: 10, textAlign: 'center' }}>{hasFile ? '📎' : '—'}</td>
-                  <td style={{ padding: 10, textAlign: 'center' }}>
-                    <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold', background: versionCount > 1 ? '#dbeafe' : '#f3f4f6', color: versionCount > 1 ? '#1e40af' : '#6b7280' }}>
-                      v{d.version} ({versionCount} total)
-                    </span>
-                  </td>
-                  <td style={{ padding: 10, display: 'flex', gap: 6 }}>
-                    <button onClick={() => openDoc(d)} style={{ padding: '4px 8px', background: '#0f766e', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>Ver</button>
-                    <button onClick={() => editDoc(d)} style={{ padding: '4px 8px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>Editar</button>
-                    <button onClick={() => createNewVersion(d)} style={{ padding: '4px 8px', background: '#059669', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }} aria-label="Crear nueva versión">➕ Ver.</button>
-                    <button onClick={() => loadVersionHistory(d.codigo)} style={{ padding: '4px 8px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }} aria-label="Historial de versiones">📜</button>
-                    <button onClick={() => handleDelete(d.id)} style={{ padding: '4px 8px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>✕</button>
+      <section aria-label="Listado maestro de documentos" className="documentos-lista">
+        <div className="documentos-table-wrap ui-surface">
+          <table className="documentos-table">
+            <thead>
+              <tr>
+                <th scope="col">Código</th>
+                <th scope="col">Nombre</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">Versión</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Responsable</th>
+                <th scope="col">Emisión</th>
+                <th scope="col">Revisión</th>
+                <th scope="col">Retención</th>
+                <th scope="col">Archivo</th>
+                <th scope="col">Versiones</th>
+                <th scope="col">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredDocs.map((d) => {
+                const versionCount = docs.filter((x) => x.codigo === d.codigo).length;
+                return (
+                  <tr key={d.id}>
+                    <td>
+                      <span className="documentos-codigo">{d.codigo}</span>
+                    </td>
+                    <td>
+                      <span className="documentos-nombre">{d.nombre}</span>
+                    </td>
+                    <td>{TIPO_LABELS[d.tipo] ?? d.tipo}</td>
+                    <td>
+                      <span className="documentos-version">{d.version}</span>
+                    </td>
+                    <td>
+                      <span className={`documentos-badge documentos-badge--${d.estado}`}>
+                        {ESTADO_LABELS[d.estado] ?? d.estado}
+                      </span>
+                    </td>
+                    <td>{d.responsable || '—'}</td>
+                    <td>{d.fecha_emision?.slice(0, 10) || '—'}</td>
+                    <td>{d.fecha_revision?.slice(0, 10) || '—'}</td>
+                    <td>
+                      <span
+                        className={
+                          d.retencion_anos >= 20 ? 'documentos-retencion-critica' : undefined
+                        }
+                      >
+                        {d.retencion_anos} años
+                      </span>
+                    </td>
+                    <td>{d.archivo_url ? 'Adjunto' : '—'}</td>
+                    <td>
+                      <span
+                        className={
+                          versionCount > 1
+                            ? 'documentos-version-pill documentos-version-pill--multi'
+                            : 'documentos-version-pill'
+                        }
+                      >
+                        v{d.version} ({versionCount} total)
+                      </span>
+                    </td>
+                    <td>
+                      <div className="documentos-fila-acciones">{renderAcciones(d)}</div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filteredDocs.length === 0 && (
+                <tr>
+                  <td colSpan={12} className="documentos-empty">
+                    No hay documentos registrados
                   </td>
                 </tr>
-              );
-            })}
-            {filteredDocs.length === 0 && <tr><td colSpan={12} style={{ padding: 30, textAlign: 'center', color: '#9ca3af' }}>No hay documentos registrados</td></tr>}
-          </tbody>
-        </table>
-      </div>
+              )}
+            </tbody>
+          </table>
+        </div>
 
-      {/* Modal Ver Documento */}
-      {viewingDoc && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20, overflow: 'auto' }}>
-          <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 900, maxHeight: '90vh', overflow: 'auto' }}>
-            <div style={{ padding: 20, borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, color: '#0f766e' }}>{viewingDoc.codigo} - {viewingDoc.nombre}</h3>
-              <button onClick={() => setViewingDoc(null)} style={{ padding: '8px 12px', background: '#e5e7eb', border: 'none', borderRadius: 6, cursor: 'pointer' }}>✕ Cerrar</button>
-            </div>
-            <div style={{ padding: 20, maxHeight: '70vh', overflow: 'auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12, marginBottom: 16 }}>
-                <div><strong>Código:</strong> {viewingDoc.codigo}</div>
-                <div><strong>Versión:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{viewingDoc.version}</span></div>
-                <div><strong>Tipo:</strong> {TIPO_LABELS[viewingDoc.tipo] || viewingDoc.tipo}</div>
-                <div><strong>Estado:</strong> <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold', background: ESTADO_COLORS[viewingDoc.estado]?.bg, color: ESTADO_COLORS[viewingDoc.estado]?.text }}>{viewingDoc.estado}</span></div>
-                <div><strong>Responsable:</strong> {viewingDoc.responsable || '—'}</div>
-                <div><strong>Retención:</strong> {viewingDoc.retencion_anos} años {viewingDoc.retencion_anos >= 20 && <span style={{ color: '#ef4444', marginLeft: 8 }}>⚠️ 20 años (médicos/exposición)</span>}</div>
-                <div><strong>Emisión:</strong> {viewingDoc.fecha_emision?.slice(0, 10) || '—'}</div>
-                <div><strong>Revisión:</strong> {viewingDoc.fecha_revision?.slice(0, 10) || '—'}</div>
-              </div>
-              {viewingDoc.archivo_url && (
-                <div style={{ marginBottom: 16 }}>
-                  <strong>Archivo:</strong>
-                  <div style={{ marginTop: 8 }}>
-                    <a href={viewingDoc.archivo_url} target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1', textDecoration: 'underline' }}>Ver archivo adjunto</a>
+        <div className="documentos-mobile-list">
+          {filteredDocs.length === 0 && (
+            <p className="documentos-mobile-empty">No hay documentos registrados</p>
+          )}
+          {filteredDocs.map((d) => {
+            const versionCount = docs.filter((x) => x.codigo === d.codigo).length;
+            return (
+              <article className="ui-surface documentos-mobile-card" key={d.id}>
+                <header className="documentos-mobile-card-header">
+                  <div>
+                    <p className="documentos-codigo">{d.codigo}</p>
+                    <h2>{d.nombre}</h2>
                   </div>
+                  <span className={`documentos-badge documentos-badge--${d.estado}`}>
+                    {ESTADO_LABELS[d.estado] ?? d.estado}
+                  </span>
+                </header>
+                <dl className="documentos-mobile-details">
+                  <div>
+                    <dt>Tipo</dt>
+                    <dd>{TIPO_LABELS[d.tipo] ?? d.tipo}</dd>
+                  </div>
+                  <div>
+                    <dt>Versión</dt>
+                    <dd>
+                      v{d.version} ({versionCount} total)
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Responsable</dt>
+                    <dd>{d.responsable || '—'}</dd>
+                  </div>
+                  <div>
+                    <dt>Emisión</dt>
+                    <dd>{d.fecha_emision?.slice(0, 10) || '—'}</dd>
+                  </div>
+                  <div>
+                    <dt>Revisión</dt>
+                    <dd>{d.fecha_revision?.slice(0, 10) || '—'}</dd>
+                  </div>
+                  <div>
+                    <dt>Retención</dt>
+                    <dd
+                      className={
+                        d.retencion_anos >= 20 ? 'documentos-retencion-critica' : undefined
+                      }
+                    >
+                      {d.retencion_anos} años
+                      {d.retencion_anos >= 20 ? ' (médicos / exposición)' : ''}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="documentos-mobile-acciones">{renderAcciones(d)}</div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      {viewingDoc && (
+        <div
+          className="documentos-modal-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setViewingDoc(null);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') setViewingDoc(null);
+          }}
+          role="presentation"
+        >
+          <div
+            className="documentos-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="documentos-view-title"
+            tabIndex={-1}
+          >
+            <header className="documentos-modal-header">
+              <h3 id="documentos-view-title">
+                {viewingDoc.codigo} — {viewingDoc.nombre}
+              </h3>
+              <button
+                type="button"
+                className="ui-action-button"
+                onClick={() => setViewingDoc(null)}
+              >
+                Cerrar
+              </button>
+            </header>
+            <div className="documentos-modal-body">
+              <dl className="documentos-view-grid">
+                <div>
+                  <dt>Código</dt>
+                  <dd>{viewingDoc.codigo}</dd>
+                </div>
+                <div>
+                  <dt>Versión</dt>
+                  <dd className="documentos-version">{viewingDoc.version}</dd>
+                </div>
+                <div>
+                  <dt>Tipo</dt>
+                  <dd>{TIPO_LABELS[viewingDoc.tipo] ?? viewingDoc.tipo}</dd>
+                </div>
+                <div>
+                  <dt>Estado</dt>
+                  <dd>
+                    <span className={`documentos-badge documentos-badge--${viewingDoc.estado}`}>
+                      {ESTADO_LABELS[viewingDoc.estado] ?? viewingDoc.estado}
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Responsable</dt>
+                  <dd>{viewingDoc.responsable || '—'}</dd>
+                </div>
+                <div>
+                  <dt>Retención</dt>
+                  <dd>
+                    <span
+                      className={
+                        viewingDoc.retencion_anos >= 20 ? 'documentos-retencion-critica' : undefined
+                      }
+                    >
+                      {viewingDoc.retencion_anos} años
+                    </span>
+                    {viewingDoc.retencion_anos >= 20 && (
+                      <span className="documentos-retencion-nota">
+                        20 años: médicos / exposición
+                      </span>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Emisión</dt>
+                  <dd>{viewingDoc.fecha_emision?.slice(0, 10) || '—'}</dd>
+                </div>
+                <div>
+                  <dt>Revisión</dt>
+                  <dd>{viewingDoc.fecha_revision?.slice(0, 10) || '—'}</dd>
+                </div>
+              </dl>
+              {viewingDoc.archivo_url && (
+                <div>
+                  <strong>Archivo:</strong>
+                  <p>
+                    <a href={viewingDoc.archivo_url} target="_blank" rel="noopener noreferrer">
+                      Ver archivo adjunto
+                    </a>
+                  </p>
                 </div>
               )}
-              <details style={{ marginTop: 16 }}>
-                <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#0f766e' }}>📜 Ver historial de versiones de este código</summary>
-                <div style={{ marginTop: 12 }}>
-                  <button onClick={() => loadVersionHistory(viewingDoc.codigo)} style={{ padding: '8px 16px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Cargar historial completo</button>
+              <div>
+                <strong>Historial de versiones</strong>
+                <div className="documentos-modal-acciones">
+                  <button
+                    type="button"
+                    className="ui-action-button"
+                    onClick={() => loadVersionHistory(viewingDoc.codigo)}
+                  >
+                    Cargar historial de este código
+                  </button>
                 </div>
-              </details>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal Historial de Versiones */}
       {showVersionHistory && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001, padding: 20, overflow: 'auto' }}>
-          <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 1000, maxHeight: '90vh', overflow: 'auto' }}>
-            <div style={{ padding: 20, borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, color: '#0f766e' }}>Historial de Versiones - Código: {showVersionHistory}</h3>
-              <button onClick={() => { setShowVersionHistory(null); setVersionHistory([]); }} style={{ padding: '8px 12px', background: '#e5e7eb', border: 'none', borderRadius: 6, cursor: 'pointer' }}>✕ Cerrar</button>
-            </div>
-            <div style={{ padding: 20, maxHeight: '70vh', overflow: 'auto' }}>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+        <div
+          className="documentos-modal-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowVersionHistory(null);
+              setVersionHistory([]);
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              setShowVersionHistory(null);
+              setVersionHistory([]);
+            }
+          }}
+          role="presentation"
+        >
+          <div
+            className="documentos-modal documentos-modal--wide"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="documentos-history-title"
+            tabIndex={-1}
+          >
+            <header className="documentos-modal-header">
+              <h3 id="documentos-history-title">
+                Historial de versiones — Código: {showVersionHistory}
+              </h3>
+              <button
+                type="button"
+                className="ui-action-button"
+                onClick={() => {
+                  setShowVersionHistory(null);
+                  setVersionHistory([]);
+                }}
+              >
+                Cerrar
+              </button>
+            </header>
+            <div className="documentos-modal-body">
+              <div className="documentos-table-wrap">
+                <table className="documentos-table documentos-table--history">
                   <thead>
-                    <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Versión</th>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Nombre</th>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Estado</th>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Responsable</th>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Emisión</th>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Revisión</th>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Retención</th>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Archivo</th>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Creado</th>
+                    <tr>
+                      <th scope="col">Versión</th>
+                      <th scope="col">Nombre</th>
+                      <th scope="col">Estado</th>
+                      <th scope="col">Responsable</th>
+                      <th scope="col">Emisión</th>
+                      <th scope="col">Revisión</th>
+                      <th scope="col">Retención</th>
+                      <th scope="col">Archivo</th>
+                      <th scope="col">Creado</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {versionHistory.map((v) => {
-                      const estadoColor = ESTADO_COLORS[v.estado] || { bg: '#f3f4f6', text: '#374151' };
-                      const hasFile = !!v.archivo_url;
-                      return (
-                        <tr key={v.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                          <td style={{ padding: 10, fontSize: 12, fontWeight: 'bold', fontFamily: 'monospace' }}>{v.version}</td>
-                          <td style={{ padding: 10, fontSize: 12 }}>{v.nombre}</td>
-                          <td style={{ padding: 10 }}>
-                            <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold', background: estadoColor.bg, color: estadoColor.text }}>{v.estado}</span>
-                          </td>
-                          <td style={{ padding: 10, fontSize: 12 }}>{v.responsable || '—'}</td>
-                          <td style={{ padding: 10, fontSize: 12 }}>{v.fecha_emision?.slice(0, 10) || '—'}</td>
-                          <td style={{ padding: 10, fontSize: 12 }}>{v.fecha_revision?.slice(0, 10) || '—'}</td>
-                          <td style={{ padding: 10, fontSize: 12 }}>{v.retencion_anos} años</td>
-                          <td style={{ padding: 10, textAlign: 'center' }}>{hasFile ? '📎' : '—'}</td>
-                          <td style={{ padding: 10, fontSize: 12 }}>{new Date(v.creado_en).toLocaleDateString('es-CO')}</td>
-                        </tr>
-                      );
-                    })}
-                    {versionHistory.length === 0 && <tr><td colSpan={9} style={{ padding: 30, textAlign: 'center', color: '#9ca3af' }}>No hay historial de versiones</td></tr>}
+                    {versionHistory.map((v) => (
+                      <tr key={v.id}>
+                        <td>
+                          <span className="documentos-version">{v.version}</span>
+                        </td>
+                        <td>
+                          <span className="documentos-nombre">{v.nombre}</span>
+                        </td>
+                        <td>
+                          <span className={`documentos-badge documentos-badge--${v.estado}`}>
+                            {ESTADO_LABELS[v.estado] ?? v.estado}
+                          </span>
+                        </td>
+                        <td>{v.responsable || '—'}</td>
+                        <td>{v.fecha_emision?.slice(0, 10) || '—'}</td>
+                        <td>{v.fecha_revision?.slice(0, 10) || '—'}</td>
+                        <td>{v.retencion_anos} años</td>
+                        <td>{v.archivo_url ? 'Adjunto' : '—'}</td>
+                        <td>{new Date(v.creado_en).toLocaleDateString('es-CO')}</td>
+                      </tr>
+                    ))}
+                    {versionHistory.length === 0 && (
+                      <tr>
+                        <td colSpan={9} className="documentos-empty">
+                          No hay historial de versiones
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

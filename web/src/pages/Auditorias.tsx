@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { BarChart3, ClipboardList, Download, Search } from 'lucide-react';
+
 import { api } from '@/lib/api';
 
 interface Audit {
@@ -32,29 +34,38 @@ interface Finding {
   creado_en: string;
 }
 
+interface FindingsSummary {
+  total: number;
+  abiertos: number;
+  en_proceso: number;
+  cerrados: number;
+  verificados: number;
+  vencidos: number;
+}
+
 const TIPO_AUDIT_LABELS: Record<string, string> = {
-  interna: '🔍 Auditoría Interna',
-  direccion: '👔 Revisión por la Dirección',
+  interna: 'Auditoría Interna',
+  direccion: 'Revisión por la Dirección',
 };
 
 const TIPO_FINDING_LABELS: Record<string, string> = {
-  no_conformidad: '❌ No Conformidad',
-  observacion: '⚠️ Observación',
-  oportunidad_mejora: '💡 Oportunidad de Mejora',
-  fortaleza: '✅ Fortaleza',
+  no_conformidad: 'No Conformidad',
+  observacion: 'Observación',
+  oportunidad_mejora: 'Oportunidad de Mejora',
+  fortaleza: 'Fortaleza',
 };
 
-const ESTADO_AUDIT_COLORS: Record<string, { bg: string; text: string }> = {
-  programada: { bg: '#eff6ff', text: '#1e40af' },
-  realizada: { bg: '#fef3c7', text: '#92400e' },
-  cerrada: { bg: '#dcfce7', text: '#166534' },
+const ESTADO_AUDIT_LABELS: Record<string, string> = {
+  programada: 'Programada',
+  realizada: 'Realizada',
+  cerrada: 'Cerrada',
 };
 
-const ESTADO_FINDING_COLORS: Record<string, { bg: string; text: string }> = {
-  abierto: { bg: '#fef2f2', text: '#991b1b' },
-  en_proceso: { bg: '#fef3c7', text: '#92400e' },
-  cerrado: { bg: '#dcfce7', text: '#166534' },
-  verificado: { bg: '#e0e7ff', text: '#3730a3' },
+const ESTADO_FINDING_LABELS: Record<string, string> = {
+  abierto: 'Abierto',
+  en_proceso: 'En proceso',
+  cerrado: 'Cerrado',
+  verificado: 'Verificado',
 };
 
 const initialAuditForm = {
@@ -92,6 +103,7 @@ export default function Auditorias() {
   const [findingForm, setFindingForm] = useState(initialFindingForm);
   const [editingFinding, setEditingFinding] = useState<Finding | null>(null);
   const [findingModalOpen, setFindingModalOpen] = useState(false);
+  const [summary, setSummary] = useState<FindingsSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -100,28 +112,38 @@ export default function Auditorias() {
       const data = await api.get('/audits');
       setAudits(data as Audit[]);
     } catch (err: any) {
-      console.error('Error cargando auditorías:', err);
+      setMessage({ type: 'error', text: err.message || 'Error cargando auditorías' });
+    }
+  }, []);
+
+  const loadSummary = useCallback(async () => {
+    try {
+      const data = await api.get('/audits/findings/summary');
+      setSummary(data as FindingsSummary);
+    } catch {
+      setSummary(null);
     }
   }, []);
 
   useEffect(() => {
     loadAudits();
-  }, [loadAudits]);
-
-  useEffect(() => {
-    if (selectedAudit) {
-      loadFindings(selectedAudit.id);
-    }
-  }, [selectedAudit]);
+    loadSummary();
+  }, [loadAudits, loadSummary]);
 
   const loadFindings = async (auditId: string) => {
     try {
       const data = await api.get(`/audits/${auditId}/findings`);
       setFindings(data as Finding[]);
     } catch (err: any) {
-      console.error('Error cargando hallazgos:', err);
+      setMessage({ type: 'error', text: err.message || 'Error cargando hallazgos' });
     }
   };
+
+  useEffect(() => {
+    if (selectedAudit) {
+      loadFindings(selectedAudit.id);
+    }
+  }, [selectedAudit]);
 
   const showToast = (msg: string, isError = false) => {
     setMessage({ type: isError ? 'error' : 'success', text: msg });
@@ -178,14 +200,17 @@ export default function Auditorias() {
     }
   };
 
-  // Hallazgos handlers
   const openFinding = (f?: Finding) => {
     if (f) {
       setEditingFinding(f);
       setFindingForm({ ...initialFindingForm, ...f, audit_id: selectedAudit?.id || '' });
     } else {
       setEditingFinding(null);
-      setFindingForm({ ...initialFindingForm, audit_id: selectedAudit?.id || '', fecha_limite: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10) });
+      setFindingForm({
+        ...initialFindingForm,
+        audit_id: selectedAudit?.id || '',
+        fecha_limite: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+      });
     }
     setFindingModalOpen(true);
   };
@@ -207,6 +232,7 @@ export default function Auditorias() {
       setFindingModalOpen(false);
       setEditingFinding(null);
       loadFindings(selectedAudit.id);
+      loadSummary();
     } catch (err: any) {
       showToast(err.message || 'Error guardando hallazgo', true);
     } finally {
@@ -221,6 +247,7 @@ export default function Auditorias() {
       await api.delete(`/audits/${selectedAudit.id}/findings/${id}`);
       showToast('Hallazgo eliminado');
       loadFindings(selectedAudit.id);
+      loadSummary();
     } catch (err: any) {
       showToast(err.message || 'Error eliminando', true);
     }
@@ -235,16 +262,18 @@ export default function Auditorias() {
       });
       showToast('Hallazgo verificado y cerrado');
       loadFindings(selectedAudit.id);
+      loadSummary();
     } catch (err: any) {
       showToast(err.message || 'Error cerrando hallazgo', true);
     }
   };
 
-  // Exportar hallazgos
   const exportFindings = async () => {
     if (!selectedAudit) return;
     try {
-      const blob = await api.get(`/audits/${selectedAudit.id}/findings/export`, { responseType: 'blob' });
+      const blob = await api.get(`/audits/${selectedAudit.id}/findings/export`, {
+        responseType: 'blob',
+      });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -257,289 +286,713 @@ export default function Auditorias() {
     }
   };
 
+  const isOverdue = (f: Finding) =>
+    f.estado !== 'cerrado' &&
+    f.estado !== 'verificado' &&
+    f.fecha_limite < new Date().toISOString().slice(0, 10);
+
+  const summaryKpis = [
+    { label: 'Total hallazgos', value: summary?.total ?? 0, tone: 'brand' },
+    { label: 'Abiertos', value: summary?.abiertos ?? 0, tone: 'danger' },
+    { label: 'En proceso', value: summary?.en_proceso ?? 0, tone: 'warn' },
+    { label: 'Vencidos', value: summary?.vencidos ?? 0, tone: 'danger' },
+    { label: 'Verificados', value: summary?.verificados ?? 0, tone: 'ok' },
+  ];
+
   return (
-    <div style={{ padding: 20, maxWidth: 1200 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h1 style={{ margin: 0, color: '#0f766e' }}>
-          Auditoría Interna y Revisión por la Dirección
-        </h1>
-        <button onClick={newAudit} style={{ padding: '10px 16px', background: '#0f766e', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>
-          + Nueva Auditoría
+    <div className="ui-page auditorias-page">
+      <header className="ui-page-header auditorias-page-header">
+        <div>
+          <h1 className="ui-page-title">Auditoría Interna y Revisión por la Dirección</h1>
+          <p className="ui-page-description">
+            Programación, hallazgos y seguimiento de acciones correctivas (Decreto 1072/2015, Res.
+            0312/2019).
+          </p>
+        </div>
+        <button className="ui-primary-button" onClick={newAudit} type="button">
+          <ClipboardList aria-hidden="true" size={18} />
+          Nueva auditoría
         </button>
-      </div>
+      </header>
 
       {message && (
-        <div style={{ background: message.type === 'success' ? '#ecfdf5' : '#fef2f2', border: `1px solid ${message.type === 'success' ? '#a7f3d0' : '#fecaca'}`, color: message.type === 'success' ? '#065f46' : '#991b1b', padding: 10, borderRadius: 8, marginBottom: 14 }}>
+        <div
+          className={`ui-feedback ui-feedback--${message.type}`}
+          role={message.type === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+        >
           {message.text}
         </div>
       )}
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: 16 }}>
+      <div aria-label="Secciones de auditoría" className="ui-tabs auditorias-tabs" role="tablist">
         {[
-          { id: 'lista', label: '📋 Auditorías' },
-          { id: 'hallazgos', label: selectedAudit ? `🔍 Hallazgos - ${selectedAudit.anio} ${TIPO_AUDIT_LABELS[selectedAudit.tipo]}` : '🔍 Hallazgos', disabled: !selectedAudit },
-          { id: 'seguimiento', label: '📊 Seguimiento Global', disabled: !selectedAudit },
+          { id: 'lista' as const, label: 'Auditorías', icon: ClipboardList },
+          {
+            id: 'hallazgos' as const,
+            label: selectedAudit
+              ? `Hallazgos - ${selectedAudit.anio} ${TIPO_AUDIT_LABELS[selectedAudit.tipo]}`
+              : 'Hallazgos',
+            icon: Search,
+          },
+          { id: 'seguimiento' as const, label: 'Seguimiento global', icon: BarChart3 },
         ].map((tab) => (
-          <button key={tab.id} onClick={() => !tab.disabled && setActiveTab(tab.id as any)} disabled={tab.disabled} style={{ padding: '12px 20px', border: 'none', background: activeTab === tab.id ? '#fff' : 'transparent', color: activeTab === tab.id ? '#0f766e' : tab.disabled ? '#d1d5db' : '#6b7280', fontWeight: activeTab === tab.id ? 'bold' : 'normal', fontSize: 13, cursor: tab.disabled ? 'not-allowed' : 'pointer', borderBottom: `3px solid ${activeTab === tab.id ? '#0f766e' : 'transparent'}`, marginBottom: '-1px', opacity: tab.disabled ? 0.5 : 1, transition: 'all 0.15s' }}>
-            {tab.label}
+          <button
+            aria-selected={activeTab === tab.id}
+            aria-controls={activeTab === tab.id ? `auditorias-panel-${tab.id}` : undefined}
+            className="ui-tab"
+            disabled={tab.id === 'hallazgos' && !selectedAudit}
+            id={`auditorias-tab-${tab.id}`}
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            role="tab"
+            type="button"
+          >
+            <tab.icon aria-hidden="true" size={16} />
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>
 
-      {/* TAB 1: LISTA DE AUDITORÍAS */}
       {activeTab === 'lista' && (
-        <>
-          <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', marginBottom: 16 }}>
-            <h3 style={{ margin: '0 0 16px', color: '#0f766e' }}>{editingAudit ? 'Editar Auditoría' : 'Nueva Auditoría'}</h3>
-            <form onSubmit={handleAuditSave} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+        <section
+          aria-labelledby="auditorias-tab-lista"
+          className="auditorias-tab-panel"
+          id="auditorias-panel-lista"
+          role="tabpanel"
+          tabIndex={0}
+        >
+          <section aria-labelledby="auditorias-form-title" className="ui-surface auditorias-form">
+            <h2 id="auditorias-form-title" className="auditorias-form-title">
+              {editingAudit ? 'Editar auditoría' : 'Nueva auditoría'}
+            </h2>
+            <form onSubmit={handleAuditSave}>
+              <div className="ui-form-grid">
                 <div>
-                  <label htmlFor="audit-anio" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Año *</label>
-                  <input id="audit-anio" type="number" value={auditForm.anio} onChange={e => setAuditForm({ ...auditForm, anio: Number(e.target.value) })} min="2020" max="2030" required style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
+                  <label className="ui-field-label" htmlFor="audit-anio">
+                    Año *
+                  </label>
+                  <input
+                    id="audit-anio"
+                    type="number"
+                    value={auditForm.anio}
+                    onChange={(e) => setAuditForm({ ...auditForm, anio: Number(e.target.value) })}
+                    min={2020}
+                    max={2035}
+                    required
+                  />
                 </div>
                 <div>
-                  <label htmlFor="audit-tipo" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Tipo *</label>
-                  <select id="audit-tipo" value={auditForm.tipo} onChange={e => setAuditForm({ ...auditForm, tipo: e.target.value as any })} required style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}>
+                  <label className="ui-field-label" htmlFor="audit-tipo">
+                    Tipo *
+                  </label>
+                  <select
+                    id="audit-tipo"
+                    value={auditForm.tipo}
+                    onChange={(e) =>
+                      setAuditForm({ ...auditForm, tipo: e.target.value as Audit['tipo'] })
+                    }
+                    required
+                  >
                     <option value="interna">Auditoría Interna</option>
                     <option value="direccion">Revisión por la Dirección</option>
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="audit-fecha" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Fecha *</label>
-                  <input id="audit-fecha" type="date" value={auditForm.fecha} onChange={e => setAuditForm({ ...auditForm, fecha: e.target.value })} required style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
+                  <label className="ui-field-label" htmlFor="audit-fecha">
+                    Fecha *
+                  </label>
+                  <input
+                    id="audit-fecha"
+                    type="date"
+                    value={auditForm.fecha}
+                    onChange={(e) => setAuditForm({ ...auditForm, fecha: e.target.value })}
+                    required
+                  />
                 </div>
                 <div>
-                  <label htmlFor="audit-auditor" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Auditor / Responsable</label>
-                  <input id="audit-auditor" value={auditForm.auditor} onChange={e => setAuditForm({ ...auditForm, auditor: e.target.value })} placeholder="Nombre del auditor o responsable" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
+                  <label className="ui-field-label" htmlFor="audit-auditor">
+                    Auditor / responsable
+                  </label>
+                  <input
+                    id="audit-auditor"
+                    value={auditForm.auditor}
+                    onChange={(e) => setAuditForm({ ...auditForm, auditor: e.target.value })}
+                    placeholder="Nombre del auditor o responsable"
+                  />
+                </div>
+                <div>
+                  <label className="ui-field-label" htmlFor="audit-estado">
+                    Estado
+                  </label>
+                  <select
+                    id="audit-estado"
+                    value={auditForm.estado}
+                    onChange={(e) =>
+                      setAuditForm({ ...auditForm, estado: e.target.value as Audit['estado'] })
+                    }
+                  >
+                    {Object.entries(ESTADO_AUDIT_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
-              <div>
-                <label htmlFor="audit-alcance" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Alcance *</label>
-                <textarea id="audit-alcance" value={auditForm.alcance} onChange={e => setAuditForm({ ...auditForm, alcance: e.target.value })} rows={3} placeholder="Áreas, procesos, normas auditadas..." required style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'inherit', resize: 'vertical' }} />
+              <div className="auditorias-field-full">
+                <label className="ui-field-label" htmlFor="audit-alcance">
+                  Alcance *
+                </label>
+                <textarea
+                  id="audit-alcance"
+                  value={auditForm.alcance}
+                  onChange={(e) => setAuditForm({ ...auditForm, alcance: e.target.value })}
+                  placeholder="Áreas, procesos y normas auditadas"
+                  required
+                />
               </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label htmlFor="audit-hallazgos" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Hallazgos Preliminares</label>
-                <textarea id="audit-hallazgos" value={auditForm.hallazgos} onChange={e => setAuditForm({ ...auditForm, hallazgos: e.target.value })} rows={3} placeholder="Resumen de hallazgos identificados durante la auditoría..." style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'inherit', resize: 'vertical' }} />
+              <div className="auditorias-field-full">
+                <label className="ui-field-label" htmlFor="audit-hallazgos">
+                  Hallazgos preliminares
+                </label>
+                <textarea
+                  id="audit-hallazgos"
+                  value={auditForm.hallazgos}
+                  onChange={(e) => setAuditForm({ ...auditForm, hallazgos: e.target.value })}
+                  placeholder="Resumen de hallazgos identificados durante la auditoría"
+                />
               </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label htmlFor="audit-conclusiones" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Conclusiones</label>
-                <textarea id="audit-conclusiones" value={auditForm.conclusiones} onChange={e => setAuditForm({ ...auditForm, conclusiones: e.target.value })} rows={3} placeholder="Conclusiones generales de la auditoría..." style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'inherit', resize: 'vertical' }} />
+              <div className="auditorias-field-full">
+                <label className="ui-field-label" htmlFor="audit-conclusiones">
+                  Conclusiones
+                </label>
+                <textarea
+                  id="audit-conclusiones"
+                  value={auditForm.conclusiones}
+                  onChange={(e) => setAuditForm({ ...auditForm, conclusiones: e.target.value })}
+                  placeholder="Conclusiones generales de la auditoría"
+                />
               </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label htmlFor="audit-compromisos" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Compromisos / Plan de Acción</label>
-                <textarea id="audit-compromisos" value={auditForm.compromisos} onChange={e => setAuditForm({ ...auditForm, compromisos: e.target.value })} rows={3} placeholder="Compromisos adquiridos, acciones de mejora..." style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'inherit', resize: 'vertical' }} />
+              <div className="auditorias-field-full">
+                <label className="ui-field-label" htmlFor="audit-compromisos">
+                  Compromisos / plan de acción
+                </label>
+                <textarea
+                  id="audit-compromisos"
+                  value={auditForm.compromisos}
+                  onChange={(e) => setAuditForm({ ...auditForm, compromisos: e.target.value })}
+                  placeholder="Compromisos adquiridos y acciones de mejora"
+                />
               </div>
-              <div>
-                <label htmlFor="audit-estado" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Estado</label>
-                <select id="audit-estado" value={auditForm.estado} onChange={e => setAuditForm({ ...auditForm, estado: e.target.value as any })} style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}>
-                  <option value="programada">Programada</option>
-                  <option value="realizada">Realizada</option>
-                  <option value="cerrada">Cerrada</option>
-                </select>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-                <button type="button" onClick={newAudit} style={{ padding: '10px 16px', background: '#e5e7eb', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Cancelar</button>
-                <button type="submit" disabled={loading} style={{ padding: '10px 16px', background: loading ? '#94a3b8' : '#0f766e', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer' }}>
-                  {loading ? 'Guardando...' : editingAudit ? 'Actualizar' : 'Registrar Auditoría'}
+              <div className="ui-form-actions">
+                <button type="button" className="ui-action-button" onClick={newAudit}>
+                  Cancelar
+                </button>
+                <button type="submit" className="ui-primary-button" disabled={loading}>
+                  {loading ? 'Guardando...' : editingAudit ? 'Actualizar' : 'Registrar auditoría'}
                 </button>
               </div>
             </form>
-          </div>
+          </section>
 
-          <div style={{ overflowX: 'auto', background: '#fff', borderRadius: 8, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
-              <thead>
-                <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Año</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Tipo</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Fecha</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Auditor</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Estado</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Alcance</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {audits.map((a) => {
-                  const estadoColor = ESTADO_AUDIT_COLORS[a.estado] || { bg: '#f3f4f6', text: '#374151' };
-                  return (
-                    <tr key={a.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: 10 }}>{a.anio}</td>
-                      <td style={{ padding: 10 }}>{TIPO_AUDIT_LABELS[a.tipo]}</td>
-                      <td style={{ padding: 10 }}>{a.fecha}</td>
-                      <td style={{ padding: 10 }}>{a.auditor || '—'}</td>
-                      <td style={{ padding: 10 }}>
-                        <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold', background: estadoColor.bg, color: estadoColor.text }}>{a.estado}</span>
-                      </td>
-                      <td style={{ padding: 10, maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.alcance || '—'}</td>
-                      <td style={{ padding: 10, display: 'flex', gap: 6 }}>
-                        <button onClick={() => openAudit(a)} style={{ padding: '4px 8px', background: '#0f766e', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>Ver Hallazgos</button>
-                        <button onClick={() => editAudit(a)} style={{ padding: '4px 8px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>Editar</button>
-                        <button onClick={() => handleDeleteAudit(a.id)} style={{ padding: '4px 8px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>✕</button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {audits.length === 0 && <tr><td colSpan={7} style={{ padding: 30, textAlign: 'center', color: '#9ca3af' }}>No hay auditorías registradas</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-
-      {/* TAB 2: HALLAZGOS */}
-      {activeTab === 'hallazgos' && selectedAudit && (
-        <>
-          <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', marginBottom: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, color: '#0f766e' }}>Hallazgos - {TIPO_AUDIT_LABELS[selectedAudit.tipo]} {selectedAudit.anio}</h3>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={exportFindings} style={{ padding: '8px 16px', background: '#059669', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>📥 Exportar Excel</button>
-                <button onClick={() => openFinding()} style={{ padding: '8px 16px', background: '#0f766e', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>+ Nuevo Hallazgo</button>
-              </div>
-            </div>
-
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
+          <section aria-label="Auditorías registradas">
+            <div className="ui-surface ui-table-wrap">
+              <table className="ui-table auditorias-table">
                 <thead>
-                  <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-                    <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Tipo</th>
-                    <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Descripción</th>
-                    <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Requisito</th>
-                    <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Responsable</th>
-                    <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Límite</th>
-                    <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Estado</th>
-                    <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acción Correctiva</th>
-                    <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acciones</th>
+                  <tr>
+                    <th scope="col">Año</th>
+                    <th scope="col">Tipo</th>
+                    <th scope="col">Fecha</th>
+                    <th scope="col">Auditor</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">Alcance</th>
+                    <th scope="col">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {findings.map((f) => {
-                    const estadoColor = ESTADO_FINDING_COLORS[f.estado] || { bg: '#f3f4f6', text: '#374151' };
-                    const isOverdue = f.fecha_limite < new Date().toISOString().slice(0, 10) && f.estado !== 'cerrado' && f.estado !== 'verificado';
-                    return (
-                      <tr key={f.id} style={{ borderBottom: '1px solid #f3f4f6', background: isOverdue ? '#fff1f2' : '' }}>
-                        <td style={{ padding: 10 }}><span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 'bold', background: '#e5e7eb', color: '#374151' }}>{TIPO_FINDING_LABELS[f.tipo]}</span></td>
-                        <td style={{ padding: 10, maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.descripcion}</td>
-                        <td style={{ padding: 10, fontSize: 11 }}>{f.requisito || '—'}</td>
-                        <td style={{ padding: 10 }}>{f.responsable || '—'}</td>
-                        <td style={{ padding: 10, fontSize: 12, color: isOverdue && f.estado !== 'cerrado' ? '#dc2626' : '#374151' }}>{f.fecha_limite} {isOverdue && '⚠️'}</td>
-                        <td style={{ padding: 10 }}>
-                          <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold', background: estadoColor.bg, color: estadoColor.text }}>{f.estado}</span>
-                        </td>
-                        <td style={{ padding: 10, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.accion_correctiva || '—'}</td>
-                        <td style={{ padding: 10, display: 'flex', gap: 6 }}>
-                          <button onClick={() => openFinding(f)} style={{ padding: '4px 8px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>Editar</button>
-                          {f.estado !== 'verificado' && (
-                            <button onClick={() => handleFindingClose(f.id)} style={{ padding: '4px 8px', background: '#059669', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>Verificar</button>
-                          )}
-                          <button onClick={() => handleDeleteFinding(f.id)} style={{ padding: '4px 8px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>✕</button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {findings.length === 0 && <tr><td colSpan={8} style={{ padding: 30, textAlign: 'center', color: '#9ca3af' }}>No hay hallazgos registrados para esta auditoría</td></tr>}
+                  {audits.map((a) => (
+                    <tr key={a.id}>
+                      <td>{a.anio}</td>
+                      <td>{TIPO_AUDIT_LABELS[a.tipo]}</td>
+                      <td>{a.fecha}</td>
+                      <td>{a.auditor || '—'}</td>
+                      <td>
+                        <span className="ui-badge">{ESTADO_AUDIT_LABELS[a.estado]}</span>
+                      </td>
+                      <td>{a.alcance || '—'}</td>
+                      <td>
+                        <div className="ui-row-actions">
+                          <button
+                            type="button"
+                            className="ui-icon-button"
+                            onClick={() => openAudit(a)}
+                          >
+                            Ver hallazgos
+                          </button>
+                          <button
+                            type="button"
+                            className="ui-icon-button ui-icon-button--edit"
+                            onClick={() => editAudit(a)}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            className="ui-icon-button ui-icon-button--delete"
+                            onClick={() => handleDeleteAudit(a.id)}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {audits.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="ui-empty">
+                        No hay auditorías registradas
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
-          </div>
 
-          {/* Modal Hallazgo */}
-          {findingModalOpen && (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20, overflow: 'auto' }}>
-              <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 700, maxHeight: '90vh', overflow: 'auto' }}>
-                <div style={{ padding: 20, borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, color: '#0f766e' }}>{editingFinding ? 'Editar Hallazgo' : 'Nuevo Hallazgo'}</h3>
-                  <button onClick={() => { setFindingModalOpen(false); setEditingFinding(null); }} style={{ padding: '8px 12px', background: '#e5e7eb', border: 'none', borderRadius: 6, cursor: 'pointer' }}>✕ Cerrar</button>
-                </div>
-                <form onSubmit={handleFindingSave} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12 }}>
+            <div className="ui-mobile-list">
+              {audits.length === 0 && <p className="ui-empty">No hay auditorías registradas</p>}
+              {audits.map((a) => (
+                <article className="ui-surface ui-mobile-card" key={a.id}>
+                  <header className="ui-mobile-card-header">
                     <div>
-                      <label htmlFor="finding-tipo" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Tipo *</label>
-                      <select id="finding-tipo" value={findingForm.tipo} onChange={e => setFindingForm({ ...findingForm, tipo: e.target.value as any })} required style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}>
-                        <option value="no_conformidad">No Conformidad</option>
-                        <option value="observacion">Observación</option>
-                        <option value="oportunidad_mejora">Oportunidad de Mejora</option>
-                        <option value="fortaleza">Fortaleza</option>
-                      </select>
+                      <h2>
+                        {TIPO_AUDIT_LABELS[a.tipo]} {a.anio}
+                      </h2>
+                      <p>{a.fecha}</p>
+                    </div>
+                    <span className="ui-badge">{ESTADO_AUDIT_LABELS[a.estado]}</span>
+                  </header>
+                  <dl className="ui-mobile-details">
+                    <div>
+                      <dt>Auditor</dt>
+                      <dd>{a.auditor || '—'}</dd>
                     </div>
                     <div>
-                      <label htmlFor="finding-requisito" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Requisito / Norma</label>
-                      <input id="finding-requisito" value={findingForm.requisito} onChange={e => setFindingForm({ ...findingForm, requisito: e.target.value })} placeholder="Ej: Res. 0312/2019 E13, ISO 45001:2018 8.2.2" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
+                      <dt>Alcance</dt>
+                      <dd>{a.alcance || '—'}</dd>
                     </div>
-                  </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label htmlFor="finding-descripcion" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Descripción del Hallazgo *</label>
-                    <textarea id="finding-descripcion" value={findingForm.descripcion} onChange={e => setFindingForm({ ...findingForm, descripcion: e.target.value })} rows={3} placeholder="Describa el hallazgo de forma clara y objetiva..." required style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'inherit', resize: 'vertical' }} />
-                  </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label htmlFor="finding-evidencia" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Evidencia</label>
-                    <textarea id="finding-evidencia" value={findingForm.evidencia} onChange={e => setFindingForm({ ...findingForm, evidencia: e.target.value })} rows={2} placeholder="Documentos, fotos, registros que soporten el hallazgo..." style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'inherit', resize: 'vertical' }} />
-                  </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                      <label htmlFor="finding-responsable" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Responsable *</label>
-                      <input id="finding-responsable" value={findingForm.responsable} onChange={e => setFindingForm({ ...findingForm, responsable: e.target.value })} placeholder="Nombre del responsable de la acción correctiva" required style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
-                    </div>
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <label htmlFor="finding-fecha-limite" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Fecha Límite *</label>
-                      <input id="finding-fecha-limite" type="date" value={findingForm.fecha_limite} onChange={e => setFindingForm({ ...findingForm, fecha_limite: e.target.value })} required style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
-                    </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label htmlFor="finding-accion" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Acción Correctiva / Preventiva *</label>
-                    <textarea id="finding-accion" value={findingForm.accion_correctiva} onChange={e => setFindingForm({ ...findingForm, accion_correctiva: e.target.value })} rows={3} placeholder="Describa la acción a implementar para cerrar el hallazgo..." required style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'inherit', resize: 'vertical' }} />
-                  </div>
-                  {editingFinding && editingFinding.estado === 'verificado' && (
-                    <div style={{ gridColumn: '1 / -1', padding: 12, background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
-                      <strong style={{ color: '#166534' }}>✅ Hallazgo verificado y cerrado el {editingFinding.fecha_cierre}</strong>
-                      <div style={{ marginTop: 8 }}>
-                        <label htmlFor="finding-evidencia-cierre" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Evidencia de Cierre</label>
-                        <textarea id="finding-evidencia-cierre" value={findingForm.evidencia_cierre} onChange={e => setFindingForm({ ...findingForm, evidencia_cierre: e.target.value })} rows={2} placeholder="Registros, fotos, documentos que demuestren el cierre efectivo..." style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'inherit', resize: 'vertical' }} />
-                      </div>
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-                    <button type="button" onClick={() => { setFindingModalOpen(false); setEditingFinding(null); }} style={{ padding: '10px 16px', background: '#e5e7eb', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Cancelar</button>
-                    <button type="submit" disabled={loading} style={{ padding: '10px 16px', background: loading ? '#94a3b8' : '#0f766e', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer' }}>
-                      {loading ? 'Guardando...' : editingFinding ? 'Actualizar' : 'Registrar Hallazgo'}
+                  </dl>
+                  <div className="ui-mobile-actions">
+                    <button type="button" className="ui-icon-button" onClick={() => openAudit(a)}>
+                      Ver hallazgos
+                    </button>
+                    <button
+                      type="button"
+                      className="ui-icon-button ui-icon-button--edit"
+                      onClick={() => editAudit(a)}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      className="ui-icon-button ui-icon-button--delete"
+                      onClick={() => handleDeleteAudit(a.id)}
+                    >
+                      Eliminar
                     </button>
                   </div>
-                </form>
-              </div>
+                </article>
+              ))}
             </div>
-          )}
-        </>
+          </section>
+        </section>
       )}
 
-      {/* TAB 3: SEGUIMIENTO GLOBAL */}
-      {activeTab === 'seguimiento' && (
-        <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
-          <h3 style={{ margin: '0 0 16px', color: '#0f766e' }}>Seguimiento Global de Hallazgos</h3>
-          <p style={{ color: '#6b7280', fontSize: 12, marginBottom: 16 }}>Resumen consolidado de hallazgos abiertos, en proceso y vencidos en todas las auditorías.</p>
-
-          {/* KPIs globales - se cargarían desde backend */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
-            <div style={{ background: '#fef2f2', padding: 16, borderRadius: 10, borderLeft: '4px solid #ef4444' }}>
-              <div style={{ fontSize: 11, color: '#991b1b', textTransform: 'uppercase' }}>Abiertos</div>
-              <div style={{ fontSize: 28, fontWeight: 'bold', color: '#dc2626' }}>—</div>
+      {activeTab === 'hallazgos' && selectedAudit && (
+        <section
+          aria-labelledby="auditorias-tab-hallazgos"
+          className="auditorias-tab-panel"
+          id="auditorias-panel-hallazgos"
+          role="tabpanel"
+          tabIndex={0}
+        >
+          <div className="auditorias-hallazgos-header">
+            <div>
+              <h2 className="auditorias-section-title">
+                Hallazgos - {TIPO_AUDIT_LABELS[selectedAudit.tipo]} {selectedAudit.anio}
+              </h2>
+              <p className="ui-page-description">
+                Registre hallazgos con su acción correctiva, responsable y fecha límite.
+              </p>
             </div>
-            <div style={{ background: '#fef3c7', padding: 16, borderRadius: 10, borderLeft: '4px solid #f59e0b' }}>
-              <div style={{ fontSize: 11, color: '#92400e', textTransform: 'uppercase' }}>En Proceso</div>
-              <div style={{ fontSize: 28, fontWeight: 'bold', color: '#f59e0b' }}>—</div>
-            </div>
-            <div style={{ background: '#fff1f2', padding: 16, borderRadius: 10, borderLeft: '4px solid #ef4444' }}>
-              <div style={{ fontSize: 11, color: '#991b1b', textTransform: 'uppercase' }}>Vencidos</div>
-              <div style={{ fontSize: 28, fontWeight: 'bold', color: '#ef4444' }}>—</div>
-            </div>
-            <div style={{ background: '#f0fdf4', padding: 16, borderRadius: 10, borderLeft: '4px solid #16a34a' }}>
-              <div style={{ fontSize: 11, color: '#166534', textTransform: 'uppercase' }}>Verificados</div>
-              <div style={{ fontSize: 28, fontWeight: 'bold', color: '#16a34a' }}>—</div>
+            <div className="ui-row-actions">
+              <button type="button" className="ui-action-button" onClick={exportFindings}>
+                <Download aria-hidden="true" size={16} />
+                Exportar Excel
+              </button>
+              <button type="button" className="ui-primary-button" onClick={() => openFinding()}>
+                Nuevo hallazgo
+              </button>
             </div>
           </div>
 
-          <div style={{ background: '#f9fafb', padding: 16, borderRadius: 10, textAlign: 'center', color: '#6b7280' }}>
-            <p>Esta vista requiere endpoint de agregación global en backend (<code>/audits/findings/summary</code>)</p>
-            <p style={{ marginTop: 8, fontSize: 12 }}>Implementar en Fase 5.2 para consolidar KPIs de todas las auditorías.</p>
+          <section aria-label="Hallazgos de la auditoría">
+            <div className="ui-surface ui-table-wrap">
+              <table className="ui-table auditorias-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Tipo</th>
+                    <th scope="col">Descripción</th>
+                    <th scope="col">Requisito</th>
+                    <th scope="col">Responsable</th>
+                    <th scope="col">Límite</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">Acción correctiva</th>
+                    <th scope="col">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {findings.map((f) => (
+                    <tr key={f.id}>
+                      <td>
+                        <span className="ui-badge">{TIPO_FINDING_LABELS[f.tipo]}</span>
+                      </td>
+                      <td>{f.descripcion}</td>
+                      <td>{f.requisito || '—'}</td>
+                      <td>{f.responsable || '—'}</td>
+                      <td className={isOverdue(f) ? 'auditorias-overdue' : undefined}>
+                        {f.fecha_limite}
+                      </td>
+                      <td>
+                        <span className="ui-badge">{ESTADO_FINDING_LABELS[f.estado]}</span>
+                      </td>
+                      <td>{f.accion_correctiva || '—'}</td>
+                      <td>
+                        <div className="ui-row-actions">
+                          <button
+                            type="button"
+                            className="ui-icon-button ui-icon-button--edit"
+                            onClick={() => openFinding(f)}
+                          >
+                            Editar
+                          </button>
+                          {f.estado !== 'verificado' && (
+                            <button
+                              type="button"
+                              className="ui-icon-button ui-icon-button--check"
+                              onClick={() => handleFindingClose(f.id)}
+                            >
+                              Verificar
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="ui-icon-button ui-icon-button--delete"
+                            onClick={() => handleDeleteFinding(f.id)}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {findings.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="ui-empty">
+                        No hay hallazgos registrados para esta auditoría
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="ui-mobile-list">
+              {findings.length === 0 && (
+                <p className="ui-empty">No hay hallazgos registrados para esta auditoría</p>
+              )}
+              {findings.map((f) => (
+                <article className="ui-surface ui-mobile-card" key={f.id}>
+                  <header className="ui-mobile-card-header">
+                    <div>
+                      <h2>{TIPO_FINDING_LABELS[f.tipo]}</h2>
+                      <p>{f.descripcion}</p>
+                    </div>
+                    <span className="ui-badge">{ESTADO_FINDING_LABELS[f.estado]}</span>
+                  </header>
+                  <dl className="ui-mobile-details">
+                    <div>
+                      <dt>Requisito</dt>
+                      <dd>{f.requisito || '—'}</dd>
+                    </div>
+                    <div>
+                      <dt>Responsable</dt>
+                      <dd>{f.responsable || '—'}</dd>
+                    </div>
+                    <div>
+                      <dt>Fecha límite</dt>
+                      <dd className={isOverdue(f) ? 'auditorias-overdue' : undefined}>
+                        {f.fecha_limite}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Acción correctiva</dt>
+                      <dd>{f.accion_correctiva || '—'}</dd>
+                    </div>
+                  </dl>
+                  <div className="ui-mobile-actions">
+                    <button
+                      type="button"
+                      className="ui-icon-button ui-icon-button--edit"
+                      onClick={() => openFinding(f)}
+                    >
+                      Editar
+                    </button>
+                    {f.estado !== 'verificado' && (
+                      <button
+                        type="button"
+                        className="ui-icon-button ui-icon-button--check"
+                        onClick={() => handleFindingClose(f.id)}
+                      >
+                        Verificar
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="ui-icon-button ui-icon-button--delete"
+                      onClick={() => handleDeleteFinding(f.id)}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </section>
+      )}
+
+      {activeTab === 'seguimiento' && (
+        <section
+          aria-labelledby="auditorias-tab-seguimiento"
+          className="auditorias-tab-panel"
+          id="auditorias-panel-seguimiento"
+          role="tabpanel"
+          tabIndex={0}
+        >
+          <h2 className="auditorias-section-title">Seguimiento global de hallazgos</h2>
+          <p className="ui-page-description">
+            Resumen consolidado de hallazgos abiertos, en proceso, vencidos y verificados en todas
+            las auditorías.
+          </p>
+
+          {summary ? (
+            <section aria-label="Resumen global de hallazgos" className="ui-kpi-grid">
+              {summaryKpis.map((k) => (
+                <div className={`ui-kpi ui-kpi--${k.tone}`} key={k.label}>
+                  <span className="ui-kpi-label">{k.label}</span>
+                  <span className="ui-kpi-value">{k.value}</span>
+                </div>
+              ))}
+            </section>
+          ) : (
+            <p className="ui-empty">No hay hallazgos registrados en las auditorías.</p>
+          )}
+        </section>
+      )}
+
+      {findingModalOpen && (
+        <div
+          className="auditorias-modal-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setFindingModalOpen(false);
+              setEditingFinding(null);
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              setFindingModalOpen(false);
+              setEditingFinding(null);
+            }
+          }}
+          role="presentation"
+        >
+          <div
+            className="auditorias-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="auditorias-finding-title"
+            tabIndex={-1}
+          >
+            <header className="auditorias-modal-header">
+              <h3 id="auditorias-finding-title">
+                {editingFinding ? 'Editar hallazgo' : 'Nuevo hallazgo'}
+              </h3>
+              <button
+                type="button"
+                className="ui-action-button"
+                onClick={() => {
+                  setFindingModalOpen(false);
+                  setEditingFinding(null);
+                }}
+              >
+                Cerrar
+              </button>
+            </header>
+            <form className="auditorias-modal-body" onSubmit={handleFindingSave}>
+              <div className="ui-form-grid">
+                <div>
+                  <label className="ui-field-label" htmlFor="finding-tipo">
+                    Tipo *
+                  </label>
+                  <select
+                    id="finding-tipo"
+                    value={findingForm.tipo}
+                    onChange={(e) =>
+                      setFindingForm({ ...findingForm, tipo: e.target.value as Finding['tipo'] })
+                    }
+                    required
+                  >
+                    {Object.entries(TIPO_FINDING_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="ui-field-label" htmlFor="finding-requisito">
+                    Requisito / norma
+                  </label>
+                  <input
+                    id="finding-requisito"
+                    value={findingForm.requisito}
+                    onChange={(e) => setFindingForm({ ...findingForm, requisito: e.target.value })}
+                    placeholder="Ej: Res. 0312/2019 E13"
+                  />
+                </div>
+              </div>
+              <div className="auditorias-field-full">
+                <label className="ui-field-label" htmlFor="finding-descripcion">
+                  Descripción del hallazgo *
+                </label>
+                <textarea
+                  id="finding-descripcion"
+                  value={findingForm.descripcion}
+                  onChange={(e) => setFindingForm({ ...findingForm, descripcion: e.target.value })}
+                  placeholder="Describa el hallazgo de forma clara y objetiva"
+                  required
+                />
+              </div>
+              <div className="auditorias-field-full">
+                <label className="ui-field-label" htmlFor="finding-evidencia">
+                  Evidencia
+                </label>
+                <textarea
+                  id="finding-evidencia"
+                  value={findingForm.evidencia}
+                  onChange={(e) => setFindingForm({ ...findingForm, evidencia: e.target.value })}
+                  placeholder="Documentos, fotos o registros que soporten el hallazgo"
+                />
+              </div>
+              <div className="ui-form-grid">
+                <div>
+                  <label className="ui-field-label" htmlFor="finding-responsable">
+                    Responsable *
+                  </label>
+                  <input
+                    id="finding-responsable"
+                    value={findingForm.responsable}
+                    onChange={(e) =>
+                      setFindingForm({ ...findingForm, responsable: e.target.value })
+                    }
+                    placeholder="Responsable de la acción correctiva"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="ui-field-label" htmlFor="finding-fecha-limite">
+                    Fecha límite *
+                  </label>
+                  <input
+                    id="finding-fecha-limite"
+                    type="date"
+                    value={findingForm.fecha_limite}
+                    onChange={(e) =>
+                      setFindingForm({ ...findingForm, fecha_limite: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="ui-field-label" htmlFor="finding-estado">
+                    Estado
+                  </label>
+                  <select
+                    id="finding-estado"
+                    value={findingForm.estado}
+                    onChange={(e) =>
+                      setFindingForm({
+                        ...findingForm,
+                        estado: e.target.value as Finding['estado'],
+                      })
+                    }
+                  >
+                    {Object.entries(ESTADO_FINDING_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="auditorias-field-full">
+                <label className="ui-field-label" htmlFor="finding-accion">
+                  Acción correctiva / preventiva *
+                </label>
+                <textarea
+                  id="finding-accion"
+                  value={findingForm.accion_correctiva}
+                  onChange={(e) =>
+                    setFindingForm({ ...findingForm, accion_correctiva: e.target.value })
+                  }
+                  placeholder="Describa la acción a implementar para cerrar el hallazgo"
+                  required
+                />
+              </div>
+              {editingFinding && editingFinding.estado === 'verificado' && (
+                <div className="auditorias-verificado">
+                  <strong>Hallazgo verificado y cerrado el {editingFinding.fecha_cierre}</strong>
+                  <label className="ui-field-label" htmlFor="finding-evidencia-cierre">
+                    Evidencia de cierre
+                  </label>
+                  <textarea
+                    id="finding-evidencia-cierre"
+                    value={findingForm.evidencia_cierre}
+                    onChange={(e) =>
+                      setFindingForm({ ...findingForm, evidencia_cierre: e.target.value })
+                    }
+                    placeholder="Registros, fotos o documentos que demuestren el cierre efectivo"
+                  />
+                </div>
+              )}
+              <div className="ui-form-actions">
+                <button
+                  type="button"
+                  className="ui-action-button"
+                  onClick={() => {
+                    setFindingModalOpen(false);
+                    setEditingFinding(null);
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="ui-primary-button" disabled={loading}>
+                  {loading ? 'Guardando...' : editingFinding ? 'Actualizar' : 'Registrar hallazgo'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

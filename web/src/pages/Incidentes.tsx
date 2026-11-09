@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { api } from '../lib/api';
+import { BarChart3, Check, ClipboardList, FileText, Search, X } from 'lucide-react';
+
+import { api } from '@/lib/api';
 
 interface Incident {
   id: string;
@@ -56,17 +58,11 @@ const ESTADO_LABELS: Record<string, string> = {
   cerrado: 'Cerrado',
 };
 
-const ESTADO_COLORS: Record<string, { bg: string; text: string }> = {
-  abierto: { bg: '#fef2f2', text: '#991b1b' },
-  investigando: { bg: '#fef3c7', text: '#92400e' },
-  cerrado: { bg: '#dcfce7', text: '#166534' },
-};
-
-const ACCION_ESTADO_COLORS: Record<string, { bg: string; text: string }> = {
-  pendiente: { bg: '#fef2f2', text: '#991b1b' },
-  en_proceso: { bg: '#fef3c7', text: '#92400e' },
-  completada: { bg: '#dcfce7', text: '#166534' },
-  vencida: { bg: '#fee2e2', text: '#dc2626' },
+const ACCION_ESTADO_LABELS: Record<string, string> = {
+  pendiente: 'Pendiente',
+  en_proceso: 'En proceso',
+  completada: 'Completada',
+  vencida: 'Vencida',
 };
 
 const addBusinessDays = (date: Date, days: number): Date => {
@@ -97,8 +93,7 @@ const getDeadlineStatus = (deadlineStr: string | null, completed: boolean) => {
   if (diff < 0)
     return { label: `Vencida (${Math.abs(diff)} días)`, color: '#dc2626', bg: '#fee2e2' };
   if (diff === 0) return { label: 'Vence hoy', color: '#f59e0b', bg: '#fef3c7' };
-  if (diff <= 3)
-    return { label: `Por vencer (${diff} días)`, color: '#f59e0b', bg: '#fef3c7' };
+  if (diff <= 3) return { label: `Por vencer (${diff} días)`, color: '#f59e0b', bg: '#fef3c7' };
   return { label: `${diff} días`, color: '#16a34a', bg: '#dcfce7' };
 };
 
@@ -158,7 +153,7 @@ export default function Incidentes() {
       const data = await api.get('/incidents');
       setIncidents(data as Incident[]);
     } catch (err: any) {
-      console.error('Error cargando incidentes:', err);
+      setMessage({ type: 'error', text: err.message || 'Error cargando incidentes' });
     }
   };
 
@@ -166,8 +161,8 @@ export default function Incidentes() {
     try {
       const data = await api.get('/workers');
       setWorkers((data as Worker[]).filter((w) => w.estado === 'activo'));
-    } catch (err: any) {
-      console.error('Error cargando trabajadores:', err);
+    } catch {
+      setWorkers([]);
     }
   };
 
@@ -187,7 +182,7 @@ export default function Incidentes() {
         reporte_mintrabajo: !!inc.reporte_mintrabajo,
       });
     } catch (err: any) {
-      console.error('Error cargando detalle:', err);
+      setMessage({ type: 'error', text: err.message || 'Error cargando el detalle del incidente' });
     }
   }, []);
 
@@ -225,10 +220,16 @@ export default function Incidentes() {
     try {
       const payload = { ...actionForm, incident_id: selectedIncident!.id };
       if (editingAction) {
-        await (api.put as (path: string, body?: any) => Promise<any>)(`/incidents/${selectedIncident!.id}/actions/${editingAction.id}`, payload);
+        await (api.put as (path: string, body?: any) => Promise<any>)(
+          `/incidents/${selectedIncident!.id}/actions/${editingAction.id}`,
+          payload
+        );
         _showMessage('success', 'Acción actualizada correctamente');
       } else {
-        await (api.post as (path: string, body?: any) => Promise<any>)(`/incidents/${selectedIncident!.id}/actions`, payload);
+        await (api.post as (path: string, body?: any) => Promise<any>)(
+          `/incidents/${selectedIncident!.id}/actions`,
+          payload
+        );
         _showMessage('success', 'Acción registrada correctamente');
       }
       setActionForm(INITIAL_ACTION);
@@ -244,10 +245,10 @@ export default function Incidentes() {
 
   const handleActionComplete = async (actionId: string) => {
     try {
-      await (api.put as (path: string, body?: any) => Promise<any>)(`/incidents/${selectedIncident!.id}/actions/${actionId}`, {
-        estado: 'completada',
-        completada_en: new Date().toISOString(),
-      });
+      await (api.put as (path: string, body?: any) => Promise<any>)(
+        `/incidents/${selectedIncident!.id}/actions/${actionId}`,
+        { estado: 'completada', completada_en: new Date().toISOString() }
+      );
       loadIncidentDetails(selectedIncident!.id);
     } catch (err: any) {
       _showMessage('error', err.message || 'Error completando acción');
@@ -257,7 +258,9 @@ export default function Incidentes() {
   const handleDeleteAction = async (actionId: string) => {
     if (!confirm('Eliminar esta acción correctiva?')) return;
     try {
-      await (api.del as (path: string) => Promise<any>)(`/incidents/${selectedIncident!.id}/actions/${actionId}`);
+      await (api.del as (path: string) => Promise<any>)(
+        `/incidents/${selectedIncident!.id}/actions/${actionId}`
+      );
       loadIncidentDetails(selectedIncident!.id);
     } catch (err: any) {
       _showMessage('error', err.message || 'Error eliminando acción');
@@ -288,1000 +291,562 @@ export default function Incidentes() {
     setTimeout(() => setMessage(null), 5000);
   };
 
+  const kpis = [
+    { label: 'Total incidentes', value: incidents.length },
+    {
+      label: 'En investigación',
+      value: incidents.filter((i) => i.estado === 'investigando').length,
+    },
+    { label: 'Cerrados', value: incidents.filter((i) => i.estado === 'cerrado').length },
+    { label: 'Abiertos', value: incidents.filter((i) => i.estado === 'abierto').length },
+  ];
+
+  const reportado = (valor: boolean) =>
+    valor ? (
+      <span className="incidentes-reportado">
+        <Check aria-hidden="true" size={16} />
+        Reportado
+      </span>
+    ) : (
+      <span className="incidentes-pendiente">
+        <X aria-hidden="true" size={16} />
+        Pendiente
+      </span>
+    );
+
   return (
-    <div style={{ padding: 20, maxWidth: 1100 }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 16,
-        }}
-      >
-        <h1 style={{ margin: 0, color: '#0f766e' }}>
-          Reporte e Investigación de Incidentes y Accidentes de Trabajo
-        </h1>
-        <button
-          onClick={newIncident}
-          style={{
-            padding: '10px 16px',
-            background: '#0f766e',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 6,
-            fontWeight: 'bold',
-            cursor: 'pointer',
-          }}
-        >
-          + Nuevo Reporte
+    <div className="ui-page incidentes-page">
+      <header className="ui-page-header incidentes-page-header">
+        <div>
+          <h1 className="ui-page-title">
+            Reporte e Investigación de Incidentes y Accidentes de Trabajo
+          </h1>
+          <p className="ui-page-description">
+            Registro, investigación de causas, acciones correctivas y seguimiento de los plazos de
+            reporte a ARL, EPS y MinTrabajo.
+          </p>
+        </div>
+        <button className="ui-primary-button" onClick={newIncident} type="button">
+          <FileText aria-hidden="true" size={18} />
+          Nuevo reporte
         </button>
-      </div>
+      </header>
 
       {message && (
         <div
-          style={{
-            background: message.type === 'success' ? '#ecfdf5' : '#fef2f2',
-            border: `1px solid ${message.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
-            color: message.type === 'success' ? '#065f46' : '#991b1b',
-            padding: 10,
-            borderRadius: 8,
-            marginBottom: 14,
-          }}
+          className={`ui-feedback ui-feedback--${message.type}`}
+          role={message.type === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
         >
           {message.text}
         </div>
       )}
 
-      <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: 16 }}>
+      <div aria-label="Secciones de incidentes" className="ui-tabs incidentes-tabs" role="tablist">
         {[
-          { id: 'registro', label: ' Registro' },
-          { id: 'investigacion', label: ' Investigación' },
-          { id: 'acciones', label: '✅ Acciones Correctivas' },
-          { id: 'seguimiento', label: ' Seguimiento' },
+          { id: 'registro' as const, label: 'Registro', icon: FileText },
+          { id: 'investigacion' as const, label: 'Investigación', icon: Search },
+          { id: 'acciones' as const, label: 'Acciones correctivas', icon: ClipboardList },
+          { id: 'seguimiento' as const, label: 'Seguimiento', icon: BarChart3 },
         ].map((tab) => (
           <button
+            aria-selected={activeTab === tab.id}
+            aria-controls={activeTab === tab.id ? `incidentes-panel-${tab.id}` : undefined}
+            className="ui-tab"
+            disabled={tab.id === 'investigacion' && !selectedIncident}
+            id={`incidentes-tab-${tab.id}`}
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            style={{
-              padding: '12px 20px',
-              border: 'none',
-              background: activeTab === tab.id ? '#fff' : 'transparent',
-              color: activeTab === tab.id ? '#0f766e' : '#6b7280',
-              fontWeight: activeTab === tab.id ? 'bold' : 'normal',
-              fontSize: 13,
-              cursor: 'pointer',
-              borderBottom: `3px solid ${activeTab === tab.id ? '#0f766e' : 'transparent'}`,
-              marginBottom: '-1px',
-              transition: 'all 0.15s',
-            }}
+            onClick={() => setActiveTab(tab.id)}
+            role="tab"
+            type="button"
           >
-            {tab.label}
+            <tab.icon aria-hidden="true" size={16} />
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>
 
-      {/* TAB 1: REGISTRO */}
       {activeTab === 'registro' && (
-        <div>
-          <div
-            style={{
-              background: '#fff',
-              padding: 16,
-              borderRadius: 10,
-              boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-              marginBottom: 16,
-            }}
-          >
-            <h3 style={{ margin: '0 0 16px', color: '#0f766e' }}>
-              Nuevo Reporte de Incidente/Accidente
-            </h3>
-            <form
-              onSubmit={handleSubmit}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                gap: 12,
-              }}
-            >
-              <div>
-                <label
-                  htmlFor="inc-tipo"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                >
-                  Tipo *
-                </label>
-                <select
-                  id="inc-tipo"
-                  value={form.tipo}
-                  onChange={(e) => handleInputChange('tipo', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: 8,
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                  }}
-                  required
-                >
-                  <option value="incidente">Incidente (sin lesión)</option>
-                  <option value="accidente">Accidente de trabajo (con lesión)</option>
-                  <option value="enfermedad_laboral">Enfermedad laboral</option>
-                </select>
-              </div>
-              <div>
-                <label
-                  htmlFor="inc-fecha"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                >
-                  Fecha ocurrencia *
-                </label>
-                <input
-                  id="inc-fecha"
-                  type="date"
-                  value={form.fecha_ocurrencia}
-                  onChange={(e) => handleInputChange('fecha_ocurrencia', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: 8,
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                  }}
-                  required
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="inc-lugar"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                >
-                  Lugar
-                </label>
-                <input
-                  id="inc-lugar"
-                  value={form.lugar}
-                  onChange={(e) => handleInputChange('lugar', e.target.value)}
-                  placeholder="Ej: Planta 2, Fachada norte, Vehículo placa XXX"
-                  style={{
-                    width: '100%',
-                    padding: 8,
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                  }}
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="inc-trabajador"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                >
-                  Trabajador afectado
-                </label>
-                <select
-                  id="inc-trabajador"
-                  value={form.trabajador_id}
-                  onChange={(e) => handleInputChange('trabajador_id', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: 8,
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                  }}
-                >
-                  <option value="">— Seleccionar —</option>
-                  {workers.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.nombres} {w.apellidos} ({w.numero_documento})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label
-                  htmlFor="inc-desc"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                >
-                  Descripción del suceso *
-                </label>
-                <textarea
-                  id="inc-desc"
-                  value={form.descripcion}
-                  onChange={(e) => handleInputChange('descripcion', e.target.value)}
-                  placeholder="Describa qué ocurrió, cómo ocurrió, condiciones del entorno..."
-                  rows={3}
-                  style={{
-                    width: '100%',
-                    padding: 8,
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                    fontFamily: 'inherit',
-                    resize: 'vertical',
-                  }}
-                  required
-                />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label
-                  htmlFor="inc-lesiones"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                >
-                  Lesiones / Afectación a la salud
-                </label>
-                <textarea
-                  id="inc-lesiones"
-                  value={form.lesiones}
-                  onChange={(e) => handleInputChange('lesiones', e.target.value)}
-                  placeholder="Describa lesiones, parte del cuerpo afectada, gravedad..."
-                  rows={2}
-                  style={{
-                    width: '100%',
-                    padding: 8,
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                    fontFamily: 'inherit',
-                    resize: 'vertical',
-                  }}
-                />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label
-                  htmlFor="inc-causa"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                >
-                  Análisis de causa raíz (método 5 porqués, árbol de
-                  causas, etc.)
-                </label>
-                <textarea
-                  id="inc-causa"
-                  value={form.causa_raiz}
-                  onChange={(e) => handleInputChange('causa_raiz', e.target.value)}
-                  placeholder="Describa el análisis de causa raíz realizado..."
-                  rows={3}
-                  style={{
-                    width: '100%',
-                    padding: 8,
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                    fontFamily: 'inherit',
-                    resize: 'vertical',
-                  }}
-                />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label
-                  htmlFor="inc-acciones"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                >
-                  Acciones correctivas inmediatas tomadas
-                </label>
-                <textarea
-                  id="inc-acciones"
-                  value={form.acciones_correctivas}
-                  onChange={(e) => handleInputChange('acciones_correctivas', e.target.value)}
-                  placeholder="Describa medidas inmediatas para evitar recurrencia..."
-                  rows={2}
-                  style={{
-                    width: '100%',
-                    padding: 8,
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                    fontFamily: 'inherit',
-                    resize: 'vertical',
-                  }}
-                />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label
-                  htmlFor="inc-investigador"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                >
-                  Investigador responsable
-                </label>
-                <input
-                  id="inc-investigador"
-                  value={form.investigador}
-                  onChange={(e) => handleInputChange('investigador', e.target.value)}
-                  placeholder="Nombre del responsable de la investigación"
-                  style={{
-                    width: '100%',
-                    padding: 8,
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                  }}
-                />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label
-                  htmlFor="inc-dias"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                >
-                  Días perdidos / incapacidad
-                </label>
-                <input
-                  id="inc-dias"
-                  type="number"
-                  min="0"
-                  value={form.dias_perdidos}
-                  onChange={(e) =>
-                    handleInputChange('dias_perdidos', parseInt(e.target.value) || 0)
-                  }
-                  style={{
-                    width: '100%',
-                    padding: 8,
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                  }}
-                />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    cursor: 'pointer',
-                    fontSize: 13,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.reporte_arl}
-                    onChange={(e) => handleInputChange('reporte_arl', e.target.checked)}
-                  />
-                  <span>
-                    Reporte a ARL (plazo legal: 2 días hábiles - Decreto 1072/2015 Art.
-                    2.2.4.6.22)
-                  </span>
-                </label>
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    cursor: 'pointer',
-                    fontSize: 13,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.reporte_eps}
-                    onChange={(e) => handleInputChange('reporte_eps', e.target.checked)}
-                  />
-                  <span>Reporte a EPS (atención médica inmediata)</span>
-                </label>
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    cursor: 'pointer',
-                    fontSize: 13,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.reporte_mintrabajo}
-                    onChange={(e) => handleInputChange('reporte_mintrabajo', e.target.checked)}
-                  />
-                  <span>
-                    Reporte al MinTrabajo (accidentes graves/mortales - Decreto 1072/2015 Art.
-                    2.2.4.6.23)
-                  </span>
-                </label>
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: 8,
-                  marginTop: 8,
-                  gridColumn: '1 / -1',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={newIncident}
-                  style={{
-                    padding: '10px 16px',
-                    background: '#e5e7eb',
-                    border: 'none',
-                    borderRadius: 6,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Limpiar
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  style={{
-                    padding: '10px 16px',
-                    background: loading ? '#94a3b8' : '#0f766e',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 6,
-                    fontWeight: 'bold',
-                  }}
-                >
-                  {selectedIncident ? 'Actualizar' : 'Registrar Incidente'}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <details style={{ marginTop: 16, fontSize: 12, color: '#6b7280' }}>
-            <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#374151' }}>
-              Plazos legales de reporte (Colombia)
-            </summary>
-            <div
-              style={{
-                marginTop: 12,
-                padding: 12,
-                background: '#f9fafb',
-                borderRadius: 6,
-                lineHeight: 1.7,
-              }}
-            >
-              <strong>Decreto 1072/2015 (Art. 2.2.4.6.22 y 2.2.4.6.23) - Res. 0312/2019:</strong>
-              <ul style={{ margin: '8px 0 0 20px' }}>
-                <li>
-                  <strong>ARL:</strong> Reporte dentro de los{' '}
-                  <strong>2 días hábiles</strong> siguientes al accidente (Art.
-                  2.2.4.6.22).
-                </li>
-                <li>
-                  <strong>EPS:</strong> Atención médica inmediata y reporte
-                  simultáneo.
-                </li>
-                <li>
-                  <strong>Ministerio del Trabajo:</strong> Accidentes graves y mortales dentro de
-                  las <strong>24 horas</strong> (Art. 2.2.4.6.23).
-                </li>
-                <li>
-                  <strong>Enfermedades laborales:</strong> Reporte a ARL y EPS dentro de{' '}
-                  <strong>2 días hábiles</strong> tras diagnóstico.
-                </li>
-              </ul>
-              <p style={{ marginTop: 8, fontSize: 11, color: '#6b7280' }}>
-                Los días hábiles excluyen sábados, domingos y festivos. El plazo
-                inicia al día siguiente de la ocurrencia.
-              </p>
-            </div>
-          </details>
-        </div>
-      )}
-
-      {/* TAB 2: INVESTIGACIÓN */}
-      {activeTab === 'investigacion' && (
-        <div>
-          {!selectedIncident ? (
-            <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>
-              <p>
-                Seleccione un incidente de la lista o cree uno nuevo en la pestaña{' '}
-                <strong>Registro</strong> para iniciar la investigación.
-              </p>
-            </div>
-          ) : (
-            <div>
-              <div
-                style={{
-                  background: '#fff',
-                  padding: 16,
-                  borderRadius: 10,
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                  marginBottom: 16,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: 12,
-                }}
-              >
+        <section
+          aria-labelledby="incidentes-tab-registro"
+          className="incidentes-tab-panel"
+          id="incidentes-panel-registro"
+          role="tabpanel"
+          tabIndex={0}
+        >
+          <section aria-labelledby="incidentes-form-title" className="ui-surface incidentes-form">
+            <h2 id="incidentes-form-title" className="incidentes-form-title">
+              Nuevo reporte de incidente o accidente
+            </h2>
+            <form onSubmit={handleSubmit}>
+              <div className="ui-form-grid">
                 <div>
-                  <h3 style={{ margin: '0 0 4px', color: '#0f766e' }}>
-                    {TIPO_LABELS[selectedIncident.tipo]} -{' '}
-                    {selectedIncident.codigo || selectedIncident.id.slice(0, 8)}
-                  </h3>
-                  <p style={{ margin: 0, color: '#6b7280', fontSize: 13 }}>
-                    {selectedIncident.trabajador_id
-                      ? `Trabajador: ${selectedIncident.trabajador_id}`
-                      : 'Sin trabajador asignado'}{' '}
-                    · {formatDate(selectedIncident.fecha_ocurrencia)}
-                  </p>
-                </div>
-                <span
-                  style={{
-                    padding: '4px 12px',
-                    borderRadius: 12,
-                    fontSize: 11,
-                    fontWeight: 'bold',
-                    background: ESTADO_COLORS[selectedIncident.estado].bg,
-                    color: ESTADO_COLORS[selectedIncident.estado].text,
-                  }}
-                >
-                  {ESTADO_LABELS[selectedIncident.estado]}
-                </span>
-              </div>
-
-              {message && (
-                <div
-                  style={{
-                    background: message.type === 'success' ? '#ecfdf5' : '#fef2f2',
-                    border: `1px solid ${message.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
-                    color: message.type === 'success' ? '#065f46' : '#991b1b',
-                    padding: 10,
-                    borderRadius: 8,
-                    marginBottom: 14,
-                  }}
-                >
-                  {message.text}
-                </div>
-              )}
-
-              <form
-                onSubmit={handleSubmit}
-                style={{
-                  background: '#fff',
-                  padding: 16,
-                  borderRadius: 10,
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                  marginBottom: 16,
-                }}
-              >
-                <h3 style={{ margin: '0 0 16px', color: '#0f766e' }}>Detalle del Incidente</h3>
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: 12,
-                  }}
-                >
-                  <div>
-                    <label
-                      htmlFor="inc-tipo"
-                      style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                    >
-                      Tipo
-                    </label>
-                    <select
-                      id="inc-tipo"
-                      value={form.tipo}
-                      onChange={(e) => handleInputChange('tipo', e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: 8,
-                        border: '1px solid #d1d5db',
-                        borderRadius: 6,
-                      }}
-                    >
-                      <option value="incidente">Incidente</option>
-                      <option value="accidente">Accidente</option>
-                      <option value="enfermedad_laboral">Enfermedad laboral</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="inc-fecha"
-                      style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                    >
-                      Fecha ocurrencia
-                    </label>
-                    <input
-                      id="inc-fecha"
-                      type="date"
-                      value={form.fecha_ocurrencia}
-                      onChange={(e) => handleInputChange('fecha_ocurrencia', e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: 8,
-                        border: '1px solid #d1d5db',
-                        borderRadius: 6,
-                      }}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="inc-lugar"
-                      style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                    >
-                      Lugar
-                    </label>
-                    <input
-                      id="inc-lugar"
-                      value={form.lugar}
-                      onChange={(e) => handleInputChange('lugar', e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: 8,
-                        border: '1px solid #d1d5db',
-                        borderRadius: 6,
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="inc-estado"
-                      style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                    >
-                      Estado
-                    </label>
-                    <select
-                      id="inc-estado"
-                      value={form.estado}
-                      onChange={(e) => handleInputChange('estado', e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: 8,
-                        border: '1px solid #d1d5db',
-                        borderRadius: 6,
-                      }}
-                    >
-                      <option value="abierto">Abierto</option>
-                      <option value="investigando">En investigación</option>
-                      <option value="cerrado">Cerrado</option>
-                    </select>
-                  </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label
-                      htmlFor="inc-descripcion"
-                      style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                    >
-                      Descripción
-                    </label>
-                    <textarea
-                      id="inc-descripcion"
-                      value={form.descripcion}
-                      onChange={(e) => handleInputChange('descripcion', e.target.value)}
-                      rows={3}
-                      style={{
-                        width: '100%',
-                        padding: 8,
-                        border: '1px solid #d1d5db',
-                        borderRadius: 6,
-                        fontFamily: 'inherit',
-                        resize: 'vertical',
-                      }}
-                      required
-                    />
-                  </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label
-                      htmlFor="inc-lesiones"
-                      style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                    >
-                      Lesiones
-                    </label>
-                    <textarea
-                      id="inc-lesiones"
-                      value={form.lesiones}
-                      onChange={(e) => handleInputChange('lesiones', e.target.value)}
-                      rows={2}
-                      style={{
-                        width: '100%',
-                        padding: 8,
-                        border: '1px solid #d1d5db',
-                        borderRadius: 6,
-                        fontFamily: 'inherit',
-                        resize: 'vertical',
-                      }}
-                    />
-                  </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label
-                      htmlFor="inc-causa"
-                      style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                    >
-                      Análisis de causa raíz
-                    </label>
-                    <textarea
-                      id="inc-causa"
-                      value={form.causa_raiz}
-                      onChange={(e) => handleInputChange('causa_raiz', e.target.value)}
-                      rows={4}
-                      style={{
-                        width: '100%',
-                        padding: 8,
-                        border: '1px solid #d1d5db',
-                        borderRadius: 6,
-                        fontFamily: 'inherit',
-                        resize: 'vertical',
-                      }}
-                    />
-                  </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label
-                      htmlFor="inc-acciones"
-                      style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                    >
-                      Acciones correctivas
-                    </label>
-                    <textarea
-                      id="inc-acciones"
-                      value={form.acciones_correctivas}
-                      onChange={(e) => handleInputChange('acciones_correctivas', e.target.value)}
-                      rows={3}
-                      style={{
-                        width: '100%',
-                        padding: 8,
-                        border: '1px solid #d1d5db',
-                        borderRadius: 6,
-                        fontFamily: 'inherit',
-                        resize: 'vertical',
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="inc-investigador"
-                      style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                    >
-                      Investigador
-                    </label>
-                    <input
-                      id="inc-investigador"
-                      value={form.investigador}
-                      onChange={(e) => handleInputChange('investigador', e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: 8,
-                        border: '1px solid #d1d5db',
-                        borderRadius: 6,
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="inc-dias"
-                      style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                    >
-                      Días perdidos
-                    </label>
-                    <input
-                      id="inc-dias"
-                      type="number"
-                      min="0"
-                      value={form.dias_perdidos}
-                      onChange={(e) =>
-                        handleInputChange('dias_perdidos', parseInt(e.target.value) || 0)
-                      }
-                      style={{
-                        width: '100%',
-                        padding: 8,
-                        border: '1px solid #d1d5db',
-                        borderRadius: 6,
-                      }}
-                    />
-                  </div>
-                  <div
-                    style={{
-                      gridColumn: '1 / -1',
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: 16,
-                      alignItems: 'center',
-                    }}
+                  <label className="ui-field-label" htmlFor="inc-tipo">
+                    Tipo *
+                  </label>
+                  <select
+                    id="inc-tipo"
+                    value={form.tipo}
+                    onChange={(e) => handleInputChange('tipo', e.target.value)}
+                    required
                   >
-                    <label
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        cursor: 'pointer',
-                        fontSize: 13,
-                      }}
-                    >
+                    <option value="incidente">Incidente (sin lesión)</option>
+                    <option value="accidente">Accidente de trabajo (con lesión)</option>
+                    <option value="enfermedad_laboral">Enfermedad laboral</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="ui-field-label" htmlFor="inc-fecha">
+                    Fecha de ocurrencia *
+                  </label>
+                  <input
+                    id="inc-fecha"
+                    type="date"
+                    value={form.fecha_ocurrencia}
+                    onChange={(e) => handleInputChange('fecha_ocurrencia', e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="ui-field-label" htmlFor="inc-lugar">
+                    Lugar
+                  </label>
+                  <input
+                    id="inc-lugar"
+                    value={form.lugar}
+                    onChange={(e) => handleInputChange('lugar', e.target.value)}
+                    placeholder="Ej: Planta 2, fachada norte, vehículo placa XXX"
+                  />
+                </div>
+                <div>
+                  <label className="ui-field-label" htmlFor="inc-trabajador">
+                    Trabajador afectado
+                  </label>
+                  <select
+                    id="inc-trabajador"
+                    value={form.trabajador_id}
+                    onChange={(e) => handleInputChange('trabajador_id', e.target.value)}
+                  >
+                    <option value="">— Seleccionar —</option>
+                    {workers.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.nombres} {w.apellidos} ({w.numero_documento})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="ui-field-label" htmlFor="inc-dias">
+                    Días perdidos / incapacidad
+                  </label>
+                  <input
+                    id="inc-dias"
+                    type="number"
+                    min="0"
+                    value={form.dias_perdidos}
+                    onChange={(e) =>
+                      handleInputChange('dias_perdidos', parseInt(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="ui-field-label" htmlFor="inc-investigador">
+                    Investigador responsable
+                  </label>
+                  <input
+                    id="inc-investigador"
+                    value={form.investigador}
+                    onChange={(e) => handleInputChange('investigador', e.target.value)}
+                    placeholder="Nombre del responsable de la investigación"
+                  />
+                </div>
+                <div className="incidentes-span-2">
+                  <label className="ui-field-label" htmlFor="inc-desc">
+                    Descripción del suceso *
+                  </label>
+                  <textarea
+                    id="inc-desc"
+                    value={form.descripcion}
+                    onChange={(e) => handleInputChange('descripcion', e.target.value)}
+                    placeholder="Describa qué ocurrió, cómo ocurrió y las condiciones del entorno"
+                    required
+                  />
+                </div>
+                <div className="incidentes-span-2">
+                  <label className="ui-field-label" htmlFor="inc-lesiones">
+                    Lesiones / afectación a la salud
+                  </label>
+                  <textarea
+                    id="inc-lesiones"
+                    value={form.lesiones}
+                    onChange={(e) => handleInputChange('lesiones', e.target.value)}
+                    placeholder="Describa lesiones, parte del cuerpo afectada y gravedad"
+                  />
+                </div>
+                <div className="incidentes-span-2">
+                  <label className="ui-field-label" htmlFor="inc-causa">
+                    Análisis de causa raíz (5 porqués, árbol de causas, etc.)
+                  </label>
+                  <textarea
+                    id="inc-causa"
+                    value={form.causa_raiz}
+                    onChange={(e) => handleInputChange('causa_raiz', e.target.value)}
+                    placeholder="Describa el análisis de causa raíz realizado"
+                  />
+                </div>
+                <div className="incidentes-span-2">
+                  <label className="ui-field-label" htmlFor="inc-acciones">
+                    Acciones correctivas inmediatas tomadas
+                  </label>
+                  <textarea
+                    id="inc-acciones"
+                    value={form.acciones_correctivas}
+                    onChange={(e) => handleInputChange('acciones_correctivas', e.target.value)}
+                    placeholder="Describa las medidas inmediatas para evitar recurrencia"
+                  />
+                </div>
+                <div className="incidentes-span-2">
+                  <span className="ui-field-label">Reportes legales</span>
+                  <div className="incidentes-checks">
+                    <label className="incidentes-check" htmlFor="inc-reporte-arl">
                       <input
+                        id="inc-reporte-arl"
                         type="checkbox"
                         checked={form.reporte_arl}
                         onChange={(e) => handleInputChange('reporte_arl', e.target.checked)}
                       />
-                      <span>Reporte ARL (2 días hábiles)</span>
+                      Reporte a ARL (plazo: 2 días hábiles, Decreto 1072/2015 Art. 2.2.4.6.22)
                     </label>
-                    <label
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        cursor: 'pointer',
-                        fontSize: 13,
-                      }}
-                    >
+                    <label className="incidentes-check" htmlFor="inc-reporte-eps">
                       <input
+                        id="inc-reporte-eps"
                         type="checkbox"
                         checked={form.reporte_eps}
                         onChange={(e) => handleInputChange('reporte_eps', e.target.checked)}
                       />
-                      <span>Reporte EPS</span>
+                      Reporte a EPS (atención médica inmediata)
                     </label>
-                    <label
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        cursor: 'pointer',
-                        fontSize: 13,
-                      }}
-                    >
+                    <label className="incidentes-check" htmlFor="inc-reporte-mintrabajo">
                       <input
+                        id="inc-reporte-mintrabajo"
                         type="checkbox"
                         checked={form.reporte_mintrabajo}
                         onChange={(e) => handleInputChange('reporte_mintrabajo', e.target.checked)}
                       />
-                      <span>Reporte MinTrabajo (graves/mortales)</span>
+                      Reporte a MinTrabajo (accidentes graves o mortales, Art. 2.2.4.6.23)
                     </label>
                   </div>
-                  <div
-                    style={{
-                      gridColumn: '1 / -1',
-                      display: 'flex',
-                      justifyContent: 'flex-end',
-                      gap: 8,
-                      marginTop: 8,
-                    }}
-                  >
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      style={{
-                        padding: '10px 16px',
-                        background: loading ? '#94a3b8' : '#0f766e',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 6,
-                        fontWeight: 'bold',
-                      }}
-                    >
-                      {loading ? 'Guardando...' : ' Guardar cambios'}
-                    </button>
-                  </div>
                 </div>
-              </form>
+              </div>
+              <div className="ui-form-actions">
+                <button type="button" className="ui-action-button" onClick={newIncident}>
+                  Limpiar
+                </button>
+                <button type="submit" className="ui-primary-button" disabled={loading}>
+                  {loading ? 'Guardando...' : 'Registrar incidente'}
+                </button>
+              </div>
+            </form>
+          </section>
 
-              {/* Plazos legales ARL */}
-              {selectedIncident.fecha_ocurrencia && (
-                <div
-                  style={{
-                    background: '#fff',
-                    padding: 16,
-                    borderRadius: 10,
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                    marginBottom: 16,
-                  }}
-                >
-                  <h3 style={{ margin: '0 0 12px', color: '#0f766e' }}>
-                    Plazos Legales de Reporte
-                  </h3>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                      gap: 12,
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: 12,
-                        borderRadius: 8,
-                        background: '#fef2f2',
-                        border: '1px solid #fecaca',
-                      }}
-                    >
-                      <div
-                        style={{ fontSize: 11, color: '#991b1b', fontWeight: 600, marginBottom: 4 }}
+          <details className="incidentes-plazos">
+            <summary>Plazos legales de reporte (Colombia)</summary>
+            <div className="incidentes-plazos-body">
+              <strong>Decreto 1072/2015 (Art. 2.2.4.6.22 y 2.2.4.6.23) - Res. 0312/2019:</strong>
+              <ul>
+                <li>
+                  <strong>ARL:</strong> reporte dentro de los <strong>2 días hábiles</strong>{' '}
+                  siguientes al accidente (Art. 2.2.4.6.22).
+                </li>
+                <li>
+                  <strong>EPS:</strong> atención médica inmediata y reporte simultáneo.
+                </li>
+                <li>
+                  <strong>Ministerio del Trabajo:</strong> accidentes graves y mortales dentro de
+                  las <strong>24 horas</strong> (Art. 2.2.4.6.23).
+                </li>
+                <li>
+                  <strong>Enfermedades laborales:</strong> reporte a ARL y EPS dentro de{' '}
+                  <strong>2 días hábiles</strong> tras el diagnóstico.
+                </li>
+              </ul>
+              <p>
+                Los días hábiles excluyen sábados, domingos y festivos. El plazo inicia al día
+                siguiente de la ocurrencia.
+              </p>
+            </div>
+          </details>
+        </section>
+      )}
+
+      {activeTab === 'investigacion' && (
+        <section
+          aria-labelledby="incidentes-tab-investigacion"
+          className="incidentes-tab-panel"
+          id="incidentes-panel-investigacion"
+          role="tabpanel"
+          tabIndex={0}
+        >
+          {!selectedIncident ? (
+            <p className="ui-empty">
+              Seleccione un incidente en la pestaña Seguimiento o cree uno nuevo en Registro para
+              iniciar la investigación.
+            </p>
+          ) : (
+            <>
+              <div className="incidentes-detalle-header">
+                <div>
+                  <h2 className="incidentes-section-title">
+                    {TIPO_LABELS[selectedIncident.tipo]} -{' '}
+                    {selectedIncident.codigo || selectedIncident.id.slice(0, 8)}
+                  </h2>
+                  <p className="ui-page-description">
+                    Fecha de ocurrencia: {formatDate(selectedIncident.fecha_ocurrencia)}
+                  </p>
+                </div>
+                <span className="ui-badge">{ESTADO_LABELS[selectedIncident.estado]}</span>
+              </div>
+
+              <section
+                aria-labelledby="incidentes-detalle-title"
+                className="ui-surface incidentes-form"
+              >
+                <h3 id="incidentes-detalle-title" className="incidentes-form-title">
+                  Detalle del incidente
+                </h3>
+                <form onSubmit={handleSubmit}>
+                  <div className="ui-form-grid">
+                    <div>
+                      <label className="ui-field-label" htmlFor="inc-tipo">
+                        Tipo
+                      </label>
+                      <select
+                        id="inc-tipo"
+                        value={form.tipo}
+                        onChange={(e) => handleInputChange('tipo', e.target.value)}
                       >
-                         Reporte ARL (Decreto 1072/2015 Art. 2.2.4.6.22)
-                      </div>
-                      <div style={{ fontSize: 18, fontWeight: 'bold', color: '#dc2626' }}>
-                        {getArlDeadlineDisplay(selectedIncident)?.deadline
-                          ? formatDate(getArlDeadlineDisplay(selectedIncident)!.deadline)
-                          : '—'}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: getArlDeadlineDisplay(selectedIncident)?.status.color,
-                          marginTop: 4,
-                        }}
+                        <option value="incidente">Incidente</option>
+                        <option value="accidente">Accidente</option>
+                        <option value="enfermedad_laboral">Enfermedad laboral</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="ui-field-label" htmlFor="inc-fecha">
+                        Fecha de ocurrencia
+                      </label>
+                      <input
+                        id="inc-fecha"
+                        type="date"
+                        value={form.fecha_ocurrencia}
+                        onChange={(e) => handleInputChange('fecha_ocurrencia', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="ui-field-label" htmlFor="inc-lugar">
+                        Lugar
+                      </label>
+                      <input
+                        id="inc-lugar"
+                        value={form.lugar}
+                        onChange={(e) => handleInputChange('lugar', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="ui-field-label" htmlFor="inc-estado">
+                        Estado
+                      </label>
+                      <select
+                        id="inc-estado"
+                        value={form.estado}
+                        onChange={(e) => handleInputChange('estado', e.target.value)}
                       >
-                        {getArlDeadlineDisplay(selectedIncident)?.status.label}
-                      </div>
-                      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
-                        Plazo: 2 días hábiles desde ocurrencia (
-                        {formatDate(selectedIncident.fecha_ocurrencia)})
-                      </div>
-                      <div style={{ marginTop: 8 }}>
-                        <label
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            cursor: 'pointer',
-                            fontSize: 13,
-                          }}
-                        >
+                        {Object.entries(ESTADO_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="ui-field-label" htmlFor="inc-investigador">
+                        Investigador
+                      </label>
+                      <input
+                        id="inc-investigador"
+                        value={form.investigador}
+                        onChange={(e) => handleInputChange('investigador', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="ui-field-label" htmlFor="inc-dias">
+                        Días perdidos
+                      </label>
+                      <input
+                        id="inc-dias"
+                        type="number"
+                        min="0"
+                        value={form.dias_perdidos}
+                        onChange={(e) =>
+                          handleInputChange('dias_perdidos', parseInt(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+                    <div className="incidentes-span-2">
+                      <label className="ui-field-label" htmlFor="inc-descripcion">
+                        Descripción
+                      </label>
+                      <textarea
+                        id="inc-descripcion"
+                        value={form.descripcion}
+                        onChange={(e) => handleInputChange('descripcion', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="incidentes-span-2">
+                      <label className="ui-field-label" htmlFor="inc-lesiones">
+                        Lesiones
+                      </label>
+                      <textarea
+                        id="inc-lesiones"
+                        value={form.lesiones}
+                        onChange={(e) => handleInputChange('lesiones', e.target.value)}
+                      />
+                    </div>
+                    <div className="incidentes-span-2">
+                      <label className="ui-field-label" htmlFor="inc-causa">
+                        Análisis de causa raíz
+                      </label>
+                      <textarea
+                        id="inc-causa"
+                        value={form.causa_raiz}
+                        onChange={(e) => handleInputChange('causa_raiz', e.target.value)}
+                      />
+                    </div>
+                    <div className="incidentes-span-2">
+                      <label className="ui-field-label" htmlFor="inc-acciones">
+                        Acciones correctivas
+                      </label>
+                      <textarea
+                        id="inc-acciones"
+                        value={form.acciones_correctivas}
+                        onChange={(e) => handleInputChange('acciones_correctivas', e.target.value)}
+                      />
+                    </div>
+                    <div className="incidentes-span-2">
+                      <span className="ui-field-label">Reportes legales</span>
+                      <div className="incidentes-checks">
+                        <label className="incidentes-check" htmlFor="inc-reporte-arl">
                           <input
+                            id="inc-reporte-arl"
                             type="checkbox"
-                            checked={selectedIncident.reporte_arl}
-                            onChange={() =>
-                              handleInputChange('reporte_arl', !selectedIncident.reporte_arl)
+                            checked={form.reporte_arl}
+                            onChange={(e) => handleInputChange('reporte_arl', e.target.checked)}
+                          />
+                          Reporte ARL (2 días hábiles)
+                        </label>
+                        <label className="incidentes-check" htmlFor="inc-reporte-eps">
+                          <input
+                            id="inc-reporte-eps"
+                            type="checkbox"
+                            checked={form.reporte_eps}
+                            onChange={(e) => handleInputChange('reporte_eps', e.target.checked)}
+                          />
+                          Reporte EPS
+                        </label>
+                        <label className="incidentes-check" htmlFor="inc-reporte-mintrabajo">
+                          <input
+                            id="inc-reporte-mintrabajo"
+                            type="checkbox"
+                            checked={form.reporte_mintrabajo}
+                            onChange={(e) =>
+                              handleInputChange('reporte_mintrabajo', e.target.checked)
                             }
                           />
-                          <span>Marcar como reportado</span>
+                          Reporte MinTrabajo (graves o mortales)
                         </label>
                       </div>
                     </div>
-                    <div
-                      style={{
-                        padding: 12,
-                        borderRadius: 8,
-                        background: '#f0fdf4',
-                        border: '1px solid #bbf7d0',
-                      }}
-                    >
-                      <div
-                        style={{ fontSize: 11, color: '#166534', fontWeight: 600, marginBottom: 4 }}
+                  </div>
+                  <div className="ui-form-actions">
+                    <button type="submit" className="ui-primary-button" disabled={loading}>
+                      {loading ? 'Guardando...' : 'Guardar cambios'}
+                    </button>
+                  </div>
+                </form>
+              </section>
+
+              {selectedIncident.fecha_ocurrencia && (
+                <section
+                  aria-labelledby="incidentes-plazos-title"
+                  className="ui-surface incidentes-plazos-card"
+                >
+                  <h3 id="incidentes-plazos-title" className="incidentes-form-title">
+                    Plazos legales de reporte
+                  </h3>
+                  <div className="incidentes-plazos-grid">
+                    <div className="incidentes-plazo incidentes-plazo--arl">
+                      <span className="incidentes-plazo-title">
+                        Reporte ARL (Decreto 1072/2015 Art. 2.2.4.6.22)
+                      </span>
+                      <strong>
+                        {getArlDeadlineDisplay(selectedIncident)?.deadline
+                          ? formatDate(getArlDeadlineDisplay(selectedIncident)!.deadline)
+                          : '—'}
+                      </strong>
+                      <span
+                        style={{ color: getArlDeadlineDisplay(selectedIncident)?.status.color }}
                       >
-                         Reporte EPS (Atención médica inmediata)
-                      </div>
-                      <div style={{ fontSize: 12, color: '#16a34a', marginBottom: 4 }}>
-                        Inmediato / Día de ocurrencia
-                      </div>
-                      <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8 }}>
-                        El trabajador debe ser remitido a la EPS de inmediato para atención
-                        médica.
-                      </div>
-                      <label
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          cursor: 'pointer',
-                          fontSize: 13,
-                        }}
-                      >
+                        {getArlDeadlineDisplay(selectedIncident)?.status.label}
+                      </span>
+                      <span className="incidentes-plazo-nota">
+                        Plazo: 2 días hábiles desde la ocurrencia (
+                        {formatDate(selectedIncident.fecha_ocurrencia)})
+                      </span>
+                      <label className="incidentes-check" htmlFor="marca-arl">
                         <input
+                          id="marca-arl"
+                          type="checkbox"
+                          checked={selectedIncident.reporte_arl}
+                          onChange={() =>
+                            handleInputChange('reporte_arl', !selectedIncident.reporte_arl)
+                          }
+                        />
+                        Marcar como reportado
+                      </label>
+                    </div>
+                    <div className="incidentes-plazo incidentes-plazo--eps">
+                      <span className="incidentes-plazo-title">
+                        Reporte EPS (atención médica inmediata)
+                      </span>
+                      <strong>Inmediato / día de ocurrencia</strong>
+                      <span className="incidentes-plazo-nota">
+                        El trabajador debe ser remitido a la EPS de inmediato para atención médica.
+                      </span>
+                      <label className="incidentes-check" htmlFor="marca-eps">
+                        <input
+                          id="marca-eps"
                           type="checkbox"
                           checked={selectedIncident.reporte_eps}
                           onChange={() =>
                             handleInputChange('reporte_eps', !selectedIncident.reporte_eps)
                           }
                         />
-                        <span>Marcar como reportado</span>
+                        Marcar como reportado
                       </label>
                     </div>
-                    <div
-                      style={{
-                        padding: 12,
-                        borderRadius: 8,
-                        background: '#fffbeb',
-                        border: '1px solid #fde68a',
-                      }}
-                    >
-                      <div
-                        style={{ fontSize: 11, color: '#92400e', fontWeight: 600, marginBottom: 4 }}
-                      >
-                        ⚠️ Reporte MinTrabajo (Decreto 1072/2015 Art. 2.2.4.6.23)
-                      </div>
-                      <div style={{ fontSize: 12, color: '#f59e0b', marginBottom: 4 }}>
-                        24 horas (accidentes graves/mortales)
-                      </div>
-                      <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8 }}>
-                        Solo para accidentes graves (hospitalización mayor a 24 h,
-                        amputación, pérdida conciencia, etc.) o mortales.
-                      </div>
-                      <label
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          cursor: 'pointer',
-                          fontSize: 13,
-                        }}
-                      >
+                    <div className="incidentes-plazo incidentes-plazo--mintrabajo">
+                      <span className="incidentes-plazo-title">
+                        Reporte MinTrabajo (Decreto 1072/2015 Art. 2.2.4.6.23)
+                      </span>
+                      <strong>24 horas (accidentes graves o mortales)</strong>
+                      <span className="incidentes-plazo-nota">
+                        Solo para accidentes graves (hospitalización &gt;24 h, amputación, pérdida
+                        de conciencia, etc.) o mortales.
+                      </span>
+                      <label className="incidentes-check" htmlFor="marca-mintrabajo">
                         <input
+                          id="marca-mintrabajo"
                           type="checkbox"
                           checked={selectedIncident.reporte_mintrabajo}
                           onChange={() =>
@@ -1291,41 +856,38 @@ export default function Incidentes() {
                             )
                           }
                         />
-                        <span>Marcar como reportado</span>
+                        Marcar como reportado
                       </label>
                     </div>
                   </div>
-                </div>
+                </section>
               )}
-            </div>
+            </>
           )}
-        </div>
+        </section>
       )}
 
-      {/* TAB 3: ACCIONES CORRECTIVAS */}
       {activeTab === 'acciones' && (
-        <div>
+        <section
+          aria-labelledby="incidentes-tab-acciones"
+          className="incidentes-tab-panel"
+          id="incidentes-panel-acciones"
+          role="tabpanel"
+          tabIndex={0}
+        >
           {!selectedIncident ? (
-            <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>
-              <p>
-                Seleccione un incidente en la pestaña <strong>Investigación</strong> para
-                gestionar sus acciones correctivas.
-              </p>
-            </div>
+            <p className="ui-empty">
+              Seleccione un incidente en la pestaña Seguimiento para gestionar sus acciones
+              correctivas.
+            </p>
           ) : (
-            <div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: 16,
-                }}
-              >
-                <h3 style={{ margin: 0, color: '#0f766e' }}>
-                  Acciones Correctivas y Preventivas - {TIPO_LABELS[selectedIncident.tipo]}
-                </h3>
+            <>
+              <div className="incidentes-detalle-header">
+                <h2 className="incidentes-section-title">
+                  Acciones correctivas y preventivas - {TIPO_LABELS[selectedIncident.tipo]}
+                </h2>
                 <button
+                  className="ui-primary-button"
                   onClick={() => {
                     setEditingAction(null);
                     setCreatingAction(true);
@@ -1335,627 +897,409 @@ export default function Incidentes() {
                       fecha_limite: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
                     });
                   }}
-                  style={{
-                    padding: '10px 16px',
-                    background: '#0f766e',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 6,
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                  }}
+                  type="button"
                 >
-                  + Nueva Acción
+                  <ClipboardList aria-hidden="true" size={18} />
+                  Nueva acción
                 </button>
               </div>
 
-              {message && (
-                <div
-                  style={{
-                    background: message.type === 'success' ? '#ecfdf5' : '#fef2f2',
-                    border: `1px solid ${message.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
-                    color: message.type === 'success' ? '#065f46' : '#991b1b',
-                    padding: 10,
-                    borderRadius: 8,
-                    marginBottom: 14,
-                  }}
-                >
-                  {message.text}
-                </div>
-              )}
-
               {(editingAction || creatingAction) && (
-                <div
-                  style={{
-                    background: '#fff',
-                    padding: 16,
-                    borderRadius: 10,
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                    marginBottom: 16,
-                  }}
+                <section
+                  aria-labelledby="incidentes-action-form-title"
+                  className="ui-surface incidentes-form"
                 >
-                  <h4 style={{ margin: '0 0 12px', color: '#0f766e' }}>
-                    Editar Acción Correctiva
-                  </h4>
-                  <form
-                    onSubmit={handleActionSubmit}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                      gap: 12,
-                    }}
-                  >
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <label
-                        htmlFor="action-descripcion"
-                        style={{
-                          display: 'block',
-                          fontSize: 12,
-                          color: '#6b7280',
-                          marginBottom: 4,
-                        }}
-                      >
-                        Descripción de la acción *
-                      </label>
-                      <textarea
-                        id="action-descripcion"
-                        value={actionForm.descripcion}
-                        onChange={(e) =>
-                          setActionForm({ ...actionForm, descripcion: e.target.value })
-                        }
-                        rows={3}
-                        placeholder="Describa la acción correctiva/preventiva a implementar..."
-                        style={{
-                          width: '100%',
-                          padding: 8,
-                          border: '1px solid #d1d5db',
-                          borderRadius: 6,
-                          fontFamily: 'inherit',
-                          resize: 'vertical',
-                        }}
-                        required
-                      />
+                  <h3 id="incidentes-action-form-title" className="incidentes-form-title">
+                    {editingAction ? 'Editar acción correctiva' : 'Nueva acción correctiva'}
+                  </h3>
+                  <form onSubmit={handleActionSubmit}>
+                    <div className="ui-form-grid">
+                      <div>
+                        <label className="ui-field-label" htmlFor="action-responsable">
+                          Responsable *
+                        </label>
+                        <input
+                          id="action-responsable"
+                          value={actionForm.responsable}
+                          onChange={(e) =>
+                            setActionForm({ ...actionForm, responsable: e.target.value })
+                          }
+                          placeholder="Nombre del responsable"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="ui-field-label" htmlFor="action-fecha">
+                          Fecha límite *
+                        </label>
+                        <input
+                          id="action-fecha"
+                          type="date"
+                          value={actionForm.fecha_limite}
+                          onChange={(e) =>
+                            setActionForm({ ...actionForm, fecha_limite: e.target.value })
+                          }
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="ui-field-label" htmlFor="action-estado">
+                          Estado
+                        </label>
+                        <select
+                          id="action-estado"
+                          value={actionForm.estado}
+                          onChange={(e) =>
+                            setActionForm({
+                              ...actionForm,
+                              estado: e.target.value as CorrectiveAction['estado'],
+                            })
+                          }
+                        >
+                          <option value="pendiente">Pendiente</option>
+                          <option value="en_proceso">En proceso</option>
+                          <option value="completada">Completada</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="ui-field-label" htmlFor="action-evidencia">
+                          Evidencia (URL)
+                        </label>
+                        <input
+                          id="action-evidencia"
+                          value={actionForm.evidencia_url || ''}
+                          onChange={(e) =>
+                            setActionForm({ ...actionForm, evidencia_url: e.target.value })
+                          }
+                          placeholder="URL de evidencia (foto, documento, etc.)"
+                        />
+                      </div>
+                      <div className="incidentes-span-2">
+                        <label className="ui-field-label" htmlFor="action-descripcion">
+                          Descripción de la acción *
+                        </label>
+                        <textarea
+                          id="action-descripcion"
+                          value={actionForm.descripcion}
+                          onChange={(e) =>
+                            setActionForm({ ...actionForm, descripcion: e.target.value })
+                          }
+                          placeholder="Describa la acción correctiva o preventiva a implementar"
+                          required
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label
-                        htmlFor="action-responsable"
-                        style={{
-                          display: 'block',
-                          fontSize: 12,
-                          color: '#6b7280',
-                          marginBottom: 4,
-                        }}
-                      >
-                        Responsable *
-                      </label>
-                      <input
-                        id="action-responsable"
-                        value={actionForm.responsable}
-                        onChange={(e) =>
-                          setActionForm({ ...actionForm, responsable: e.target.value })
-                        }
-                        placeholder="Nombre del responsable"
-                        style={{
-                          width: '100%',
-                          padding: 8,
-                          border: '1px solid #d1d5db',
-                          borderRadius: 6,
-                        }}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="action-fecha"
-                        style={{
-                          display: 'block',
-                          fontSize: 12,
-                          color: '#6b7280',
-                          marginBottom: 4,
-                        }}
-                      >
-                        Fecha límite *
-                      </label>
-                      <input
-                        id="action-fecha"
-                        type="date"
-                        value={actionForm.fecha_limite}
-                        onChange={(e) =>
-                          setActionForm({ ...actionForm, fecha_limite: e.target.value })
-                        }
-                        style={{
-                          width: '100%',
-                          padding: 8,
-                          border: '1px solid #d1d5db',
-                          borderRadius: 6,
-                        }}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="action-estado"
-                        style={{
-                          display: 'block',
-                          fontSize: 12,
-                          color: '#6b7280',
-                          marginBottom: 4,
-                        }}
-                      >
-                        Estado
-                      </label>
-                      <select
-                        id="action-estado"
-                        value={actionForm.estado}
-                        onChange={(e) =>
-                          setActionForm({ ...actionForm, estado: e.target.value as any })
-                        }
-                        style={{
-                          width: '100%',
-                          padding: 8,
-                          border: '1px solid #d1d5db',
-                          borderRadius: 6,
-                        }}
-                      >
-                        <option value="pendiente">Pendiente</option>
-                        <option value="en_proceso">En proceso</option>
-                        <option value="completada">Completada</option>
-                      </select>
-                    </div>
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <label
-                        htmlFor="action-evidencia"
-                        style={{
-                          display: 'block',
-                          fontSize: 12,
-                          color: '#6b7280',
-                          marginBottom: 4,
-                        }}
-                      >
-                        Evidencia (URL)
-                      </label>
-                      <input
-                        id="action-evidencia"
-                        value={actionForm.evidencia_url || ''}
-                        onChange={(e) =>
-                          setActionForm({ ...actionForm, evidencia_url: e.target.value })
-                        }
-                        placeholder="URL de evidencia (foto, documento, etc.)"
-                        style={{
-                          width: '100%',
-                          padding: 8,
-                          border: '1px solid #d1d5db',
-                          borderRadius: 6,
-                        }}
-                      />
-                    </div>
-                    <div
-                      style={{
-                        gridColumn: '1 / -1',
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        gap: 8,
-                        marginTop: 8,
-                      }}
-                    >
+                    <div className="ui-form-actions">
                       <button
                         type="button"
+                        className="ui-action-button"
                         onClick={() => {
                           setEditingAction(null);
                           setCreatingAction(false);
                           setActionForm(INITIAL_ACTION);
                         }}
-                        style={{
-                          padding: '8px 16px',
-                          background: '#e5e7eb',
-                          border: 'none',
-                          borderRadius: 6,
-                          cursor: 'pointer',
-                        }}
                       >
                         Cancelar
                       </button>
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        style={{
-                          padding: '8px 16px',
-                          background: loading ? '#94a3b8' : '#0f766e',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: 6,
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        {loading ? 'Guardando...' : ' Guardar Acción'}
+                      <button type="submit" className="ui-primary-button" disabled={loading}>
+                        {loading ? 'Guardando...' : 'Guardar acción'}
                       </button>
                     </div>
                   </form>
-                </div>
+                </section>
               )}
 
-              <div style={{ overflowX: 'auto' }}>
-                <table
-                  style={{
-                    width: '100%',
-                    borderCollapse: 'collapse',
-                    background: '#fff',
-                    borderRadius: 8,
-                    overflow: 'hidden',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                  }}
-                >
-                  <thead>
-                    <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acción</th>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Responsable</th>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>
-                        Fecha límite
-                      </th>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Estado</th>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Evidencia</th>
-                      <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {actions.length === 0 ? (
+              <section aria-label="Acciones correctivas del incidente">
+                <div className="ui-surface ui-table-wrap">
+                  <table className="ui-table incidentes-table">
+                    <thead>
                       <tr>
-                        <td
-                          colSpan={6}
-                          style={{ padding: 30, textAlign: 'center', color: '#6b7280' }}
-                        >
-                          No hay acciones correctivas registradas. Haga clic en “Nueva
-                          Acción” para agregar la primera.
-                        </td>
+                        <th scope="col">Acción</th>
+                        <th scope="col">Responsable</th>
+                        <th scope="col">Fecha límite</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">Evidencia</th>
+                        <th scope="col">Acciones</th>
                       </tr>
-                    ) : (
-                      actions.map((a) => {
-                        const completed = a.estado === 'completada';
-                        const deadlineStatus = getDeadlineStatus(a.fecha_limite, completed);
-                        const actionStateColor = ACCION_ESTADO_COLORS[a.estado];
-                        return (
-                          <tr key={a.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td style={{ padding: 10, fontSize: 12, maxWidth: '300px' }}>
-                              <div style={{ fontWeight: 500 }}>{a.descripcion}</div>
-                              {a.evidencia_url && (
-                                <a
-                                  href={a.evidencia_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{
-                                    fontSize: 10,
-                                    color: '#0f766e',
-                                    textDecoration: 'underline',
-                                  }}
+                    </thead>
+                    <tbody>
+                      {actions.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="ui-empty">
+                            No hay acciones correctivas registradas. Use el botón Nueva acción para
+                            agregar la primera.
+                          </td>
+                        </tr>
+                      ) : (
+                        actions.map((a) => {
+                          const completed = a.estado === 'completada';
+                          const deadlineStatus = getDeadlineStatus(a.fecha_limite, completed);
+                          return (
+                            <tr key={a.id}>
+                              <td>
+                                <strong>{a.descripcion}</strong>
+                                {a.evidencia_url && (
+                                  <div>
+                                    <a
+                                      href={a.evidencia_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      Ver evidencia
+                                    </a>
+                                  </div>
+                                )}
+                              </td>
+                              <td>{a.responsable}</td>
+                              <td>
+                                <div>{formatDate(a.fecha_limite)}</div>
+                                <span
+                                  className="incidentes-deadline"
+                                  style={{ color: deadlineStatus.color }}
                                 >
-                                  Ver evidencia
-                                </a>
-                              )}
-                            </td>
-                            <td style={{ padding: 10, fontSize: 12 }}>{a.responsable}</td>
-                            <td style={{ padding: 10, fontSize: 12 }}>
-                              <div>{formatDate(a.fecha_limite)}</div>
-                              <div
-                                style={{ fontSize: 11, color: deadlineStatus.color, marginTop: 2 }}
-                              >
-                                {deadlineStatus.label}
-                              </div>
-                            </td>
-                            <td style={{ padding: 10 }}>
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  padding: '2px 8px',
-                                  borderRadius: 12,
-                                  fontSize: 11,
-                                  fontWeight: 'bold',
-                                  background: actionStateColor.bg,
-                                  color: actionStateColor.text,
-                                }}
-                              >
-                                {a.estado === 'pendiente'
-                                  ? 'Pendiente'
-                                  : a.estado === 'en_proceso'
-                                    ? 'En proceso'
-                                    : a.estado === 'completada'
-                                      ? 'Completada'
-                                      : 'Vencida'}
-                              </span>
-                            </td>
-                            <td style={{ padding: 10, textAlign: 'center' }}>
-                              {a.evidencia_url ? (
-                                <a
-                                  href={a.evidencia_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{
-                                    padding: '4px 8px',
-                                    background: '#dbeafe',
-                                    color: '#1e40af',
-                                    borderRadius: 4,
-                                    fontSize: 11,
-                                    fontWeight: 500,
-                                    textDecoration: 'none',
-                                  }}
-                                >
-                                  Ver
-                                </a>
-                              ) : (
-                                <span style={{ fontSize: 11, color: '#9ca3af' }}>—</span>
-                              )}
-                            </td>
-                            <td style={{ padding: 10, display: 'flex', gap: 6 }}>
-                              {!completed && (
-                                <button
-                                  onClick={() => handleActionComplete(a.id)}
-                                  style={{
-                                    padding: '4px 8px',
-                                    background: '#10b981',
-                                    color: '#fff',
-                                    border: 'none',
-                                    borderRadius: 4,
-                                    fontSize: 11,
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  Completar
-                                </button>
-                              )}
-                              <button
-                                onClick={() => {
-                                  setEditingAction(a);
-                                  setCreatingAction(false);
-                                  setActionForm({ ...INITIAL_ACTION, ...a });
-                                }}
-                                style={{
-                                  padding: '4px 8px',
-                                  background: '#0f766e',
-                                  color: '#fff',
-                                  border: 'none',
-                                  borderRadius: 4,
-                                  fontSize: 11,
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                Editar
-                              </button>
-                              <button
-                                onClick={() => handleDeleteAction(a.id)}
-                                style={{
-                                  padding: '4px 8px',
-                                  background: '#dc2626',
-                                  color: '#fff',
-                                  border: 'none',
-                                  borderRadius: 4,
-                                  fontSize: 11,
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                ️
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                                  {deadlineStatus.label}
+                                </span>
+                              </td>
+                              <td>
+                                <span className="ui-badge">{ACCION_ESTADO_LABELS[a.estado]}</span>
+                              </td>
+                              <td>
+                                {a.evidencia_url ? (
+                                  <a
+                                    className="ui-action-button"
+                                    href={a.evidencia_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    Ver
+                                  </a>
+                                ) : (
+                                  '—'
+                                )}
+                              </td>
+                              <td>
+                                <div className="ui-row-actions">
+                                  {!completed && (
+                                    <button
+                                      type="button"
+                                      className="ui-icon-button ui-icon-button--check"
+                                      onClick={() => handleActionComplete(a.id)}
+                                    >
+                                      Completar
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="ui-icon-button ui-icon-button--edit"
+                                    onClick={() => {
+                                      setEditingAction(a);
+                                      setCreatingAction(false);
+                                      setActionForm({ ...INITIAL_ACTION, ...a });
+                                    }}
+                                  >
+                                    Editar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="ui-icon-button ui-icon-button--delete"
+                                    onClick={() => handleDeleteAction(a.id)}
+                                  >
+                                    Eliminar
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="ui-mobile-list">
+                  {actions.length === 0 && (
+                    <p className="ui-empty">No hay acciones correctivas registradas.</p>
+                  )}
+                  {actions.map((a) => {
+                    const completed = a.estado === 'completada';
+                    const deadlineStatus = getDeadlineStatus(a.fecha_limite, completed);
+                    return (
+                      <article className="ui-surface ui-mobile-card" key={a.id}>
+                        <header className="ui-mobile-card-header">
+                          <div>
+                            <h2>{a.descripcion}</h2>
+                          </div>
+                          <span className="ui-badge">{ACCION_ESTADO_LABELS[a.estado]}</span>
+                        </header>
+                        <dl className="ui-mobile-details">
+                          <div>
+                            <dt>Responsable</dt>
+                            <dd>{a.responsable}</dd>
+                          </div>
+                          <div>
+                            <dt>Fecha límite</dt>
+                            <dd>{formatDate(a.fecha_limite)}</dd>
+                          </div>
+                          <div>
+                            <dt>Estado del plazo</dt>
+                            <dd style={{ color: deadlineStatus.color }}>{deadlineStatus.label}</dd>
+                          </div>
+                          <div>
+                            <dt>Evidencia</dt>
+                            <dd>{a.evidencia_url ? 'Disponible' : '—'}</dd>
+                          </div>
+                        </dl>
+                        <div className="ui-mobile-actions">
+                          {!completed && (
+                            <button
+                              type="button"
+                              className="ui-icon-button ui-icon-button--check"
+                              onClick={() => handleActionComplete(a.id)}
+                            >
+                              Completar
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="ui-icon-button ui-icon-button--edit"
+                            onClick={() => {
+                              setEditingAction(a);
+                              setActionForm({ ...INITIAL_ACTION, ...a });
+                            }}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            className="ui-icon-button ui-icon-button--delete"
+                            onClick={() => handleDeleteAction(a.id)}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            </>
           )}
-        </div>
+        </section>
       )}
 
-      {/* TAB 4: SEGUIMIENTO */}
       {activeTab === 'seguimiento' && (
-        <div>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: 12,
-              marginBottom: 16,
-            }}
-          >
-            <div
-              style={{
-                background: '#fff',
-                padding: 16,
-                borderRadius: 10,
-                boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                borderLeft: '4px solid #0f766e',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 11,
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}
-              >
-                Total Incidentes
+        <section
+          aria-labelledby="incidentes-tab-seguimiento"
+          className="incidentes-tab-panel"
+          id="incidentes-panel-seguimiento"
+          role="tabpanel"
+          tabIndex={0}
+        >
+          <section aria-label="Resumen de incidentes" className="ui-kpi-grid">
+            {kpis.map((k) => (
+              <div className="ui-kpi" key={k.label}>
+                <span className="ui-kpi-label">{k.label}</span>
+                <span className="ui-kpi-value">{k.value}</span>
               </div>
-              <div style={{ fontSize: 28, fontWeight: 'bold', color: '#0f766e' }}>
-                {incidents.length}
-              </div>
-            </div>
-            <div
-              style={{
-                background: '#fff',
-                padding: 16,
-                borderRadius: 10,
-                boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                borderLeft: '4px solid #f59e0b',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 11,
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}
-              >
-                En Investigación
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 'bold', color: '#f59e0b' }}>
-                {incidents.filter((i) => i.estado === 'investigando').length}
-              </div>
-            </div>
-            <div
-              style={{
-                background: '#fff',
-                padding: 16,
-                borderRadius: 10,
-                boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                borderLeft: '4px solid #10b981',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 11,
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}
-              >
-                Cerrados
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 'bold', color: '#10b981' }}>
-                {incidents.filter((i) => i.estado === 'cerrado').length}
-              </div>
-            </div>
-            <div
-              style={{
-                background: '#fff',
-                padding: 16,
-                borderRadius: 10,
-                boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                borderLeft: '4px solid #ef4444',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 11,
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}
-              >
-                Abiertos
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 'bold', color: '#ef4444' }}>
-                {incidents.filter((i) => i.estado === 'abierto').length}
-              </div>
-            </div>
-          </div>
+            ))}
+          </section>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table
-              style={{
-                width: '100%',
-                borderCollapse: 'collapse',
-                background: '#fff',
-                borderRadius: 8,
-                overflow: 'hidden',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-              }}
-            >
-              <thead>
-                <tr style={{ background: '#fef2f2', textAlign: 'left' }}>
-                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Fecha</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Tipo</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Descripción</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Estado</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>ARL</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>EPS</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>MinTrabajo</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>
-                    Días Perdidos
-                  </th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {incidents.map((x) => (
-                  <tr
-                    key={x.id}
-                    style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
-                    onClick={() => openIncident(x)}
-                  >
-                    <td style={{ padding: 10 }}>{formatDate(x.fecha_ocurrencia)}</td>
-                    <td style={{ padding: 10 }}>{TIPO_LABELS[x.tipo]}</td>
-                    <td
-                      style={{
-                        padding: 10,
-                        maxWidth: '300px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {x.descripcion}
-                    </td>
-                    <td style={{ padding: 10 }}>
-                      <span
-                        style={{
-                          padding: '2px 8px',
-                          borderRadius: 12,
-                          fontSize: 11,
-                          fontWeight: 'bold',
-                          background: ESTADO_COLORS[x.estado].bg,
-                          color: ESTADO_COLORS[x.estado].text,
-                        }}
-                      >
-                        {ESTADO_LABELS[x.estado]}
-                      </span>
-                    </td>
-                    <td style={{ padding: 10, textAlign: 'center' }}>
-                      {x.reporte_arl ? '✅' : '❌'}
-                    </td>
-                    <td style={{ padding: 10, textAlign: 'center' }}>
-                      {x.reporte_eps ? '✅' : '❌'}
-                    </td>
-                    <td style={{ padding: 10, textAlign: 'center' }}>
-                      {x.reporte_mintrabajo ? '✅' : '❌'}
-                    </td>
-                    <td style={{ padding: 10, textAlign: 'center', fontWeight: 500 }}>
-                      {x.dias_perdidos}
-                    </td>
-                    <td style={{ padding: 10 }}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openIncident(x);
-                        }}
-                        style={{
-                          padding: '4px 8px',
-                          background: '#0f766e',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: 4,
-                          fontSize: 11,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Ver detalle
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {incidents.length === 0 && (
+          <section aria-label="Incidentes registrados">
+            <div className="ui-surface ui-table-wrap">
+              <table className="ui-table incidentes-table">
+                <thead>
                   <tr>
-                    <td colSpan={9} style={{ padding: 30, textAlign: 'center', color: '#6b7280' }}>
-                      No hay incidentes registrados. Use la pestaña “Registro” para
-                      crear el primero.
-                    </td>
+                    <th scope="col">Fecha</th>
+                    <th scope="col">Tipo</th>
+                    <th scope="col">Descripción</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">ARL</th>
+                    <th scope="col">EPS</th>
+                    <th scope="col">MinTrabajo</th>
+                    <th scope="col">Días perdidos</th>
+                    <th scope="col">Acciones</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                </thead>
+                <tbody>
+                  {incidents.map((x) => (
+                    <tr key={x.id}>
+                      <td>{formatDate(x.fecha_ocurrencia)}</td>
+                      <td>{TIPO_LABELS[x.tipo]}</td>
+                      <td className="incidentes-descripcion">{x.descripcion}</td>
+                      <td>
+                        <span className="ui-badge">{ESTADO_LABELS[x.estado]}</span>
+                      </td>
+                      <td>{reportado(x.reporte_arl)}</td>
+                      <td>{reportado(x.reporte_eps)}</td>
+                      <td>{reportado(x.reporte_mintrabajo)}</td>
+                      <td>{x.dias_perdidos}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="ui-icon-button"
+                          onClick={() => openIncident(x)}
+                        >
+                          Ver detalle
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {incidents.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="ui-empty">
+                        No hay incidentes registrados. Use la pestaña Registro para crear el
+                        primero.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="ui-mobile-list">
+              {incidents.length === 0 && <p className="ui-empty">No hay incidentes registrados.</p>}
+              {incidents.map((x) => (
+                <article className="ui-surface ui-mobile-card" key={x.id}>
+                  <header className="ui-mobile-card-header">
+                    <div>
+                      <h2>{TIPO_LABELS[x.tipo]}</h2>
+                      <p>{formatDate(x.fecha_ocurrencia)}</p>
+                    </div>
+                    <span className="ui-badge">{ESTADO_LABELS[x.estado]}</span>
+                  </header>
+                  <p className="incidentes-card-descripcion">{x.descripcion}</p>
+                  <dl className="ui-mobile-details">
+                    <div>
+                      <dt>Reporte ARL</dt>
+                      <dd>{reportado(x.reporte_arl)}</dd>
+                    </div>
+                    <div>
+                      <dt>Reporte EPS</dt>
+                      <dd>{reportado(x.reporte_eps)}</dd>
+                    </div>
+                    <div>
+                      <dt>Reporte MinTrabajo</dt>
+                      <dd>{reportado(x.reporte_mintrabajo)}</dd>
+                    </div>
+                    <div>
+                      <dt>Días perdidos</dt>
+                      <dd>{x.dias_perdidos}</dd>
+                    </div>
+                  </dl>
+                  <div className="ui-mobile-actions">
+                    <button
+                      type="button"
+                      className="ui-icon-button"
+                      onClick={() => openIncident(x)}
+                    >
+                      Ver detalle
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </section>
       )}
     </div>
   );
