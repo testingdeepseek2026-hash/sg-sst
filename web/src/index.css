@@ -1035,6 +1035,405 @@ textarea {
   text-align: center;
 }
 
+.contratistas-page {
+  padding: var(--space-5);
+}
+
+.contratistas-page-header {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.contratistas-form {
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.contratistas-form-title {
+  margin-bottom: var(--space-4);
+  color: var(--color-brand-700);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.contratistas-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.contratistas-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: var(--space-3);
+}
+
+.contratistas-field-grid > div {
+  min-width: 0;
+}
+
+.contratistas-requisitos {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-control);
+  background: #f0fdf4;
+}
+
+.contratistas-requisitos-title {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: #166534;
+  font-size: 0.875rem;
+}
+
+.contratistas-requisitos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: var(--space-3);
+}
+
+.contratistas-requisito {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-primary);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.contratistas-requisito input[type='checkbox'] {
+  flex: 0 0 auto;
+}
+
+.contratistas-requisito select {
+  min-width: 180px;
+}
+
+.contratistas-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.contratistas-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.contratistas-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.contratistas-table th {
+  padding: 10px 12px;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  text-align: left;
+  background: var(--color-canvas);
+  white-space: nowrap;
+}
+
+.contratistas-table td {
+  min-width: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  vertical-align: top;
+}
+
+.contratistas-nombre {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.contratistas-sub {
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.contratistas-requisitos-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.contratistas-requisito-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text-secondary);
+  background: #f3f4f6;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.contratistas-requisito-badge--ok {
+  border-color: #a7f3d0;
+  color: #166534;
+  background: #dcfce7;
+}
+
+.contratistas-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: var(--color-text-secondary);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.contratistas-badge--pendiente {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.contratistas-badge--aprobado {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.contratistas-badge--rechazado {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.contratistas-fila-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.contratistas-icon-button {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  color: var(--color-brand-950);
+  background: var(--color-brand-50);
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+
+.contratistas-icon-button--edit {
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.contratistas-icon-button--delete {
+  color: var(--color-danger);
+  background: #fef2f2;
+}
+
+.contratistas-empty {
+  padding: var(--space-5);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.contratistas-mobile-list {
+  display: none;
+}
+
+.contratistas-mobile-card {
+  min-width: 0;
+  padding: var(--space-4);
+}
+
+.contratistas-mobile-card + .contratistas-mobile-card {
+  margin-top: var(--space-3);
+}
+
+.contratistas-mobile-card-header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.contratistas-mobile-card h2 {
+  color: var(--color-text-primary);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.contratistas-mobile-card-header p {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.contratistas-mobile-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.contratistas-mobile-details dt {
+  color: var(--color-text-muted);
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+
+.contratistas-mobile-details dd {
+  margin-top: 2px;
+  color: var(--color-text-primary);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.contratistas-mobile-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.contratistas-mobile-empty {
+  padding: var(--space-5);
+  border: 1px dashed #cbd5e1;
+  border-radius: var(--radius-control);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.contratistas-modal-backdrop {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgb(15 23 42 / 48%);
+}
+
+.contratistas-modal {
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow: auto;
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  box-shadow: 0 10px 30px rgb(15 23 42 / 18%);
+}
+
+.contratistas-modal-header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.contratistas-modal-header h3 {
+  min-width: 0;
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.contratistas-modal-body {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.contratistas-view-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: var(--space-3);
+}
+
+.contratistas-view-grid dt {
+  color: var(--color-text-muted);
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+
+.contratistas-view-grid dd {
+  margin-top: 2px;
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.contratistas-view-requisitos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.contratistas-view-requisito {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+}
+
+.contratistas-view-requisito svg:first-child {
+  display: none;
+  color: #16a34a;
+}
+
+.contratistas-view-requisito svg:last-child {
+  color: var(--color-danger);
+}
+
+.contratistas-view-requisito--ok svg:first-child {
+  display: inline-block;
+}
+
+.contratistas-view-requisito--ok svg:last-child {
+  display: none;
+}
+
+.contratistas-notas {
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--color-canvas);
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 .workers-tabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1477,6 +1876,37 @@ textarea {
   .alerts-page,
   .inspections-page {
     padding: var(--space-3);
+  }
+
+  .contratistas-page {
+    padding: var(--space-3);
+  }
+
+  .contratistas-page-header .ui-primary-button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .contratistas-page input:not([type='checkbox']),
+  .contratistas-page select,
+  .contratistas-page textarea {
+    min-height: 44px;
+  }
+
+  .contratistas-form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .contratistas-form-actions button {
+    width: 100%;
+  }
+
+  .contratistas-table-wrap {
+    display: none;
+  }
+
+  .contratistas-mobile-list {
+    display: block;
   }
 
   .dashboard-page {
