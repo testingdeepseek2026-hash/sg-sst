@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { Bell, CheckCheck, RefreshCw, Send, Settings } from 'lucide-react';
+
 import { api } from '../lib/api';
 
 export default function Alertas() {
@@ -180,87 +182,53 @@ export default function Alertas() {
 
   const getTipoLabel = (t: string) => {
     const labels: Record<string, string> = {
-      examen: '🩺 Examen Médico',
-      certificado: '📜 Certificado',
-      licencia_sst: '📋 Licencia SST',
-      curso_50h: '📚 Curso 50h',
-      inspeccion: '🔍 Inspección',
-      plan: '📅 Plan Anual',
-      documento: '📄 Documento',
+      examen: 'Examen médico',
+      certificado: 'Certificado',
+      licencia_sst: 'Licencia SST',
+      curso_50h: 'Curso de 50 horas',
+      inspeccion: 'Inspección',
+      plan: 'Plan anual',
+      documento: 'Documento',
     };
     return labels[t] || t;
   };
 
   return (
-    <div style={{ padding: 20, maxWidth: 1100 }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 16,
-        }}
-      >
-        <h1 style={{ margin: 0, color: '#0f766e' }}>Alertas y Recordatorios de Vencimiento</h1>
+    <div className="ui-page alerts-page">
+      <div className="ui-page-header">
+        <h1 className="ui-page-title" style={{ margin: 0 }}>
+          Alertas y recordatorios de vencimiento
+        </h1>
       </div>
 
-      {success && (
-        <div
-          style={{
-            background: '#ecfdf5',
-            color: '#065f46',
-            padding: 10,
-            borderRadius: 8,
-            marginBottom: 14,
-          }}
-        >
-          {success}
-        </div>
-      )}
-      {error && (
-        <div
-          style={{
-            background: '#fef2f2',
-            color: '#991b1b',
-            padding: 10,
-            borderRadius: 8,
-            marginBottom: 14,
-          }}
-        >
-          {error}
-        </div>
-      )}
+      {success && <div className="ui-feedback ui-feedback--success">{success}</div>}
+      {error && <div className="ui-feedback ui-feedback--error">{error}</div>}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: 16 }}>
+      <div aria-label="Secciones de alertas" className="ui-tabs alerts-tabs" role="tablist">
         {[
           {
             id: 'pendientes',
-            label: `📬 Pendientes ${stats?.pendientes ? `(${stats.pendientes})` : ''}`,
+            label: `Pendientes ${stats?.pendientes ? `(${stats.pendientes})` : ''}`,
+            icon: Bell,
           },
           {
             id: 'historial',
-            label: `📤 Enviadas ${sentAlerts.length ? `(${sentAlerts.length})` : ''}`,
+            label: `Enviadas ${sentAlerts.length ? `(${sentAlerts.length})` : ''}`,
+            icon: CheckCheck,
           },
-          { id: 'config', label: '⚙️ Configuración' },
+          { id: 'config', label: 'Configuración', icon: Settings },
         ].map((tab) => (
           <button
+            aria-selected={activeTab === tab.id}
+            className="ui-tab"
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            style={{
-              padding: '12px 20px',
-              border: 'none',
-              background: activeTab === tab.id ? '#fff' : 'transparent',
-              color: activeTab === tab.id ? '#0f766e' : '#6b7280',
-              fontWeight: activeTab === tab.id ? 'bold' : 'normal',
-              fontSize: 13,
-              cursor: 'pointer',
-              borderBottom: `3px solid ${activeTab === tab.id ? '#0f766e' : 'transparent'}`,
-              marginBottom: '-1px',
-              transition: 'all 0.15s',
-            }}
+            role="tab"
+            type="button"
           >
-            {tab.label}
+            <tab.icon aria-hidden="true" size={16} />
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>
@@ -388,7 +356,8 @@ export default function Alertas() {
                 cursor: loading || sending ? 'not-allowed' : 'pointer',
               }}
             >
-              {loading ? 'Generando...' : '🔄 Generar alertas'}
+              <RefreshCw aria-hidden="true" size={16} />
+              {loading ? 'Generando...' : 'Generar alertas'}
             </button>
             <button
               onClick={handleSendAll}
@@ -403,7 +372,8 @@ export default function Alertas() {
                 cursor: alerts.length && !sending ? 'pointer' : 'not-allowed',
               }}
             >
-              {sending ? 'Enviando...' : `📤 Enviar todas (${alerts.length})`}
+              <Send aria-hidden="true" size={16} />
+              {sending ? 'Enviando...' : `Enviar todas (${alerts.length})`}
             </button>
             {selectedIds.length > 0 && (
               <button
@@ -426,6 +396,7 @@ export default function Alertas() {
 
           {/* Table */}
           <div
+            className="alerts-table-desktop"
             style={{
               overflowX: 'auto',
               background: '#fff',
@@ -485,12 +456,49 @@ export default function Alertas() {
               </tbody>
             </table>
           </div>
+          <div aria-label="Alertas pendientes" className="alerts-mobile-list">
+            {alerts.map((alert) => (
+              <article className="alerts-mobile-card" key={alert.id}>
+                <div className="alerts-mobile-card-header">
+                  <label className="alerts-mobile-select">
+                    <input
+                      aria-label={`Seleccionar alerta de ${alert.worker_nombre || alert.item_nombre || alert.entidad}`}
+                      checked={selectedIds.includes(alert.id)}
+                      onChange={(event) => handleSelectOne(alert.id, event.target.checked)}
+                      type="checkbox"
+                    />
+                    <span>{getTipoLabel(alert.tipo)}</span>
+                  </label>
+                  {getPrioridadBadge(alert.prioridad)}
+                </div>
+                <h2>
+                  {alert.worker_nombre
+                    ? `${alert.worker_nombre} ${alert.worker_apellido}`
+                    : alert.item_nombre || alert.entidad}
+                </h2>
+                <dl>
+                  <div>
+                    <dt>Vence</dt>
+                    <dd>{alert.fecha_vencimiento}</dd>
+                  </div>
+                  <div>
+                    <dt>Detalle</dt>
+                    <dd>{alert.detalle || 'Sin detalle adicional'}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+            {alerts.length === 0 && (
+              <p className="alerts-mobile-empty">No hay alertas pendientes</p>
+            )}
+          </div>
         </div>
       )}
 
       {/* TAB 2: HISTORIAL ENVIADAS */}
       {activeTab === 'historial' && (
         <div
+          className="alerts-table-desktop"
           style={{
             overflowX: 'auto',
             background: '#fff',
@@ -533,6 +541,40 @@ export default function Alertas() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+      {activeTab === 'historial' && (
+        <div aria-label="Alertas enviadas" className="alerts-mobile-list">
+          {sentAlerts.map((alert) => (
+            <article className="alerts-mobile-card" key={alert.id}>
+              <div className="alerts-mobile-card-header">
+                <span>{getTipoLabel(alert.tipo)}</span>
+                {getPrioridadBadge(alert.prioridad)}
+              </div>
+              <h2>
+                {alert.worker_nombre
+                  ? `${alert.worker_nombre} ${alert.worker_apellido}`
+                  : alert.item_nombre || alert.entidad}
+              </h2>
+              <dl>
+                <div>
+                  <dt>Vencía</dt>
+                  <dd>{alert.fecha_vencimiento}</dd>
+                </div>
+                <div>
+                  <dt>Enviada</dt>
+                  <dd>
+                    {alert.enviado_en
+                      ? new Date(alert.enviado_en).toLocaleString('es-CO')
+                      : 'Sin fecha registrada'}
+                  </dd>
+                </div>
+              </dl>
+            </article>
+          ))}
+          {sentAlerts.length === 0 && (
+            <p className="alerts-mobile-empty">No hay alertas enviadas aún</p>
+          )}
         </div>
       )}
 

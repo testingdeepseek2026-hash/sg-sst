@@ -536,58 +536,18 @@ export default function Trabajadores() {
   };
 
   return (
-    <div style={{ padding: 20, maxWidth: 1100 }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 16,
-        }}
-      >
-        <h1 style={{ margin: 0, color: '#0f766e' }}>Gestión de Trabajadores</h1>
-        <button
-          onClick={() => openWorkerDetail({} as Worker)}
-          style={{
-            padding: '10px 16px',
-            background: '#0f766e',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 6,
-            fontWeight: 'bold',
-            cursor: 'pointer',
-          }}
-        >
+    <div className="ui-page workers-page">
+      <div className="ui-page-header workers-page-header">
+        <h1 className="ui-page-title" style={{ margin: 0 }}>
+          Gestión de Trabajadores
+        </h1>
+        <button className="ui-primary-button" onClick={() => openWorkerDetail({} as Worker)}>
           + Nuevo Trabajador
         </button>
       </div>
 
-      {success && (
-        <div
-          style={{
-            background: '#ecfdf5',
-            color: '#065f46',
-            padding: 10,
-            borderRadius: 8,
-            marginBottom: 14,
-          }}
-        >
-          {success}
-        </div>
-      )}
-      {error && (
-        <div
-          style={{
-            background: '#fef2f2',
-            color: '#991b1b',
-            padding: 10,
-            borderRadius: 8,
-            marginBottom: 14,
-          }}
-        >
-          {error}
-        </div>
-      )}
+      {success && <div className="ui-feedback ui-feedback--success">{success}</div>}
+      {error && <div className="ui-feedback ui-feedback--error">{error}</div>}
 
       {selectedWorker && (
         <div
@@ -625,30 +585,25 @@ export default function Trabajadores() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: 16 }}>
+      <div
+        aria-label="Secciones de la ficha del trabajador"
+        className="ui-tabs workers-tabs"
+        role="tablist"
+      >
         {[
-          { id: 'basicos', label: '👤 Básicos' },
-          { id: 'examenes', label: '🩺 Exámenes' },
-          { id: 'certificados', label: '📜 Certificados' },
-          { id: 'epp', label: '🛡️ EPP / Dotación' },
+          { id: 'basicos', label: 'Básicos' },
+          { id: 'examenes', label: 'Exámenes' },
+          { id: 'certificados', label: 'Certificados' },
+          { id: 'epp', label: 'EPP / Dotación' },
         ].map((tab) => (
           <button
+            aria-selected={activeTab === tab.id}
+            className="ui-tab"
             key={tab.id}
             onClick={() => setActiveTab(tab.id as TabType)}
             disabled={!selectedWorker}
-            style={{
-              padding: '12px 20px',
-              border: 'none',
-              background: activeTab === tab.id ? '#fff' : 'transparent',
-              color: activeTab === tab.id ? '#0f766e' : !selectedWorker ? '#d1d5db' : '#6b7280',
-              fontWeight: activeTab === tab.id ? 'bold' : 'normal',
-              fontSize: 13,
-              cursor: selectedWorker ? 'pointer' : 'not-allowed',
-              borderBottom: `3px solid ${activeTab === tab.id ? '#0f766e' : 'transparent'}`,
-              marginBottom: '-1px',
-              opacity: selectedWorker ? 1 : 0.5,
-              transition: 'all 0.15s',
-            }}
+            role="tab"
+            type="button"
           >
             {tab.label}
           </button>
@@ -2306,8 +2261,9 @@ export default function Trabajadores() {
       )}
 
       {/* ===== TABLA PRINCIPAL TRABAJADORES ===== */}
-      <div style={{ marginTop: selectedWorker ? 0 : 20 }}>
+      <div className="workers-table-wrap" style={{ marginTop: selectedWorker ? 0 : 20 }}>
         <table
+          className="workers-desktop-table"
           style={{
             width: '100%',
             borderCollapse: 'collapse',
@@ -2422,6 +2378,56 @@ export default function Trabajadores() {
             )}
           </tbody>
         </table>
+        <div aria-label="Trabajadores registrados" className="workers-mobile-list">
+          {workers.map((worker) => (
+            <article className="workers-mobile-card" key={worker.id}>
+              <div className="workers-mobile-card-header">
+                <div>
+                  <h2>
+                    {worker.nombres} {worker.apellidos}
+                  </h2>
+                  <p>
+                    {worker.tipo_documento} {worker.numero_documento}
+                  </p>
+                </div>
+                <span className={`workers-status workers-status--${worker.estado}`}>
+                  {worker.estado}
+                </span>
+              </div>
+              <dl className="workers-mobile-details">
+                <div>
+                  <dt>Cargo</dt>
+                  <dd>{worker.cargo || 'Sin registrar'}</dd>
+                </div>
+                <div>
+                  <dt>Fecha de ingreso</dt>
+                  <dd>{worker.fecha_ingreso.slice(0, 10)}</dd>
+                </div>
+                <div>
+                  <dt>EPS / ARL</dt>
+                  <dd>{[worker.eps, worker.arl].filter(Boolean).join(' / ') || 'Sin registrar'}</dd>
+                </div>
+              </dl>
+              <div className="workers-mobile-actions">
+                <button onClick={() => openWorkerDetail(worker)} type="button">
+                  Ver ficha
+                </button>
+                <button onClick={() => _handleEditWorker(worker)} type="button">
+                  Editar
+                </button>
+                <button
+                  aria-label={`Eliminar a ${worker.nombres} ${worker.apellidos}`}
+                  className="workers-mobile-delete"
+                  onClick={() => _handleDeleteWorker(worker.id)}
+                  type="button"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </article>
+          ))}
+          {workers.length === 0 && <p className="workers-empty">No hay trabajadores registrados</p>}
+        </div>
       </div>
 
       {editingWorker && (

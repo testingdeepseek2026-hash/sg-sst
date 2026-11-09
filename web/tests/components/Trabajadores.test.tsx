@@ -37,10 +37,8 @@ const mockEpp = [
 ];
 
 const openWorkerDetails = async (user: ReturnType<typeof userEvent.setup>) => {
-  // Wait for workers to load and appear in the table
-  await screen.findByText('Juan Pérez');
-  // Find the table row containing "Juan Pérez" by finding the cell and getting its parent row
-  const nameCell = screen.getByText('Juan Pérez');
+  const workerTable = await screen.findByRole('table');
+  const nameCell = within(workerTable).getByText('Juan Pérez');
   const workerRow = nameCell.closest('tr')!;
   await user.click(within(workerRow).getByRole('button', { name: /ver ficha/i }));
   // Wait for detail panel to appear (it has "Cerrar ficha" button)
@@ -49,8 +47,7 @@ const openWorkerDetails = async (user: ReturnType<typeof userEvent.setup>) => {
 
 const openWorkerTab = async (user: ReturnType<typeof userEvent.setup>, name: RegExp) => {
   await openWorkerDetails(user);
-  // Wait for tab to be present and enabled - use getByRole with RegExp for accessible name
-  const tab = await screen.findByRole('button', { name });
+  const tab = await screen.findByRole('tab', { name });
   await waitFor(() => expect(tab).not.toBeDisabled());
   await user.click(tab);
 };
@@ -77,10 +74,22 @@ describe('Gestión de trabajadores', () => {
     render(<Trabajadores />);
 
     expect(await screen.findByText('Gestión de Trabajadores')).toBeInTheDocument();
-    expect(screen.getByText('Juan Pérez')).toBeInTheDocument();
-    expect(screen.getByText('Electricista')).toBeInTheDocument();
-    expect(screen.getByText('María González')).toBeInTheDocument();
+    const workerTable = await screen.findByRole('table');
+    expect(within(workerTable).getByText('Juan Pérez')).toBeInTheDocument();
+    expect(within(workerTable).getByText('Electricista')).toBeInTheDocument();
+    expect(within(workerTable).getByText('María González')).toBeInTheDocument();
     expect(api.get).toHaveBeenCalledWith('/workers');
+  });
+
+  it('permite editar a un trabajador desde su tarjeta móvil', async () => {
+    const user = userEvent.setup();
+    render(<Trabajadores />);
+
+    const [card] = await screen.findAllByRole('article');
+    await user.click(within(card).getByRole('button', { name: 'Editar' }));
+
+    expect(await screen.findByRole('heading', { name: 'Editar Trabajador' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Nombres *')).toHaveValue('Juan');
   });
 
   it('abre la ficha y carga exámenes, certificados y EPP del trabajador', async () => {
@@ -92,9 +101,9 @@ describe('Gestión de trabajadores', () => {
     expect(api.get).toHaveBeenCalledWith('/workers/w1/exams');
     expect(api.get).toHaveBeenCalledWith('/workers/w1/certs');
     expect(api.get).toHaveBeenCalledWith('/workers/w1/epp');
-    expect(screen.getByRole('button', { name: /exámenes/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /certificados/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /dotación/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /exámenes/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /certificados/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /dotación/i })).toBeInTheDocument();
   });
 
   it('muestra exámenes y habilita el registro de un nuevo examen', async () => {

@@ -328,47 +328,50 @@ export default function Inspecciones() {
   const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
   return (
-    <div style={{ padding: 20, maxWidth: 1100 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h1 style={{ margin: 0, color: '#0f766e' }}>Inspecciones en Obra y Puestos de Trabajo</h1>
-        <button onClick={newInspection} style={{ padding: '10px 16px', background: '#0f766e', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>
+    <div className="ui-page inspections-page">
+      <div className="ui-page-header inspections-page-header">
+        <h1 className="ui-page-title" style={{ margin: 0 }}>Inspecciones en Obra y Puestos de Trabajo</h1>
+        <button className="ui-primary-button" onClick={newInspection} type="button">
           + Nueva Inspección
         </button>
       </div>
 
       {message && (
-        <div style={{ background: message.type === 'success' ? '#ecfdf5' : '#fef2f2', border: `1px solid ${message.type === 'success' ? '#a7f3d0' : '#fecaca'}`, color: message.type === 'success' ? '#065f46' : '#991b1b', padding: 10, borderRadius: 8, marginBottom: 14 }}>
+        <div
+          className={`ui-feedback ui-feedback--${message.type}`}
+          role={message.type === 'error' ? 'alert' : 'status'}
+        >
           {message.text}
         </div>
       )}
 
       {/* Formulario */}
-      <div style={{ background: '#fff', padding: 16, borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.06)', marginBottom: 16 }}>
-        <h3 style={{ margin: '0 0 16px', color: '#0f766e' }}>{editingInspection ? 'Editar Inspección' : viewingInspection ? 'Ver Inspección' : 'Nueva Inspección'}</h3>
+      <div className="ui-surface inspections-form">
+        <h3 className="inspections-form-title">{editingInspection ? 'Editar Inspección' : viewingInspection ? 'Ver Inspección' : 'Nueva Inspección'}</h3>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Datos generales */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <div>
-              <label htmlFor="insp-tipo" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Tipo *</label>
+              <label className="ui-field-label" htmlFor="insp-tipo">Tipo *</label>
               <select id="insp-tipo" value={form.tipo} onChange={e => handleInputChange('tipo', e.target.value)} style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} required>
                 {Object.entries(TIPO_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
             <div>
-              <label htmlFor="insp-fecha" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Fecha *</label>
+              <label className="ui-field-label" htmlFor="insp-fecha">Fecha *</label>
               <input id="insp-fecha" type="date" value={form.fecha} onChange={e => handleInputChange('fecha', e.target.value)} style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} required />
             </div>
             <div>
-              <label htmlFor="insp-lugar" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Lugar / Obra</label>
+              <label className="ui-field-label" htmlFor="insp-lugar">Lugar / Obra</label>
               <input id="insp-lugar" value={form.lugar} onChange={e => handleInputChange('lugar', e.target.value)} placeholder="Ej: Planta 2, Fachada norte, Vehículo placa XXX" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
             </div>
             <div>
-              <label htmlFor="insp-responsable" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Responsable</label>
+              <label className="ui-field-label" htmlFor="insp-responsable">Responsable</label>
               <input id="insp-responsable" value={form.responsable} onChange={e => handleInputChange('responsable', e.target.value)} placeholder="Nombre del inspector" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
             </div>
             <div>
-              <label htmlFor="insp-estado" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Estado</label>
+              <label className="ui-field-label" htmlFor="insp-estado">Estado</label>
               <select id="insp-estado" value={form.estado} onChange={e => handleInputChange('estado', e.target.value)} style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}>
                 <option value="pendiente">Pendiente</option>
                 <option value="aprobada">Aprobada</option>
@@ -377,7 +380,7 @@ export default function Inspecciones() {
               </select>
             </div>
             <div>
-              <label htmlFor="insp-firmado" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Firmado por</label>
+              <label className="ui-field-label" htmlFor="insp-firmado">Firmado por</label>
               <input id="insp-firmado" value={form.firmado_por} onChange={e => handleInputChange('firmado_por', e.target.value)} placeholder="Nombre quien firma" style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }} />
             </div>
           </div>
@@ -420,13 +423,13 @@ export default function Inspecciones() {
 
           {/* Observaciones */}
           <div>
-            <label htmlFor="insp-obs" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Observaciones</label>
+            <label className="ui-field-label" htmlFor="insp-obs">Observaciones</label>
             <textarea id="insp-obs" value={form.observaciones} onChange={e => handleInputChange('observaciones', e.target.value)} rows={3} placeholder="Hallazgos, recomendaciones, acciones correctivas..." style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6, fontFamily: 'inherit', resize: 'vertical' }} />
           </div>
 
           {/* Captura de fotos */}
           <div>
-            <label htmlFor="photo-input" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>📷 Evidencia fotográfica</label>
+            <label className="ui-field-label" htmlFor="photo-input">📷 Evidencia fotográfica</label>
             <input type="file" accept="image/*" multiple onChange={handleFileChange} style={{ display: 'none' }} id="photo-input" />
             <button type="button" onClick={() => document.getElementById('photo-input')?.click()} style={{ padding: '8px 16px', background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: 6, cursor: 'pointer', fontSize: 13, marginBottom: 8 }}>
               📷 Agregar fotos
@@ -445,7 +448,7 @@ export default function Inspecciones() {
 
           {/* Firma digital */}
           <div>
-            <label htmlFor="inspection-signature" style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}>✍️ Firma digital del responsable</label>
+            <label className="ui-field-label" htmlFor="inspection-signature">✍️ Firma digital del responsable</label>
             {form.firma_url ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <img src={form.firma_url} alt="Firma" style={{ maxHeight: 60, border: '1px solid #d1d5db', borderRadius: 4, background: '#fff' }} />
@@ -459,9 +462,9 @@ export default function Inspecciones() {
           </div>
 
           {/* Botones */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-            <button type="button" onClick={newInspection} style={{ padding: '10px 16px', background: '#e5e7eb', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Cancelar</button>
-            <button type="submit" disabled={loading} style={{ padding: '10px 16px', background: loading ? '#94a3b8' : '#0f766e', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer' }}>
+          <div className="inspections-form-actions">
+            <button className="ui-action-button" type="button" onClick={newInspection}>Cancelar</button>
+            <button className="ui-primary-button" type="submit" disabled={loading}>
               {loading ? 'Guardando...' : editingInspection ? 'Actualizar' : 'Registrar Inspección'}
             </button>
           </div>
@@ -469,8 +472,8 @@ export default function Inspecciones() {
       </div>
 
       {/* Lista de inspecciones */}
-      <div style={{ overflowX: 'auto', background: '#fff', borderRadius: 8, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+      <div className="ui-surface inspections-table-wrap">
+        <table className="inspections-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
           <thead>
             <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
               <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Tipo</th>
