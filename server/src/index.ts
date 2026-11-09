@@ -17,6 +17,9 @@ import {
   documentsRoutes,
 } from './routes/documents_actions_audits_alerts.js';
 import exportRoutes from './routes/export.js';
+import uploadsRoutes from './routes/uploads.js';
+import contractorsRoutes from './routes/contractors.js';
+import emergenciesRoutes from './routes/emergencies.js';
 import hazardsRoutes from './routes/hazards.js';
 import importRoutes from './routes/import.js';
 import incidentsRoutes from './routes/incidents.js';
@@ -68,6 +71,9 @@ app.register(auditsRoutes, { prefix: '/api' });
 app.register(alertsRoutes, { prefix: '/api' });
 app.register(exportRoutes, { prefix: '/api' });
 app.register(importRoutes, { prefix: '/api' });
+app.register(uploadsRoutes, { prefix: '/api' });
+app.register(contractorsRoutes, { prefix: '/api' });
+app.register(emergenciesRoutes, { prefix: '/api' });
 app.register(policiesRoutes, { prefix: '/api' });
 
 app.get('/api/health', async () => {
@@ -82,18 +88,25 @@ app.get('/api/health', async () => {
 const publicDir = join(process.cwd(), 'dist', 'public');
 if (existsSync(publicDir)) {
   await app.register(staticPlugin, { root: publicDir, prefix: '/' });
-  app.setNotFoundHandler((request, reply) => {
-    if (!request.url.startsWith('/api/')) {
-      return reply.sendFile('index.html');
-    }
-    return reply.code(404).send({ error: 'Not found' });
-  });
 }
+
+// Servir archivos subidos
+const uploadsDir = join(process.cwd(), 'uploads');
+if (existsSync(uploadsDir)) {
+  await app.register(staticPlugin, { root: uploadsDir, prefix: '/uploads' });
+}
+
+app.setNotFoundHandler((request, reply) => {
+  if (!request.url.startsWith('/api/') && !request.url.startsWith('/uploads/')) {
+    return reply.sendFile('index.html');
+  }
+  return reply.code(404).send({ error: 'Not found' });
+});
 
 const PORT = Number(process.env.PORT ?? 4000);
 const HOST = process.env.HOST ?? '127.0.0.1';
 
-app.listen({ port: PORT, host: HOST }, async (err) => {
+app.listen({ port: PORT, host: HOST }, (err) => {
   if (err) {
     app.log.error(err);
     process.exit(1);
@@ -101,8 +114,7 @@ app.listen({ port: PORT, host: HOST }, async (err) => {
   console.log(`SG-SST servidor escuchando en http://${HOST}:${PORT}`);
   console.log(`Base de datos: ${DB_PATH}`);
   if (process.env.SEED === 'true') {
-    await seedAll(db);
-    console.log('Semilla cargada.');
+    void seedAll(db).then(() => console.log('Semilla cargada.'));
   }
 
   // Iniciar scheduler de alertas (solo en producción, no en test)

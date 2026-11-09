@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
-import { SignaturePad } from '../components/SignaturePad';
-import { api } from '../lib/api';
+import { SignaturePad } from '@/components/SignaturePad';
+import { api } from '@/lib/api';
 
 type TabType = 'basicos' | 'examenes' | 'certificados' | 'epp';
 
@@ -371,11 +371,13 @@ export default function Trabajadores() {
 
   const handleCertFechaEmisionChange = (value: string) => {
     setCertForm({ ...certForm, fecha_emision: value });
-    if (certForm.tipo === 'alturas') {
+    if (certForm.tipo === 'alturas' && value) {
       const emission = new Date(value);
-      const venc = new Date(emission);
-      venc.setFullYear(venc.getFullYear() + 3);
-      setCertForm((prev) => ({ ...prev, fecha_vencimiento: venc.toISOString().slice(0, 10) }));
+      if (!isNaN(emission.getTime())) {
+        const venc = new Date(emission);
+        venc.setFullYear(venc.getFullYear() + 3);
+        setCertForm((prev) => ({ ...prev, fecha_vencimiento: venc.toISOString().slice(0, 10) }));
+      }
     }
   };
 

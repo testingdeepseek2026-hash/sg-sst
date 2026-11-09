@@ -7,6 +7,8 @@ import Acciones from './pages/Acciones';
 import Alertas from './pages/Alertas';
 import Altura from './pages/Altura';
 import Auditorias from './pages/Auditorias';
+import Contratistas from './pages/Contratistas';
+import Emergencias from './pages/Emergencias';
 import Dashboard from './pages/Dashboard';
 import Documentos from './pages/Documentos';
 import Empresa from './pages/Empresa';
@@ -114,6 +116,8 @@ function App() {
         <Route path="documentos" element={<Documentos />} />
         <Route path="acciones" element={<Acciones />} />
         <Route path="auditorias" element={<Auditorias />} />
+        <Route path="emergencias" element={<Emergencias />} />
+        <Route path="contratistas" element={<Contratistas />} />
         <Route path="alertas" element={<Alertas />} />
         <Route path="importar" element={<Importar />} />
         <Route path="politica" element={<Politica />} />

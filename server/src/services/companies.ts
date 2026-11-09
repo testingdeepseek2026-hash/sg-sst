@@ -21,7 +21,8 @@ export function upsertCompany(db: any, input: any) {
     return { ...existing, ...input, actualizado_en: now };
   }
   const numTrab = input.numero_trabajadores ?? 3;
-  const estandarSet = input.estandar_set ?? estandarSetPorRiesgo(input.clase_riesgo ?? 'IV', numTrab);
+  const estandarSet =
+    input.estandar_set ?? estandarSetPorRiesgo(input.clase_riesgo ?? 'IV', numTrab);
   const id = genId();
   db.prepare(
     `INSERT INTO companies (id, razon_social, nit, direccion, telefono, email, clase_riesgo, estandar_set,
@@ -59,13 +60,16 @@ export function upsertCompany(db: any, input: any) {
   return { id, ...input, creado_en: now, actualizado_en: now };
 }
 
-export function estandarSetPorRiesgo(clase_riesgo: string, numero_trabajadores?: number): '7' | '21' | '32' {
+export function estandarSetPorRiesgo(
+  clase_riesgo: string,
+  numero_trabajadores?: number
+): '7' | '21' | '32' {
   // Res. 0312/2019 lógica:
   // Riesgo I-III, ≤10 trab → 7 (Cap. I)
   // Riesgo I-III, 11-50 trab → 21 (Cap. I+II)
   // Riesgo I-III, >50 trab → 32 (Cap. I+II+III)
   // Riesgo IV-V, ≤10 trab → 21 (Cap. I+II)
-  // Riesgo IV-V, 11-50 trab → 21 (Cap. I+II)  
+  // Riesgo IV-V, 11-50 trab → 21 (Cap. I+II)
   // Riesgo IV-V, >50 trab → 32 (Cap. I+II+III)
   const nt = numero_trabajadores ?? 3;
   if (['IV', 'V'].includes(clase_riesgo)) {

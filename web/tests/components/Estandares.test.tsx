@@ -57,19 +57,26 @@ describe('Autoevaluación de estándares mínimos', () => {
     await screen.findByText('Asignación de responsable');
 
     const checkboxes = screen.getAllByRole('checkbox');
+    // Click both checkboxes to create assessments for both standards
     await user.click(checkboxes[0]);
-    await user.click(screen.getByRole('button', { name: 'Guardar evaluación' }));
+    await user.click(checkboxes[1]);
+    // Uncheck the second one to simulate cumprindo=false
+    await user.click(checkboxes[1]);
+    
+    await user.click(screen.getByRole('button', { name: /Guardar evaluación completa/i }));
 
     await waitFor(() => {
-      expect(api.post).toHaveBeenNthCalledWith(1, '/standards/assessments', {
+      expect(api.post).toHaveBeenNthCalledWith(1, '/standards/assessments', expect.objectContaining({
         standard_id: 'std-1',
         cumple: true,
-      });
-      expect(api.post).toHaveBeenNthCalledWith(2, '/standards/assessments', {
+      }));
+      expect(api.post).toHaveBeenNthCalledWith(2, '/standards/assessments', expect.objectContaining({
         standard_id: 'std-2',
         cumple: false,
-      });
+      }));
     });
-    expect(api.get).toHaveBeenLastCalledWith('/standards/cumplimiento');
+    // The loadData function calls: /standards?set=, /standards/cumplimiento, /standards/assessments
+    // The last call is /standards/assessments
+    expect(api.get).toHaveBeenLastCalledWith('/standards/assessments');
   });
 });

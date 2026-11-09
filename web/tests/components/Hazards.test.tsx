@@ -4,14 +4,18 @@ import userEvent from '@testing-library/user-event';
 import Hazards from '../../src/pages/Hazards.tsx';
 import { render } from '../setup.tsx';
 
-vi.mock('@/lib/api', () => ({
+const { api: mockApi } = vi.hoisted(() => ({
   api: {
     get: vi.fn(),
     post: vi.fn(),
   },
 }));
 
-import { api } from '@/lib/api';
+vi.mock('../../src/lib/api', () => ({
+  api: mockApi,
+}));
+
+import { api } from '../../src/lib/api';
 
 const mockCatalog = [
   { id: 'c1', codigo: 'EL-001', nombre: 'Contacto con partes vivas', categoria: 'electrico', riesgo_por_defecto: 'alto', activo: 1 },
@@ -26,7 +30,7 @@ const mockAssessments = [
 describe('Matriz de peligros GTC 45', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (api.get as vi.Mock).mockImplementation((path: string) => {
+    api.get.mockImplementation((path: string) => {
       if (path.startsWith('/hazards/catalog?categoria=')) {
         const category = path.split('=')[1];
         return Promise.resolve(mockCatalog.filter(item => item.categoria === category));
@@ -35,7 +39,7 @@ describe('Matriz de peligros GTC 45', () => {
       if (path === '/hazards/assessments') return Promise.resolve(mockAssessments);
       return Promise.reject(new Error(`Ruta inesperada: ${path}`));
     });
-    (api.post as vi.Mock).mockResolvedValue({});
+    api.post.mockResolvedValue({});
   });
 
   it('muestra la matriz, el catálogo y las evaluaciones existentes', async () => {
@@ -45,7 +49,8 @@ describe('Matriz de peligros GTC 45', () => {
     expect(screen.getByRole('option', { name: /EL-001.*Contacto con partes vivas/i })).toBeInTheDocument();
     expect(screen.getByText('Electricista')).toBeInTheDocument();
     expect(screen.getByText('Trabajador alturas')).toBeInTheDocument();
-    expect(screen.getByText('Total registros:')).toBeInTheDocument();
+    // Check for the "Todas" button which shows catalog count
+    expect(screen.getByRole('button', { name: /todas/i })).toBeInTheDocument();
   });
 
   it('filtra el catálogo por categoría y vuelve a cargar todos los peligros', async () => {
@@ -90,7 +95,7 @@ describe('Matriz de peligros GTC 45', () => {
     await userEvent.selectOptions(screen.getByRole('combobox'), 'alto');
     await userEvent.type(screen.getByPlaceholderText('Ej: Juan Pérez / Jefe de obra'), 'Jefe de seguridad');
     await userEvent.type(container.querySelector('textarea')!, 'Ventilación y respirador');
-    await userEvent.click(screen.getByRole('button', { name: /agregar fila a la matriz/i }));
+    await userEvent.click(screen.getByRole('button', { name: /guardar evaluaci/i }));
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith('/hazards/assessments', expect.objectContaining({
@@ -113,7 +118,7 @@ describe('Matriz de peligros GTC 45', () => {
     await screen.findByText('Electricista');
 
     await userEvent.click(screen.getByLabelText(/peligro personalizado/i));
-    await userEvent.click(screen.getByRole('button', { name: /agregar fila a la matriz/i }));
+    await userEvent.click(screen.getByRole('button', { name: /guardar evaluaci/i }));
 
     expect(api.post).not.toHaveBeenCalled();
   });

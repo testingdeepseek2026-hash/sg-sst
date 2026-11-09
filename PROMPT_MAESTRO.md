@@ -106,13 +106,27 @@ Elige el stack que mejor se adapte (puede ser una aplicación web propia, una pl
 
 ## ESTADO ACTUAL DEL PROYECTO (análisis preliminar)
 
-- **Stack:** React + Vite (frontend) + Node.js/Express (backend inferido por estructura server/)
+- **Stack:** React + Vite (frontend) + Node.js/Fastify (backend)
 - **Frontend:** `web/` - React 18, React Router, TypeScript, Vite, PWA configurado
-- **Backend:** `server/` - Estructura de rutas y servicios visible (companies, roles, workers, hazards, standards, plans, indicators, incidents, inspections, documents, actions, audits, alerts)
-- **Autenticación:** Login funcional con JWT (inferido por api.get('/users/me'))
+- **Backend:** `server/` - Fastify, SQLite, estructura de rutas y servicios (companies, roles, workers, hazards, standards, plans, indicators, incidents, inspections, documents, actions, audits, alerts)
+- **Autenticación:** Login funcional con JWT (api.get('/users/me'))
 - **Páginas implementadas:** Login, Dashboard, Empresa, Usuarios, Roles, Trabajadores, Hazards, Estandares, Planes, Indicadores, Incidentes, Inspecciones, Altura, Documentos, Acciones, Auditorias, Alertas, Importar
 - **Layout:** Menú lateral responsivo con 17 módulos navegables
 - **Dashboard:** Carga datos de standards, workers, actions, incidents via API
 
-**Fase aparente:** Post-MVP (estructura base + routing + páginas esqueleto + API stubs)
+**Estado actual (7 de noviembre 2026 - Post estabilización):**
+- ✅ **Suite frontend completa**: 49/49 tests pasan (7 archivos: Politica, Hazards, Trabajadores, Estandares, Login, Dashboard, api)
+- ✅ **Suite backend completa**: 193/193 tests pasan (12 archivos: policies, hazards, workers, incidents, standards, alerts, etc.)
+- ✅ **Typechecks**: server y web pasan sin errores
+- ✅ **Builds**: server y web compilan correctamente en producción
+- ✅ **Total pruebas**: 242 pasando (193 backend + 49 frontend)
+
+**Fixes recientes aplicados:**
+- Tests `Hazards.test.tsx`, `Trabajadores.test.tsx`, `Estandares.test.tsx` corregidos y alineados con UI actual
+- `Trabajadores.tsx`: validación de fecha en `handleCertFechaEmisionChange` para evitar `Invalid time value`
+- `Incidentes.tsx`: llamadas a `_showMessage` corregidas a firma `(type, text)` en lugar de objeto
+- `web/tsconfig.json`: agregados `baseUrl` y `paths` para alias `@/*` (src/*)
+- Tests usan imports con alias `@/` en lugar de rutas relativas
+
+**Fase aparente:** Post-MVP (estructura base + routing + páginas funcionales + API completa + tests completos)
 **Gaps críticos identificados:** Ver análisis detallado abajo

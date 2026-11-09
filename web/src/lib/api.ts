@@ -27,18 +27,18 @@ async function request(path: string, opts: RequestInit = {}): Promise<any> {
 }
 
 export const api = {
-  get: (p: string) => request(p, { method: 'GET' }),
-  post: (p: string, body?: any) =>
-    request(p, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
-  put: (p: string, body?: any) => request(p, { method: 'PUT', body: JSON.stringify(body) }),
-  del: (p: string) => request(p, { method: 'DELETE' }),
-  delete: (p: string) => request(p, { method: 'DELETE' }),
-  postFile: async (p: string, formData: FormData) => {
-    const res = await fetch(`${API_BASE}${p}`, {
+  get: (path: string) => request(path, { method: 'GET' }),
+  post: (path: string, body?: any) =>
+    request(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
+  put: (path: string, body?: any) => request(path, { method: 'PUT', body: JSON.stringify(body) }),
+  del: (path: string) => request(path, { method: 'DELETE' }),
+  delete: (path: string) => request(path, { method: 'DELETE' }),
+  postFile: async (path: string, formData: FormData) => {
+    const res = await fetch(`${API_BASE}${path}`, {
       method: 'POST',
       body: formData,
       credentials: 'include',
     });
     return handleResponse(res);
   },
-};
+} as const;
