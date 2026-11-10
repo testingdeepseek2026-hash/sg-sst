@@ -39,9 +39,13 @@ function saveAlert(db: any, alert: Alert): boolean {
 }
 
 export function generateAlerts(db: any): Alert[] {
-  const hoy = new Date().toISOString().slice(0, 10);
-  const limite = new Date();
-  limite.setDate(limite.getDate() + 30);
+  // Usar timezone America/Bogota consistente con scheduler (scheduler.ts:46)
+  // Bogota es UTC-5 sin horario de verano; el CronJob ya corre con esta TZ
+  const ahora = new Date();
+  const diffBogota = ahora.getTime() + 5 * 60 * 60 * 1000; // Ajuste UTC-5
+  const hoy = new Date(diffBogota).toISOString().slice(0, 10);
+  const limite = new Date(diffBogota);
+  limite.setDate(new Date(diffBogota).getDate() + 30);
   const limiteStr = limite.toISOString().slice(0, 10);
 
   const alertas: Alert[] = [];

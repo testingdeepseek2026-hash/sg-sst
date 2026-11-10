@@ -25,7 +25,7 @@ import hazardsRoutes from './routes/hazards.js';
 import importRoutes from './routes/import.js';
 import incidentsRoutes from './routes/incidents.js';
 import indicatorsRoutes from './routes/indicators.js';
-import inspectionsRoutes, { alturaRoutes } from './routes/inspections.js';
+import inspectionsRoutes from './routes/inspections.js';
 import plansRoutes from './routes/plans.js';
 import policiesRoutes from './routes/policies.js';
 import privacyRoutes from './routes/privacy.js';
@@ -41,11 +41,17 @@ import './types.js';
 
 const app = Fastify({ logger: true });
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:4000',
+  process.env.FRONTEND_URL || 'https://sg-sst.example.com',
+].filter(Boolean);
+
 await app.register(cors, {
-  origin: ['http://localhost:5173', 'http://localhost:4000'],
+  origin: allowedOrigins,
   credentials: true,
 });
-await app.register(cookie, { secret: process.env.SESSION_SECRET ?? 'sg-sst-dev-secret-change-me' });
+await app.register(cookie, { secret: process.env.SESSION_SECRET });
 await app.register(multipart, { limits: { fields: 50, files: 20, fileSize: 10 * 1024 * 1024 } });
 
 const db = openDb();
@@ -67,7 +73,6 @@ app.register(plansRoutes, { prefix: '/api' });
 app.register(indicatorsRoutes, { prefix: '/api' });
 app.register(incidentsRoutes, { prefix: '/api' });
 app.register(inspectionsRoutes, { prefix: '/api' });
-app.register(alturaRoutes, { prefix: '/api' });
 app.register(documentsRoutes, { prefix: '/api' });
 app.register(actionsRoutes, { prefix: '/api' });
 app.register(auditsRoutes, { prefix: '/api' });

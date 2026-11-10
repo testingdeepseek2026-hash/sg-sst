@@ -39,6 +39,14 @@ const setOptions = [
   { value: '32', label: '32 estándares (>50 trab. o riesgo IV-V — Cap. I+II+III)' },
 ];
 
+const RISK_CHAPTER_MAP: Record<string, string[]> = {
+  I: ['I'],
+  II: ['I', 'II'],
+  III: ['I', 'II', 'III'],
+  IV: ['I', 'II', 'III'],
+  V: ['I', 'II', 'III'],
+};
+
 const CAPITULO_WEIGHTS: Record<string, number> = {
   I: 1,
   II: 1.5,
@@ -48,6 +56,7 @@ const CAPITULO_WEIGHTS: Record<string, number> = {
 export default function Estandares() {
   const [setSel, setSetSel] = useState<string>('21');
   const [stds, setStds] = useState<Standard[]>([]);
+  const [claseRiesgo, setClaseRiesgo] = useState<string>('III');
   const [assess, setAssess] = useState<Record<string, Assessment>>({});
   const [cumplimiento, setCumplimiento] = useState<Cumplimiento | null>(null);
   const [loading, setLoading] = useState(false);
@@ -61,7 +70,12 @@ export default function Estandares() {
         api.get(`/standards?set=${setSel}`),
         api.get('/standards/cumplimiento'),
       ]);
-      setStds(s as Standard[]);
+      // Filtrar estándares por clase de riesgo según Res. 0312/2019 y RISK_CHAPTER_MAP
+      const allowedChapters = RISK_CHAPTER_MAP[claseRiesgo] || ['I', 'II', 'III'];
+      const filteredStds = s.filter((s: Standard) =>
+        allowedChapters.includes(s.capitulo || '')
+      );
+      setStds(filteredStds as Standard[]);
       setCumplimiento(c as Cumplimiento);
       // Cargar evaluaciones existentes
       const existing = await api.get('/standards/assessments');
@@ -252,6 +266,22 @@ export default function Estandares() {
               {opt.label}
             </option>
           ))}
+        </select>
+        <label htmlFor="clase-riesgo" style={{ fontSize: 13, color: '#374151', marginLeft: 16 }}>
+          Clase riesgo:
+        </label>
+        <select
+          id="clase-riesgo"
+          value={claseRiesgo}
+          onChange={(e) => setClaseRiesgo(e.target.value)}
+          disabled={loading}
+          style={{ padding: 6, borderRadius: 6, border: '1px solid #d1d5db' }}
+        >
+          <option value="I">I</option>
+          <option value="II">II</option>
+          <option value="III">III</option>
+          <option value="IV">IV</option>
+          <option value="V">V</option>
         </select>
       </div>
 

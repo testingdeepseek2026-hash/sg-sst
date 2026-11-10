@@ -111,7 +111,7 @@ const inspectionsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   fastify.post('/altura/permits', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const parsed = inspSchema.safeParse(request.body); // reusar schema compatible
+    const parsed = inspSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const permit = createAlturaPermit(fastify.db, parsed.data);
 
@@ -203,16 +203,4 @@ const inspectionsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 };
 
-// Rutas de altura separadas para registro individual
-const alturaRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/altura/permits', async (request, reply) => {
-    return getAlturaPermits(fastify.db);
-  });
-
-  fastify.get('/altura/ats', async (request, reply) => {
-    return getATS(fastify.db);
-  });
-};
-
-export { inspectionsRoutes, alturaRoutes };
 export default inspectionsRoutes;

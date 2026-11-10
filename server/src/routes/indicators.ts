@@ -10,6 +10,7 @@ import {
 import { requireRole, getAuthUser, auditLog } from '../lib/auth.js';
 
 const indSchema = z.object({
+  codigo: z.string().optional(),
   nombre: z.string().min(2),
   tipo: z.enum(['estructura', 'proceso', 'resultado']),
   valor: z.number(),
@@ -17,6 +18,8 @@ const indSchema = z.object({
   periodo: z.string(),
   fecha_calculo: z.string().optional(),
   notas: z.string().optional(),
+  formula: z.string().optional(),
+  frecuencia: z.enum(['mensual', 'trimestral', 'semestral', 'anual']).optional(),
 });
 
 const indicatorsRoutes: FastifyPluginAsync = async (fastify) => {
