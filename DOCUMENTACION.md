@@ -61,36 +61,55 @@ Comparta sus archivos Excel para afinar el mapeo.
 
 ---
 
-## 6. Despliegue en su PC personal (Windows)
+## 6. Despliegue en PC personal (Windows)
 
 ### Requisitos
 
-- Node.js ≥ 22 (ya instalado: v24.16.0).
-- Puerto 4000 libre.
+- Node.js ≥ 22 (v22.x, verificar con `node -v` y `corepack enable`).
+- Puerto 4000 o 4001 libre (usa `PORT` variable de entorno).
+- `pnpm` 9.15.0 (fijado en `packageManager` del `package.json`).
 
 ### Estructura
 
 ```
 C:\Users\PC\sg-sst\
-  server/   (API Node + SQLite + build)
-  web/      (frontend React + PWA, build en server/dist/public)
+  server/   (API Fastify + TypeScript + SQLite)
+  web/      (frontend React + Vite + PWA)
   data/     (base de datos sg-sst.db)
   backups/  (respaldos automáticos)
+  scripts/debug/ (scripts de depuración con rutas hardcodeadas; movidos de server/ a esta carpeta)
 ```
 
-### Ejecutar
+### Ejecutar (recomendado)
 
-1. Abrir PowerShell en `C:\Users\PC\sg-sst\server`.
-2. `.\runserver.bat` (inicia API en `http://127.0.0.1:4000`).
-3. Abrir el navegador en esa URL. El frontend es una PWA: se puede "instalar" desde el navegador y usar en celular.
+**Opción 1 - Auto (doble clic):**
 
-### Variables de entorno (opcional, editar `server\runserver.bat`)
+1. Ejecutar `iniciar-proyecto.bat` desde la raíz del proyecto (`C:\Users\PC\sg-sst`).
+2. El script verificará prerequisitos, instalará dependencias si es necesario,
+   levantará ambos servidores (backend Fastify + frontend Vite) y,
+   después de confirmar que el health check responde, abrirá automáticamente
+   el navegador en `http://localhost:5173` (página de login).
+3. Credenciales de prueba:
+   - `admin@sg-sst.local` / `Admin1234!` (administrador)
+   - `trabajador@sg-sst.local` / `Trab1234!` (trabajador)
 
-- `PORT` (puerto, default 4000)
-- `HOST` (default 127.0.0.1; poner 0.0.0.0 para acceder desde otros dispositivos de la red)
-- `SESSION_SECRET` (secreto de sesión)
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` (para alertas por correo real)
-- `SG_SST_DATA_DIR` (directorio de la base de datos, default `server/data`)
+**Opción 2 - Manual:**
+
+1. Instalar dependencias: `pnpm install --frozen-lockfile`.
+2. Levantar desarrollo: `pnpm run dev`.
+3. El backend escuchará en `http://127.0.0.1:4000` y el frontend en `http://localhost:5173`.
+
+### Variables de entorno
+
+El archivo `.env` (en la raíz del proyecto) ahora es leído por el servidor gracias a `dotenv.config()` agregado en `server/src/index.ts`.
+
+- `PORT` (puerto, default `4000`; sobrescribe a `4001` si el `.env` tiene `PORT=4001`).
+- `HOST` (default `127.0.0.1`).
+- `SESSION_SECRET` (secreto de sesión; generarse con `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` (para alertas por correo real; sino funciona, el sistema usa modo simulación).
+- `ALERTS_ENABLED` (activar scheduler diario de alertas; requiere `NODE_ENV=production` y SMTP configurado).
+- `ENCRYPTION_SECRET` (clave AES-256-GCM para datos sensibles, Ley 1581/2012).
+- `BACKUP_ENABLED`, `BACKUP_TIMEZONE`, `BACKUP_RETENTION_DAYS` (respaldos automáticos).
 
 ---
 
@@ -125,10 +144,10 @@ Detener el servidor, reemplazar `server/data/sg-sst.db` por el respaldo y reinic
 Desde `C:\Users\PC\sg-sst\server`:
 
 ```
-npm run test
+pnpm run test
 ```
 
-Ejecuta una prueba de humo sobre SQLite (abrir, insertar, consultar).
+Ejecuta las suites de pruebas unitarias y de integración (193 backend + 49 frontend).
 
 ---
 
