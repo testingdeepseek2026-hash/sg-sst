@@ -2,6 +2,7 @@
   "name": "sg-sst-micro",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "SG-SST para microempresa de servicios de instalacion electronica (CCTV, alarmas, control de acceso, cableado). Colombia.",
   "scripts": {
     "dev:api": "pnpm --dir server run dev",
