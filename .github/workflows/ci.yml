@@ -190,7 +190,7 @@ jobs:
         run: |
           pnpm -w server run start &
           sleep 5
-          curl -f http://localhost:3000/health || exit 1
+          curl -f http://localhost:4000/api/health || exit 1
 
       - name: Run Playwright Tests
         run: pnpm -w web run test:e2e

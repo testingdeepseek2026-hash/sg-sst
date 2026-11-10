@@ -44,6 +44,9 @@ export async function requireAuth(
   request: FastifyRequest,
   reply: FastifyReply
 ) {
+  // Health check: disponible sin autenticación para monitoreo/load balancer
+  if (request.url === '/api/health') return;
+
   // Idempotente: si ya hay usuario (ej. hook global previo), no repetir
   if (request.user) return;
 

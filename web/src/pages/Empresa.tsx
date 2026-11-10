@@ -277,31 +277,33 @@ export default function Empresa() {
             </p>
             <div className="empresa-resumen-grid">
               {c.clase_riesgo && c.numero_trabajadores && (
-                <div className="empresa-resumen-card">
-                  <p className="empresa-resumen-card-label">Conteo estándares</p>
-                  <p className="empresa-resumen-card-value">
-                    {Number(c.numero_trabajadores) <= 10 && /^[I-II-III]$/.test(c.clase_riesgo)
-                      ? '7 estándares (Cap. I)'
-                      : Number(c.numero_trabajadores) <= 10 && /^[IV-V]$/.test(c.clase_riesgo)
-                      ? '21 estándares (Cap. I+II)'
-                      : Number(c.numero_trabajadores) > 10 && /^[I-II-III]$/.test(c.clase_riesgo)
-                      ? '21 estándares (Cap. I+II)'
-                      : '32 estándares (Cap. I+II+III)'
-                    }
-                  </p>
-                </div>
-                <div className="empresa-resumen-card">
-                  <p className="empresa-resumen-card-label">Capítulos incluídos</p>
-                  <p className="empresa-resumen-card-value">
-                    {c.clase_riesgo === 'I'
-                      ? 'Capítulo I (peso 1.0)'
-                      : c.clase_riesgo === 'II'
-                      ? 'Capítulos I-II (pesos 1.0, 1.5)'
-                      : c.clase_riesgo === 'III'
-                      ? 'Capítulos I-III (pesos 1.0, 1.5, 2.0)'
-                      : 'Capítulos I-III (todos los pesos)'}
-                  </p>
-                </div>
+                <>
+                  <div className="empresa-resumen-card">
+                    <p className="empresa-resumen-card-label">Conteo estándares</p>
+                    <p className="empresa-resumen-card-value">
+                      {Number(c.numero_trabajadores) <= 10 && /^[I-II-III]$/.test(c.clase_riesgo)
+                        ? '7 estándares (Cap. I)'
+                        : Number(c.numero_trabajadores) <= 10 && /^[IV-V]$/.test(c.clase_riesgo)
+                        ? '21 estándares (Cap. I+II)'
+                        : Number(c.numero_trabajadores) > 10 && /^[I-II-III]$/.test(c.clase_riesgo)
+                        ? '21 estándares (Cap. I+II)'
+                        : '32 estándares (Cap. I+II+III)'
+                      }
+                    </p>
+                  </div>
+                  <div className="empresa-resumen-card">
+                    <p className="empresa-resumen-card-label">Capítulos incluídos</p>
+                    <p className="empresa-resumen-card-value">
+                      {c.clase_riesgo === 'I'
+                        ? 'Capítulo I (peso 1.0)'
+                        : c.clase_riesgo === 'II'
+                        ? 'Capítulos I-II (pesos 1.0, 1.5)'
+                        : c.clase_riesgo === 'III'
+                        ? 'Capítulos I-III (pesos 1.0, 1.5, 2.0)'
+                        : 'Capítulos I-III (todos los pesos)'}
+                    </p>
+                  </div>
+                </>
               )}
             </div>
           </section>

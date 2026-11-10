@@ -1,6 +1,9 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
+import dotenv from 'dotenv';
+dotenv.config();
+
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
@@ -58,11 +61,19 @@ const db = openDb();
 runMigrations(db);
 app.decorate('db', db);
 
+// Health check disponible sin autenticación para monitoreo/load balancer
+app.get('/api/health', async () => {
+  try {
+    db.prepare('SELECT 1').all();
+    return { status: 'ok', db: 'connected', version: '1.0.0' };
+  } catch (e) {
+    return { status: 'degraded', db: 'error', error: String(e) };
+  }
+});
+
 // Hook global: autenticación y adjuntar request.user tipado
 // Las rutas individuales usan requireRole/requireOwnership para autorización
 app.addHook('preHandler', requireAuth);
-
-app.register(companiesRoutes, { prefix: '/api' });
 app.register(usersRoutes, { prefix: '/api' });
 app.register(rolesRoutes, { prefix: '/api' });
 app.register(workersRoutes, { prefix: '/api' });
@@ -86,15 +97,6 @@ app.register(emergenciesRoutes, { prefix: '/api' });
 app.register(policiesRoutes, { prefix: '/api' });
 app.register(privacyRoutes, { prefix: '/api' });
 app.register(restoreRoutes, { prefix: '/api' });
-
-app.get('/api/health', async () => {
-  try {
-    db.prepare('SELECT 1').all();
-    return { status: 'ok', db: 'connected', version: '1.0.0' };
-  } catch (e) {
-    return { status: 'degraded', db: 'error', error: String(e) };
-  }
-});
 
 const publicDir = join(process.cwd(), 'dist', 'public');
 if (existsSync(publicDir)) {

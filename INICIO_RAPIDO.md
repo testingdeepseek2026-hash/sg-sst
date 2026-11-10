@@ -133,3 +133,57 @@ export FRONTEND_URL=https://tu-dominio.com
    curl http://localhost:4000/api/workers \
      -b cookies.txt
    ```
+
+---
+
+## 🪟 Solución de problemas (Windows / PowerShell)
+
+### Error: "pnpm no se reconoce"
+
+Solución: reinicie PowerShell y ejecute:
+
+```powershell
+npm install -g pnpm
+```
+
+### Error: "Puerto en uso"
+
+Mata los procesos en los puertos:
+
+```powershell
+netstat -ano | findstr ":5173"
+netstat -ano | findstr ":4000"
+# Busca el PID y mata con:
+taskkill /PID <numero> /F
+```
+
+### Error: "Base de datos vacía"
+
+Asegúrese de ver en consola:
+
+```
+Semilla cargada.
+```
+
+### Limpieza y reinstalación completa
+
+```powershell
+Remove-Item -Recurse -Force "node_modules" -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force "dist" -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force "web\dist" -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force "server\dist" -ErrorAction SilentlyContinue
+pnpm install --frozen-lockfile
+$env:SEED="true"
+pnpm run dev
+```
+
+---
+
+## ✅ Verificación final
+
+Después de iniciar sesión, debería ver:
+
+1. **Dashboard:** Estadísticas de cumplimiento, trabajadores, acciones
+2. **Trabajadores:** Lista con el trabajador "Juan Pérez"
+3. **Matriz de Peligros:** Catálogo de riesgos
+4. **Política SST:** Plantilla editable
