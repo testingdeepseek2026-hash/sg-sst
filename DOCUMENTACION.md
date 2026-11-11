@@ -1,8 +1,10 @@
 # SG-SST Microempresa - Documentación de uso, respaldo y despliegue
 
-**Empresa:** Micro Instalaciones Electrónicas SAS (ejemplo) · 3 trabajadores · Riesgo V (ARL)  
-**Marco normativo:** Decreto 1072/2015 (Cap. 6, Tit. 4, Libro 2), Res. 0312/2019 (32 estándares Cap. III), Res. 4272/2021 (alturas), Res. 2646/2008 + 2764/2022 (psicosocial), RETIE, Ley 1581/2012 (datos sensibles).  
-**Interfaz:** español de Colombia · PWA (funciona en celular y sin conexión parcial).
+**Empresa:** Micro Instalaciones Electrónicas SAS (ejemplo) · 3 trabajadores · Riesgo V (ARL)
+
+> **Nota:** Datos de **demostración**. La clase de riesgo, los estándares (7/21/32) y los vencimientos solo deben usarse tras confirmar con la ARL. Pruebas actuales: `pnpm run test` → **315/315** (238 backend + 77 frontend).  
+> **Marco normativo:** Decreto 1072/2015 (Cap. 6, Tit. 4, Libro 2), Res. 0312/2019 (32 estándares Cap. III), Res. 4272/2021 (alturas), Res. 2646/2008 + 2764/2022 (psicosocial), RETIE, Ley 1581/2012 (datos sensibles).  
+> **Interfaz:** español de Colombia · PWA (funciona en celular y sin conexión parcial).
 
 ---
 

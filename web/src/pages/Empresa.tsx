@@ -33,10 +33,21 @@ export default function Empresa() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const loadCompany = () => {
+    setLoading(true);
     api
       .get('/companies')
-      .then((data) => setC(data as Empresa))
-      .catch(() => setC(null))
+      .then((data) => {
+        const companyData = data as Empresa;
+        setC(companyData);
+        setForm(companyData as unknown as Record<string, unknown>);
+      })
+      .catch((err: any) => {
+        setC(null);
+        setMessage({
+          type: 'error',
+          text: err.message || 'No se pudo cargar la configuración de la empresa.',
+        });
+      })
       .finally(() => setLoading(false));
   };
 
@@ -47,7 +58,26 @@ export default function Empresa() {
     setSaving(true);
     setMessage(null);
     try {
-      await api.post('/companies', form);
+      const payload: Record<string, unknown> = {
+        razon_social: form.razon_social ?? c?.razon_social,
+        nit: form.nit ?? c?.nit,
+        direccion: form.direccion ?? c?.direccion ?? '',
+        telefono: form.telefono ?? c?.telefono ?? '',
+        clase_riesgo: form.clase_riesgo ?? c?.clase_riesgo ?? 'IV',
+        actividad_economica: form.actividad_economica ?? c?.actividad_economica ?? '',
+        numero_trabajadores: Number(form.numero_trabajadores ?? c?.numero_trabajadores ?? 3),
+        tiene_vigia_sst: Boolean(form.tiene_vigia_sst ?? c?.tiene_vigia_sst),
+        tiene_comite_convivencia: Boolean(
+          form.tiene_comite_convivencia ?? c?.tiene_comite_convivencia
+        ),
+        tiene_brigada: Boolean(form.tiene_brigada ?? c?.tiene_brigada),
+        canal_alertas: form.canal_alertas ?? c?.canal_alertas ?? 'app',
+      };
+      const emailVal = form.email ?? c?.email;
+      if (emailVal && typeof emailVal === 'string' && emailVal.trim() !== '') {
+        payload.email = emailVal.trim();
+      }
+      await api.post('/companies', payload);
       setMessage({ type: 'success', text: 'Configuración de la empresa guardada correctamente' });
       loadCompany();
     } catch (err: any) {
@@ -68,8 +98,31 @@ export default function Empresa() {
   if (!c) {
     return (
       <div className="ui-page empresa-page">
-        <h1 className="ui-page-title">Configuración de la Empresa</h1>
-        <p className="ui-empty">No se pudo cargar la configuración de la empresa.</p>
+        <header className="ui-page-header empresa-page-header">
+          <div>
+            <h1 className="ui-page-title">Configuración de la Empresa</h1>
+          </div>
+        </header>
+        {message && (
+          <div
+            className={`ui-feedback ui-feedback--${message.type}`}
+            role={message.type === 'error' ? 'alert' : 'status'}
+            aria-live="polite"
+          >
+            {message.text}
+          </div>
+        )}
+        <div className="ui-surface" style={{ padding: '24px', textAlign: 'center' }}>
+          <p className="ui-empty">No se pudo cargar la configuración de la empresa.</p>
+          <button
+            type="button"
+            className="ui-primary-button"
+            style={{ marginTop: '16px' }}
+            onClick={loadCompany}
+          >
+            Reintentar
+          </button>
+        </div>
       </div>
     );
   }

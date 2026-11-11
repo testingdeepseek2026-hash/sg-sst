@@ -1,4 +1,4 @@
-# INFORME TÉCNICO - ANÁLISIS DE ERRORES CRÍTICOS SG-SST
+> ⚠️ **Nota de estado:** Informe técnico v1.0.0 (7-nov-2026). Su mayoría de hallazgos fueron resueltos en commits posteriores. El estado del proyecto y la auditoría actualizan en `AUDITORIA_SG-SST.md` (9-nov-2026) y `DOCS_PROTECCION_DATOS.md`. Moved to `/docs/` como registro histórico.
 
 **Fecha:** 2026-11-07  
 **Proyecto:** SG-SST (Sistema de Gestión de Seguridad y Salud en el Trabajo)  

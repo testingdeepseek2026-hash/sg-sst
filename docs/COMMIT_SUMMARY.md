@@ -1,4 +1,4 @@
-# Resumen de Commit - Fases 1 y 0 Completadas
+> ⚠️ **Nota de estado:** Resumen de commit generado automáticamente al completar Fases 1 y 0. Se sustituye por `CHANGELOG.md` (versión) y por el historial de `git`. Moved to `/docs/` como registro histórico.
 
 **Fecha:** 2026-11-07
 **Proyecto:** SG-SST Microempresa Colombia

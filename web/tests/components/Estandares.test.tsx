@@ -44,7 +44,7 @@ describe('Autoevaluación de estándares mínimos', () => {
     render(<Estandares />);
     await screen.findByText('Asignación de responsable');
 
-    await user.selectOptions(screen.getByRole('combobox'), '7');
+    await user.selectOptions(screen.getByLabelText('Estándar aplicable:'), '7');
 
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith('/standards?set=7');

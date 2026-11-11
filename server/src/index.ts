@@ -1,18 +1,17 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import dotenv from 'dotenv';
-dotenv.config();
-
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import staticPlugin from '@fastify/static';
+import dotenv from 'dotenv';
 import Fastify from 'fastify';
+dotenv.config();
 
+import { requireAuth } from './lib/auth.js';
 import { DB_PATH, openDb, runMigrations } from './lib/db.js';
 import { startAlertScheduler } from './lib/scheduler.js';
-import { requireAuth } from './lib/auth.js';
 import alertsRoutes from './routes/alerts.js';
 import companiesRoutes from './routes/companies.js';
 import contractorsRoutes from './routes/contractors.js';
@@ -75,6 +74,7 @@ app.get('/api/health', async () => {
 // Las rutas individuales usan requireRole/requireOwnership para autorización
 app.addHook('preHandler', requireAuth);
 app.register(usersRoutes, { prefix: '/api' });
+app.register(companiesRoutes, { prefix: '/api' });
 app.register(rolesRoutes, { prefix: '/api' });
 app.register(workersRoutes, { prefix: '/api' });
 app.register(workersItemsRoutes, { prefix: '/api' });
