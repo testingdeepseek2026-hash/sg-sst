@@ -2,8 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-const DATA_DIR = process.env.SG_SST_DATA_DIR ?? path.join(process.cwd(), 'data');
-const DB_PATH = path.join(DATA_DIR, 'sg-sst.db');
+import { resolveDbPath } from './paths.js';
+
+// `paths.ts` carga el .env de la raíz antes de resolver la ruta, así que
+// DB_PATH y SG_SST_DATA_DIR se aplican aunque el proceso corra desde server/.
+const DB_PATH = resolveDbPath();
+const DATA_DIR = path.dirname(DB_PATH);
 
 export function openDb() {
   if (!fs.existsSync(DATA_DIR)) {

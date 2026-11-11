@@ -1,6 +1,16 @@
 import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, statSync, rmSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
-import { join, basename } from 'node:path';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+} from 'node:fs';
+import { basename, join } from 'node:path';
+
+import { resolveDbPath } from '../lib/paths.js';
 
 /**
  * Configuración de restauración
@@ -50,7 +60,10 @@ export function listBackups(config: RestoreConfig): Array<{
         // Extraer solo MANIFEST.json a temp
         const tempDir = join(config.backupDir, `.tmp-restore-${Date.now()}`);
         mkdirSync(tempDir, { recursive: true });
-        execSync(`cd "${config.backupDir}" && unzip -q -o "${file}" "${name}/MANIFEST.json" -d "${tempDir}"`, { stdio: 'ignore' });
+        execSync(
+          `cd "${config.backupDir}" && unzip -q -o "${file}" "${name}/MANIFEST.json" -d "${tempDir}"`,
+          { stdio: 'ignore' }
+        );
         const manifestPath = join(tempDir, name, 'MANIFEST.json');
         if (existsSync(manifestPath)) {
           manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
@@ -65,7 +78,7 @@ export function listBackups(config: RestoreConfig): Array<{
         name,
         created_at: manifest?.created_at || stats.mtime.toISOString(),
         size_bytes: stats.size,
-        size_mb: Math.round(stats.size / (1024 * 1024) * 100) / 100,
+        size_mb: Math.round((stats.size / (1024 * 1024)) * 100) / 100,
         tables: manifest?.tables,
         includes_uploads: manifest?.includes_uploads,
       });
@@ -75,14 +88,19 @@ export function listBackups(config: RestoreConfig): Array<{
   }
 
   // Ordenar por fecha descendente (más reciente primero)
-  return backups.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return backups.sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
 }
 
 /**
  * Restaura un backup específico
  * ADVERTENCIA: Reemplaza la BD actual y uploads. Requiere servidor detenido.
  */
-export function restoreBackup(config: RestoreConfig, backupFile: string): { success: boolean; error?: string } {
+export function restoreBackup(
+  config: RestoreConfig,
+  backupFile: string
+): { success: boolean; error?: string } {
   const backupPath = join(config.backupDir, backupFile);
 
   if (!existsSync(backupPath)) {
@@ -104,7 +122,9 @@ export function restoreBackup(config: RestoreConfig, backupFile: string): { succ
 
     // 2. Extraer ZIP
     console.log('[RESTORE] Extrayendo backup...');
-    execSync(`cd "${config.backupDir}" && unzip -q -o "${backupFile}" -d "${tempDir}"`, { stdio: 'ignore' });
+    execSync(`cd "${config.backupDir}" && unzip -q -o "${backupFile}" -d "${tempDir}"`, {
+      stdio: 'ignore',
+    });
 
     const extractedDir = join(tempDir, backupName);
     if (!existsSync(extractedDir)) {
@@ -118,7 +138,9 @@ export function restoreBackup(config: RestoreConfig, backupFile: string): { succ
     }
 
     console.log('[RESTORE] Verificando integridad de base de datos...');
-    const integrity = execSync(`sqlite3 "${dbBackupPath}" "PRAGMA integrity_check;"`, { encoding: 'utf8' }).trim();
+    const integrity = execSync(`sqlite3 "${dbBackupPath}" "PRAGMA integrity_check;"`, {
+      encoding: 'utf8',
+    }).trim();
     if (integrity !== 'ok') {
       throw new Error(`Integridad fallida en backup: ${integrity}`);
     }
@@ -152,7 +174,9 @@ export function restoreBackup(config: RestoreConfig, backupFile: string): { succ
     rmSync(tempDir, { recursive: true, force: true });
 
     // 9. Verificar integridad post-restauración
-    const postIntegrity = execSync(`sqlite3 "${config.dbPath}" "PRAGMA integrity_check;"`, { encoding: 'utf8' }).trim();
+    const postIntegrity = execSync(`sqlite3 "${config.dbPath}" "PRAGMA integrity_check;"`, {
+      encoding: 'utf8',
+    }).trim();
     if (postIntegrity !== 'ok') {
       throw new Error(`Integridad fallida post-restauración: ${postIntegrity}`);
     }
@@ -172,7 +196,10 @@ export function restoreBackup(config: RestoreConfig, backupFile: string): { succ
 /**
  * Valida un backup sin restaurar (dry-run)
  */
-export function validateBackup(config: RestoreConfig, backupFile: string): { success: boolean; error?: string; manifest?: any } {
+export function validateBackup(
+  config: RestoreConfig,
+  backupFile: string
+): { success: boolean; error?: string; manifest?: any } {
   // Validar extensión primero
   if (!backupFile.endsWith('.zip')) {
     return { success: false, error: 'El archivo debe ser .zip' };
@@ -189,7 +216,9 @@ export function validateBackup(config: RestoreConfig, backupFile: string): { suc
 
   try {
     mkdirSync(tempDir, { recursive: true });
-    execSync(`cd "${config.backupDir}" && unzip -q -o "${backupFile}" -d "${tempDir}"`, { stdio: 'ignore' });
+    execSync(`cd "${config.backupDir}" && unzip -q -o "${backupFile}" -d "${tempDir}"`, {
+      stdio: 'ignore',
+    });
 
     const extractedDir = join(tempDir, backupName);
     const dbBackupPath = join(extractedDir, 'sg-sst.db');
@@ -202,7 +231,9 @@ export function validateBackup(config: RestoreConfig, backupFile: string): { suc
 
     // Verificar integridad
     if (existsSync(dbBackupPath)) {
-      const integrity = execSync(`sqlite3 "${dbBackupPath}" "PRAGMA integrity_check;"`, { encoding: 'utf8' }).trim();
+      const integrity = execSync(`sqlite3 "${dbBackupPath}" "PRAGMA integrity_check;"`, {
+        encoding: 'utf8',
+      }).trim();
       if (integrity !== 'ok') {
         return { success: false, error: `Integridad fallida: ${integrity}`, manifest };
       }
@@ -224,7 +255,7 @@ export function validateBackup(config: RestoreConfig, backupFile: string): { suc
  * Configuración por defecto desde variables de entorno
  */
 export function getRestoreConfigFromEnv(): RestoreConfig {
-  const dbPath = process.env.DB_PATH ?? join(process.cwd(), 'data', 'sg-sst.db');
+  const dbPath = resolveDbPath();
   const uploadsDir = process.env.UPLOADS_DIR ?? join(process.cwd(), 'uploads');
   const backupDir = process.env.BACKUP_DIR ?? join(process.cwd(), 'backups');
 

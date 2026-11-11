@@ -5,9 +5,7 @@ import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import staticPlugin from '@fastify/static';
-import dotenv from 'dotenv';
 import Fastify from 'fastify';
-dotenv.config();
 
 import { requireAuth } from './lib/auth.js';
 import { DB_PATH, openDb, runMigrations } from './lib/db.js';

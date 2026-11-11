@@ -10,8 +10,9 @@
  *   fastify.get('/ruta', { preHandler: requireRole('administrador') }, handler)
  */
 
-import type { FastifyInstance, FastifyRequest, FastifyReply, HookHandlerDoneFunction } from 'fastify';
 import * as UsersService from '../services/users.js';
+
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 // Re-export auditLog para uso consistente en routes
 export const auditLog = UsersService.auditLog;
@@ -31,8 +32,23 @@ export interface AuthUser {
 
 declare module 'fastify' {
   interface FastifyRequest {
-    user?: AuthUser;  // Usuario autenticado completo (para usar en handlers)
+    user?: AuthUser; // Usuario autenticado completo (para usar en handlers)
   }
+}
+
+/**
+ * Rutas públicas: no requieren sesión.
+ * - /api/health: monitoreo/load balancer (puede llegar con query string).
+ * - /api/users/login: necesario para iniciar sesión.
+ * - /api/users/register: alta inicial cuando todavía no existe ningún usuario.
+ * La comparación es exacta sobre la ruta, sin query string, para no abrir
+ * por prefijo otras rutas de /api/users.
+ */
+const PUBLIC_PATHS = new Set(['/api/health', '/api/users/login', '/api/users/register']);
+
+export function isPublicPath(url: string): boolean {
+  const pathname = url.split('?')[0];
+  return PUBLIC_PATHS.has(pathname);
 }
 
 /**
@@ -40,12 +56,8 @@ declare module 'fastify' {
  * Pone `request.user` si válido, sino responde 401
  * Idempotente: si request.user ya existe, no repite la búsqueda
  */
-export async function requireAuth(
-  request: FastifyRequest,
-  reply: FastifyReply
-) {
-  // Health check: disponible sin autenticación para monitoreo/load balancer
-  if (request.url === '/api/health') return;
+export async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
+  if (isPublicPath(request.url)) return;
 
   // Idempotente: si ya hay usuario (ej. hook global previo), no repetir
   if (request.user) return;
@@ -76,10 +88,7 @@ export async function requireAuth(
  *      fastify.get('/ruta', { preHandler: requireRole('administrador') }, handler)
  */
 export function requireRole(...allowedRoles: UserRole[]) {
-  return async function roleHook(
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) {
+  return async function roleHook(request: FastifyRequest, reply: FastifyReply) {
     // Primero asegurar autenticación
     await requireAuth(request, reply);
     if (reply.sent) return;
@@ -99,13 +108,10 @@ export function requireRole(...allowedRoles: UserRole[]) {
  * Uso: fastify.get('/workers/:id', { preHandler: requireOwnership('worker_id', 'id') }, handler)
  */
 export function requireOwnership(
-  userIdParam: string,      // Nombre del campo en request.user.id que identifica al dueño (ej: 'worker_id' en BD)
-  routeParam: string        // Nombre del parámetro de ruta (ej: 'id' para /workers/:id)
+  userIdParam: string, // Nombre del campo en request.user.id que identifica al dueño (ej: 'worker_id' en BD)
+  routeParam: string // Nombre del parámetro de ruta (ej: 'id' para /workers/:id)
 ) {
-  return async function ownershipHook(
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) {
+  return async function ownershipHook(request: FastifyRequest, reply: FastifyReply) {
     await requireAuth(request, reply);
     if (reply.sent) return;
 

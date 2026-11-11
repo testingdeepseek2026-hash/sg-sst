@@ -79,36 +79,29 @@ pnpm release:major       # Major version
 
 ### Root (.env)
 
+El backend carga automáticamente el `.env` de la raíz del repositorio, sin importar desde qué carpeta se ejecute (`pnpm dev`, `pnpm start`, seed o reset).
+
 ```bash
 # Server
 PORT=4000
 HOST=127.0.0.1
 SESSION_SECRET=tu-secret-super-seguro-cambiar-en-produccion
+
+# Base de datos (SQLite)
+# Las rutas relativas se resuelven contra la raíz del repositorio.
+# SG_SST_DATA_DIR (directorio) tiene prioridad sobre DB_PATH (archivo).
 SG_SST_DATA_DIR=./data
+# DB_PATH=./data/sg-sst.db
 
 # Email (alertas)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=alertas@empresa.com
 SMTP_PASS=app-password
-ALERT_FROM=SG-SST <alertas@empresa.com>
-
-# Frontend (Vite inyecta como import.meta.env.VITE_*)
-VITE_API_BASE=/api
+SMTP_FROM=SG-SST <alertas@empresa.com>
 ```
 
-### Server (.env en server/ - opcional, hereda del root)
-
-```bash
-# Sobrescribe valores del root si necesario
-PORT=4001
-```
-
-### Web (.env en web/ - opcional)
-
-```bash
-VITE_API_BASE=http://localhost:4000/api
-```
+No se usa un `.env` dentro de `server/`; el frontend puede usar variables `VITE_*` en `web/.env` si se necesitan.
 
 ## Workflow Git
 

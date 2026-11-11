@@ -1,6 +1,8 @@
 import { execSync } from 'node:child_process';
-import { mkdirSync, existsSync, readdirSync, statSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { resolveDbPath } from '../lib/paths.js';
 
 /**
  * Configuración de respaldos
@@ -17,7 +19,11 @@ export interface BackupConfig {
  * Crea un respaldo de la base de datos SQLite y archivos subidos
  * Usa sqlite3 .backup para copia consistente (requiere sqlite3 en PATH)
  */
-export function createBackup(config: BackupConfig): { success: boolean; file?: string; error?: string } {
+export function createBackup(config: BackupConfig): {
+  success: boolean;
+  file?: string;
+  error?: string;
+} {
   try {
     // Asegurar directorio de respaldos
     if (!existsSync(config.backupDir)) {
@@ -35,9 +41,8 @@ export function createBackup(config: BackupConfig): { success: boolean; file?: s
     // 1. Backup base de datos usando sqlite3 .backup (consistente)
     try {
       execSync(`sqlite3 "${config.dbPath}" ".backup '${dbBackupPath}'"`, { stdio: 'ignore' });
-    } catch (sqliteErr) {
+    } catch {
       // Fallback: copiar archivo directamente (requiere BD no en uso intensivo)
-      const { copyFileSync } = require('node:fs');
       copyFileSync(config.dbPath, dbBackupPath);
     }
 
@@ -68,14 +73,18 @@ export function createBackup(config: BackupConfig): { success: boolean; file?: s
     writeFileSync(join(backupPath, 'MANIFEST.json'), JSON.stringify(manifest, null, 2), 'utf8');
 
     // 4. Verificar integridad
-    const integrity = execSync(`sqlite3 "${dbBackupPath}" "PRAGMA integrity_check;"`, { encoding: 'utf8' }).trim();
+    const integrity = execSync(`sqlite3 "${dbBackupPath}" "PRAGMA integrity_check;"`, {
+      encoding: 'utf8',
+    }).trim();
     if (integrity !== 'ok') {
       throw new Error(`Integridad fallida: ${integrity}`);
     }
 
     // 5. Comprimir
     const zipPath = `${backupPath}.zip`;
-    execSync(`cd "${config.backupDir}" && zip -r "${backupName}.zip" "${backupName}"`, { stdio: 'ignore' });
+    execSync(`cd "${config.backupDir}" && zip -r "${backupName}.zip" "${backupName}"`, {
+      stdio: 'ignore',
+    });
 
     // Limpiar directorio temporal
     rmSync(backupPath, { recursive: true, force: true });
@@ -120,7 +129,12 @@ export function applyRetention(config: BackupConfig): { deleted: number; errors:
 /**
  * Ejecuta respaldo completo con retención
  */
-export function runBackup(config: BackupConfig): { success: boolean; file?: string; deleted?: number; error?: string } {
+export function runBackup(config: BackupConfig): {
+  success: boolean;
+  file?: string;
+  deleted?: number;
+  error?: string;
+} {
   console.log('[BACKUP] Iniciando respaldo programado...');
 
   const backupResult = createBackup(config);
@@ -143,7 +157,7 @@ export function runBackup(config: BackupConfig): { success: boolean; file?: stri
  * Configuración por defecto desde variables de entorno
  */
 export function getBackupConfigFromEnv(): BackupConfig {
-  const dbPath = process.env.DB_PATH ?? join(process.cwd(), 'data', 'sg-sst.db');
+  const dbPath = resolveDbPath();
   const uploadsDir = process.env.UPLOADS_DIR ?? join(process.cwd(), 'uploads');
   const backupDir = process.env.BACKUP_DIR ?? join(process.cwd(), 'backups');
   const retentionDays = parseInt(process.env.BACKUP_RETENTION_DAYS ?? '30', 10);
