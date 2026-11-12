@@ -163,6 +163,13 @@ textarea {
   margin-bottom: var(--space-4);
 }
 
+.ui-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
 .ui-page-description {
   margin-top: var(--space-1);
   color: var(--color-text-secondary);
@@ -259,6 +266,7 @@ textarea {
 }
 
 .ui-page textarea {
+  width: 100%;
   min-height: 88px;
 }
 
@@ -1122,6 +1130,16 @@ textarea {
   width: 100%;
 }
 
+.actions-form-fields input.ui-visually-hidden:not([type='checkbox']):not([type='radio']) {
+  width: 1px;
+  min-width: 1px;
+  max-width: 1px;
+  height: 1px;
+  min-height: 1px;
+  padding: 0;
+  border: 0;
+}
+
 .actions-form-fields textarea {
   font-family: inherit;
   resize: vertical;
@@ -1671,6 +1689,14 @@ textarea {
   min-width: 0;
   overflow-x: auto;
   overscroll-behavior-x: contain;
+}
+
+.workers-page table {
+  font-size: var(--font-size-label);
+}
+
+.workers-page th {
+  font-size: var(--font-size-caption);
 }
 
 .workers-desktop-table {
@@ -4587,6 +4613,9 @@ textarea {
 }
 
 .empresa-resumen-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -4596,10 +4625,48 @@ textarea {
 }
 
 .empresa-resumen-value {
-  margin-top: 2px;
   color: var(--color-text-primary);
   font-size: var(--font-size-base);
   font-weight: 700;
+}
+
+.empresa-resumen-estandares {
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.empresa-resumen-desc {
+  margin-bottom: var(--space-3);
+}
+
+.empresa-resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: var(--space-3);
+}
+
+.empresa-resumen-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-canvas);
+}
+
+.empresa-resumen-card-label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label);
+  font-weight: 600;
+}
+
+.empresa-resumen-card-value {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .empresa-form {
@@ -4631,7 +4698,8 @@ textarea {
   font-size: var(--font-size-body);
 }
 
-.empresa-form-title {
+.empresa-form-title,
+.empresa-resumen-title {
   margin-bottom: var(--space-4);
   color: var(--color-brand-700);
   font-size: var(--font-size-heading);

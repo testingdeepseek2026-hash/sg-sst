@@ -47,12 +47,21 @@ export default function Login({ onLogin }: { onLogin: (u: any) => void }) {
         <h2 style={{ marginBottom: 20, color: '#0f766e', textAlign: 'center' }}>
           SG-SST - Inicio de sesión
         </h2>
-        {error && <div style={{ color: 'red', marginBottom: 14, fontSize: 13 }}>{error}</div>}
+        {error && (
+          <div style={{ color: 'red', marginBottom: 14, fontSize: 'var(--font-size-label)' }}>
+            {error}
+          </div>
+        )}
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 14 }}>
             <label
               htmlFor="login-email"
-              style={{ display: 'block', fontSize: 13, marginBottom: 6, color: '#374151' }}
+              style={{
+                display: 'block',
+                fontSize: 'var(--font-size-label)',
+                marginBottom: 6,
+                color: '#374151',
+              }}
             >
               Correo electrónico
             </label>
@@ -69,7 +78,12 @@ export default function Login({ onLogin }: { onLogin: (u: any) => void }) {
           <div style={{ marginBottom: 18 }}>
             <label
               htmlFor="login-password"
-              style={{ display: 'block', fontSize: 13, marginBottom: 6, color: '#374151' }}
+              style={{
+                display: 'block',
+                fontSize: 'var(--font-size-label)',
+                marginBottom: 6,
+                color: '#374151',
+              }}
             >
               Contraseña
             </label>
@@ -94,14 +108,21 @@ export default function Login({ onLogin }: { onLogin: (u: any) => void }) {
               border: 'none',
               borderRadius: 6,
               fontWeight: 'bold',
-              fontSize: 15,
+              fontSize: 'var(--font-size-body-emphasis)',
               opacity: loading ? 0.7 : 1,
             }}
           >
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
         </form>
-        <p style={{ marginTop: 16, fontSize: 12, color: '#6b7280', textAlign: 'center' }}>
+        <p
+          style={{
+            marginTop: 16,
+            fontSize: 'var(--font-size-caption)',
+            color: '#6b7280',
+            textAlign: 'center',
+          }}
+        >
           Usuario demo: admin@sg-sst.local / Admin1234!
           <br />
           Trabajador: trabajador@sg-sst.local / Trab1234!
@@ -111,7 +132,7 @@ export default function Login({ onLogin }: { onLogin: (u: any) => void }) {
           style={{
             display: 'block',
             marginTop: 10,
-            fontSize: 13,
+            fontSize: 'var(--font-size-label)',
             color: '#0f766e',
             textAlign: 'center',
           }}

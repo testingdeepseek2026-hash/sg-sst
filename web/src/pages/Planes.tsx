@@ -1,6 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { CalendarDays, GraduationCap, ListChecks } from 'lucide-react';
+import {
+  AlertTriangle,
+  Bell,
+  CalendarDays,
+  Check,
+  ClipboardList,
+  Clock,
+  GraduationCap,
+  ListChecks,
+  Paperclip,
+  PenLine,
+  RefreshCw,
+  UserPlus,
+  Users,
+  X,
+} from 'lucide-react';
 
 import { SignaturePad } from '@/components/SignaturePad';
 
@@ -631,6 +646,7 @@ export default function Planes() {
             />
             {planFilterEstado !== 'all' && (
               <button
+                className="ui-icon-button"
                 onClick={() => setPlanFilterEstado('all')}
                 style={{
                   padding: '8px 12px',
@@ -640,7 +656,7 @@ export default function Planes() {
                   cursor: 'pointer',
                 }}
               >
-                ✕ Quitar filtro
+                <X aria-hidden="true" size={14} /> Quitar filtro
               </button>
             )}
           </div>
@@ -688,7 +704,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="plan-anio"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Año *
                 </label>
@@ -713,7 +733,11 @@ export default function Planes() {
               <div style={{ gridColumn: '1 / -1' }}>
                 <label
                   htmlFor="plan-objetivo"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Objetivo *
                 </label>
@@ -735,7 +759,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="plan-responsable"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Responsable
                 </label>
@@ -756,7 +784,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="plan-estado"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Estado
                 </label>
@@ -780,7 +812,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="plan-fecha-inicio"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Fecha inicio
                 </label>
@@ -800,7 +836,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="plan-fecha-fin"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Fecha fin
                 </label>
@@ -820,7 +860,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="plan-presupuesto"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Presupuesto ($)
                 </label>
@@ -843,7 +887,11 @@ export default function Planes() {
               <div style={{ gridColumn: '1 / -1' }}>
                 <label
                   htmlFor="plan-meta"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Meta
                 </label>
@@ -921,15 +969,46 @@ export default function Planes() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f3f4f6' }}>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151', textAlign: 'left' }}>
+                  <th
+                    style={{
+                      padding: 10,
+                      fontSize: 'var(--font-size-caption)',
+                      color: '#374151',
+                      textAlign: 'left',
+                    }}
+                  >
                     Objetivo
                   </th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Año</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Responsable</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Fechas</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Estado</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Presupuesto</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acciones</th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Año
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Responsable
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Fechas
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Estado
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Presupuesto
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -952,32 +1031,60 @@ export default function Planes() {
 
                     return (
                       <tr key={p.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: 10, fontSize: 12, maxWidth: '250px' }}>
+                        <td
+                          style={{
+                            padding: 10,
+                            fontSize: 'var(--font-size-caption)',
+                            maxWidth: '250px',
+                          }}
+                        >
                           {p.objetivo}
                         </td>
-                        <td style={{ padding: 10, fontSize: 12 }}>{p.anio}</td>
-                        <td style={{ padding: 10, fontSize: 12 }}>{p.responsable || '—'}</td>
-                        <td style={{ padding: 10, fontSize: 12 }}>
+                        <td style={{ padding: 10, fontSize: 'var(--font-size-caption)' }}>
+                          {p.anio}
+                        </td>
+                        <td style={{ padding: 10, fontSize: 'var(--font-size-caption)' }}>
+                          {p.responsable || '—'}
+                        </td>
+                        <td style={{ padding: 10, fontSize: 'var(--font-size-caption)' }}>
                           {p.fecha_inicio} {p.fecha_fin ? `→ ${p.fecha_fin}` : ''}
                         </td>
                         <td style={{ padding: 10 }}>
                           <span
                             style={{
-                              display: 'inline-block',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
                               padding: '2px 8px',
                               borderRadius: 12,
-                              fontSize: 11,
+                              fontSize: 'var(--font-size-micro)',
                               fontWeight: 'bold',
                               background: isVencida ? '#fee2e2' : estadoColor.bg,
                               color: isVencida ? '#dc2626' : estadoColor.text,
                             }}
                           >
                             {p.estado}
-                            {isVencida && ' ⚠️'}
-                            {isVenciendo && ' 🔔'}
+                            {isVencida && (
+                              <>
+                                <AlertTriangle aria-hidden="true" size={14} />
+                                <span className="ui-visually-hidden">Vencida</span>
+                              </>
+                            )}
+                            {isVenciendo && (
+                              <>
+                                <Bell aria-hidden="true" size={14} />
+                                <span className="ui-visually-hidden">Próxima a vencer</span>
+                              </>
+                            )}
                           </span>
                         </td>
-                        <td style={{ padding: 10, fontSize: 12, fontWeight: 500 }}>
+                        <td
+                          style={{
+                            padding: 10,
+                            fontSize: 'var(--font-size-caption)',
+                            fontWeight: 500,
+                          }}
+                        >
                           ${p.presupuesto ? p.presupuesto.toLocaleString() : '0'}
                         </td>
                         <td style={{ padding: 10 }}>
@@ -990,7 +1097,7 @@ export default function Planes() {
                                 color: '#fff',
                                 border: 'none',
                                 borderRadius: 4,
-                                fontSize: 11,
+                                fontSize: 'var(--font-size-micro)',
                                 cursor: 'pointer',
                               }}
                             >
@@ -998,17 +1105,19 @@ export default function Planes() {
                             </button>
                             <button
                               onClick={() => p.id && handlePlanDelete(p.id)}
+                              aria-label={`Eliminar actividad ${p.objetivo}`}
+                              className="ui-icon-button"
                               style={{
                                 padding: '4px 8px',
                                 background: '#dc2626',
                                 color: '#fff',
                                 border: 'none',
                                 borderRadius: 4,
-                                fontSize: 11,
+                                fontSize: 'var(--font-size-micro)',
                                 cursor: 'pointer',
                               }}
                             >
-                              ✕
+                              <X aria-hidden="true" size={14} />
                             </button>
                           </div>
                         </td>
@@ -1073,6 +1182,7 @@ export default function Planes() {
             </select>
             {trainingFilterEstado !== 'all' && (
               <button
+                className="ui-icon-button"
                 onClick={() => setTrainingFilterEstado('all')}
                 style={{
                   padding: '8px 12px',
@@ -1082,7 +1192,7 @@ export default function Planes() {
                   cursor: 'pointer',
                 }}
               >
-                ✕ Quitar filtro
+                <X aria-hidden="true" size={14} /> Quitar filtro
               </button>
             )}
           </div>
@@ -1128,7 +1238,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="training-nombre"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Nombre *
                 </label>
@@ -1150,7 +1264,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="training-tipo"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Tipo *
                 </label>
@@ -1176,7 +1294,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="training-fecha"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Fecha *
                 </label>
@@ -1197,7 +1319,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="training-duracion"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Duración (horas)
                 </label>
@@ -1224,7 +1350,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="training-responsable"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Responsable *
                 </label>
@@ -1248,7 +1378,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="training-estado"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Estado
                 </label>
@@ -1273,7 +1407,11 @@ export default function Planes() {
               <div style={{ gridColumn: '1 / -1' }}>
                 <label
                   htmlFor="training-objetivo"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Objetivo
                 </label>
@@ -1348,15 +1486,46 @@ export default function Planes() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f3f4f6' }}>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151', textAlign: 'left' }}>
+                  <th
+                    style={{
+                      padding: 10,
+                      fontSize: 'var(--font-size-caption)',
+                      color: '#374151',
+                      textAlign: 'left',
+                    }}
+                  >
                     Nombre
                   </th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Tipo</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Fecha</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Duración</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Responsable</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Estado</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acciones</th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Tipo
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Fecha
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Duración
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Responsable
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Estado
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1377,43 +1546,65 @@ export default function Planes() {
 
                     return (
                       <tr key={t.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: 10, fontSize: 12, maxWidth: '200px' }}>{t.nombre}</td>
-                        <td style={{ padding: 10, fontSize: 12 }}>{t.tipo}</td>
-                        <td style={{ padding: 10, fontSize: 12 }}>
+                        <td
+                          style={{
+                            padding: 10,
+                            fontSize: 'var(--font-size-caption)',
+                            maxWidth: '200px',
+                          }}
+                        >
+                          {t.nombre}
+                        </td>
+                        <td style={{ padding: 10, fontSize: 'var(--font-size-caption)' }}>
+                          {t.tipo}
+                        </td>
+                        <td style={{ padding: 10, fontSize: 'var(--font-size-caption)' }}>
                           {fecha.toLocaleDateString('es-CO')}
                         </td>
-                        <td style={{ padding: 10, fontSize: 12 }}>{t.duracion_horas || 1}h</td>
-                        <td style={{ padding: 10, fontSize: 12 }}>{t.responsable || '—'}</td>
+                        <td style={{ padding: 10, fontSize: 'var(--font-size-caption)' }}>
+                          {t.duracion_horas || 1}h
+                        </td>
+                        <td style={{ padding: 10, fontSize: 'var(--font-size-caption)' }}>
+                          {t.responsable || '—'}
+                        </td>
                         <td style={{ padding: 10 }}>
                           <span
                             style={{
-                              display: 'inline-block',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
                               padding: '2px 8px',
                               borderRadius: 12,
-                              fontSize: 11,
+                              fontSize: 'var(--font-size-micro)',
                               fontWeight: 'bold',
                               background: isVenciendo ? '#fef3c7' : estadoColor.bg,
                               color: isVenciendo ? '#92400e' : estadoColor.text,
                             }}
                           >
                             {t.estado}
-                            {isVenciendo && ' 🔔'}
+                            {isVenciendo && (
+                              <>
+                                <Bell aria-hidden="true" size={14} />
+                                <span className="ui-visually-hidden">Próxima a vencer</span>
+                              </>
+                            )}
                           </span>
                         </td>
                         <td style={{ padding: 10 }}>
                           <button
                             onClick={() => t.id && handleTrainingDelete(t.id)}
+                            className="ui-icon-button"
                             style={{
                               padding: '4px 8px',
                               background: '#dc2626',
                               color: '#fff',
                               border: 'none',
                               borderRadius: 4,
-                              fontSize: 11,
+                              fontSize: 'var(--font-size-micro)',
                               cursor: 'pointer',
                             }}
                           >
-                            ✕ Eliminar
+                            <X aria-hidden="true" size={14} /> Eliminar
                           </button>
                         </td>
                       </tr>
@@ -1446,10 +1637,18 @@ export default function Planes() {
                       textAlign: 'center',
                     }}
                   >
-                    <div style={{ fontSize: 18, fontWeight: 'bold', color: '#0f766e' }}>
+                    <div
+                      style={{
+                        fontSize: 'var(--font-size-heading)',
+                        fontWeight: 'bold',
+                        color: '#0f766e',
+                      }}
+                    >
                       {count}
                     </div>
-                    <div style={{ fontSize: 11, color: '#6b7280' }}>{label}</div>
+                    <div style={{ fontSize: 'var(--font-size-micro)', color: '#6b7280' }}>
+                      {label}
+                    </div>
                   </div>
                 );
               })}
@@ -1538,7 +1737,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="exec-schedule"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Cronograma (opcional)
                 </label>
@@ -1566,7 +1769,11 @@ export default function Planes() {
               <div style={{ gridColumn: '1 / -1' }}>
                 <label
                   htmlFor="exec-nombre"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Nombre *
                 </label>
@@ -1588,7 +1795,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="exec-fecha"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Fecha *
                 </label>
@@ -1609,7 +1820,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="exec-instructor"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Instructor
                 </label>
@@ -1632,7 +1847,11 @@ export default function Planes() {
               <div>
                 <label
                   htmlFor="exec-estado"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Estado
                 </label>
@@ -1657,7 +1876,11 @@ export default function Planes() {
               <div style={{ gridColumn: '1 / -1' }}>
                 <label
                   htmlFor="exec-evidencia"
-                  style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   URL Evidencia (PDF/Foto/Base64)
                 </label>
@@ -1736,16 +1959,51 @@ export default function Planes() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f3f4f6' }}>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151', textAlign: 'left' }}>
+                  <th
+                    style={{
+                      padding: 10,
+                      fontSize: 'var(--font-size-caption)',
+                      color: '#374151',
+                      textAlign: 'left',
+                    }}
+                  >
                     Nombre
                   </th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Cronograma</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Fecha</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Instructor</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Estado</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Evidencia</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Asistencia</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acciones</th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Cronograma
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Fecha
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Instructor
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Estado
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Evidencia
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Asistencia
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1761,19 +2019,31 @@ export default function Planes() {
                     const hasEvidencia = !!e.archivo_evidencia;
                     return (
                       <tr key={e.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: 10, fontSize: 12, maxWidth: '200px' }}>{e.nombre}</td>
-                        <td style={{ padding: 10, fontSize: 12 }}>{e.schedule_nombre || '—'}</td>
-                        <td style={{ padding: 10, fontSize: 12 }}>
+                        <td
+                          style={{
+                            padding: 10,
+                            fontSize: 'var(--font-size-caption)',
+                            maxWidth: '200px',
+                          }}
+                        >
+                          {e.nombre}
+                        </td>
+                        <td style={{ padding: 10, fontSize: 'var(--font-size-caption)' }}>
+                          {e.schedule_nombre || '—'}
+                        </td>
+                        <td style={{ padding: 10, fontSize: 'var(--font-size-caption)' }}>
                           {new Date(e.fecha).toLocaleDateString('es-CO')}
                         </td>
-                        <td style={{ padding: 10, fontSize: 12 }}>{e.instructor || '—'}</td>
+                        <td style={{ padding: 10, fontSize: 'var(--font-size-caption)' }}>
+                          {e.instructor || '—'}
+                        </td>
                         <td style={{ padding: 10 }}>
                           <span
                             style={{
                               display: 'inline-block',
                               padding: '2px 8px',
                               borderRadius: 12,
-                              fontSize: 11,
+                              fontSize: 'var(--font-size-micro)',
                               fontWeight: 'bold',
                               background: estadoColor.bg,
                               color: estadoColor.text,
@@ -1784,25 +2054,36 @@ export default function Planes() {
                         </td>
                         <td style={{ padding: 10, textAlign: 'center' }}>
                           {hasEvidencia ? (
-                            <span style={{ color: '#16a34a', fontSize: 16 }}>✅</span>
+                            <Check
+                              aria-label="Evidencia registrada"
+                              role="img"
+                              size={16}
+                              style={{ color: '#16a34a' }}
+                            />
                           ) : (
-                            <span style={{ color: '#f59e0b', fontSize: 16 }}>📎</span>
+                            <Paperclip
+                              aria-label="Sin evidencia"
+                              role="img"
+                              size={16}
+                              style={{ color: '#f59e0b' }}
+                            />
                           )}
                         </td>
                         <td style={{ padding: 10, textAlign: 'center' }}>
                           <button
                             onClick={() => openAttendanceModal(e)}
+                            className="ui-icon-button"
                             style={{
                               padding: '4px 8px',
                               background: '#0f766e',
                               color: '#fff',
                               border: 'none',
                               borderRadius: 4,
-                              fontSize: 11,
+                              fontSize: 'var(--font-size-micro)',
                               cursor: 'pointer',
                             }}
                           >
-                            👥 Gestionar
+                            <Users aria-hidden="true" size={14} /> Gestionar
                           </button>
                         </td>
                         <td style={{ padding: 10 }}>
@@ -1815,7 +2096,7 @@ export default function Planes() {
                                 color: '#fff',
                                 border: 'none',
                                 borderRadius: 4,
-                                fontSize: 11,
+                                fontSize: 'var(--font-size-micro)',
                                 cursor: 'pointer',
                               }}
                             >
@@ -1823,17 +2104,19 @@ export default function Planes() {
                             </button>
                             <button
                               onClick={() => e.id && handleExecutionDelete(e.id)}
+                              aria-label={`Eliminar ejecución ${e.nombre}`}
+                              className="ui-icon-button"
                               style={{
                                 padding: '4px 8px',
                                 background: '#dc2626',
                                 color: '#fff',
                                 border: 'none',
                                 borderRadius: 4,
-                                fontSize: 11,
+                                fontSize: 'var(--font-size-micro)',
                                 cursor: 'pointer',
                               }}
                             >
-                              ✕
+                              <X aria-hidden="true" size={14} />
                             </button>
                           </div>
                         </td>
@@ -1891,6 +2174,7 @@ export default function Planes() {
                       setSelectedExecution(null);
                       setAttendance([]);
                     }}
+                    className="ui-icon-button"
                     style={{
                       padding: '8px 12px',
                       background: '#e5e7eb',
@@ -1899,13 +2183,14 @@ export default function Planes() {
                       cursor: 'pointer',
                     }}
                   >
-                    ✕ Cerrar
+                    <X aria-hidden="true" size={14} /> Cerrar
                   </button>
                 </div>
                 <div style={{ padding: 20 }}>
                   <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
                     <button
                       onClick={() => loadAttendance(selectedExecution!.id!)}
+                      className="ui-icon-button"
                       style={{
                         padding: '8px 16px',
                         background: '#0f766e',
@@ -1916,10 +2201,11 @@ export default function Planes() {
                         cursor: 'pointer',
                       }}
                     >
-                      🔄 Recargar
+                      <RefreshCw aria-hidden="true" size={16} /> Recargar
                     </button>
                     <button
                       onClick={() => bulkAddAttendance(selectedExecution!.id!)}
+                      className="ui-icon-button"
                       style={{
                         padding: '8px 16px',
                         background: '#2563eb',
@@ -1930,22 +2216,44 @@ export default function Planes() {
                         cursor: 'pointer',
                       }}
                     >
-                      ➕ Agregar todos los trabajadores
+                      <UserPlus aria-hidden="true" size={16} /> Agregar todos los trabajadores
                     </button>
                   </div>
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr style={{ background: '#f3f4f6' }}>
-                          <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>
-                            Trabajador
-                          </th>
-                          <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Documento</th>
-                          <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Cargo</th>
                           <th
                             style={{
                               padding: 10,
-                              fontSize: 12,
+                              fontSize: 'var(--font-size-caption)',
+                              color: '#374151',
+                            }}
+                          >
+                            Trabajador
+                          </th>
+                          <th
+                            style={{
+                              padding: 10,
+                              fontSize: 'var(--font-size-caption)',
+                              color: '#374151',
+                            }}
+                          >
+                            Documento
+                          </th>
+                          <th
+                            style={{
+                              padding: 10,
+                              fontSize: 'var(--font-size-caption)',
+                              color: '#374151',
+                            }}
+                          >
+                            Cargo
+                          </th>
+                          <th
+                            style={{
+                              padding: 10,
+                              fontSize: 'var(--font-size-caption)',
                               color: '#374151',
                               textAlign: 'center',
                             }}
@@ -1955,14 +2263,22 @@ export default function Planes() {
                           <th
                             style={{
                               padding: 10,
-                              fontSize: 12,
+                              fontSize: 'var(--font-size-caption)',
                               color: '#374151',
                               textAlign: 'center',
                             }}
                           >
                             Firma
                           </th>
-                          <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acciones</th>
+                          <th
+                            style={{
+                              padding: 10,
+                              fontSize: 'var(--font-size-caption)',
+                              color: '#374151',
+                            }}
+                          >
+                            Acciones
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1985,9 +2301,19 @@ export default function Planes() {
                               <td style={{ padding: 10 }}>{a.cargo}</td>
                               <td style={{ padding: 10, textAlign: 'center' }}>
                                 {a.firmado ? (
-                                  <span style={{ color: '#16a34a', fontSize: 16 }}>✅</span>
+                                  <Check
+                                    aria-label="Asistencia firmada"
+                                    role="img"
+                                    size={16}
+                                    style={{ color: '#16a34a' }}
+                                  />
                                 ) : (
-                                  <span style={{ color: '#f59e0b', fontSize: 16 }}>⏳</span>
+                                  <Clock
+                                    aria-label="Firma pendiente"
+                                    role="img"
+                                    size={16}
+                                    style={{ color: '#f59e0b' }}
+                                  />
                                 )}
                               </td>
                               <td style={{ padding: 10, textAlign: 'center' }}>
@@ -2000,46 +2326,53 @@ export default function Planes() {
                                       color: '#166534',
                                       border: 'none',
                                       borderRadius: 4,
-                                      fontSize: 10,
+                                      fontSize: 'var(--font-size-micro)',
                                       cursor: 'pointer',
                                     }}
                                   >
                                     Ver firma
                                   </button>
                                 ) : (
-                                  <span style={{ color: '#9ca3af', fontSize: 11 }}>—</span>
+                                  <span
+                                    style={{ color: '#9ca3af', fontSize: 'var(--font-size-micro)' }}
+                                  >
+                                    —
+                                  </span>
                                 )}
                               </td>
                               <td style={{ padding: 10, display: 'flex', gap: 6 }}>
                                 {!a.firmado && (
                                   <button
                                     onClick={() => openSignaturePad(a)}
+                                    className="ui-icon-button"
                                     style={{
                                       padding: '4px 8px',
                                       background: '#f59e0b',
                                       color: '#fff',
                                       border: 'none',
                                       borderRadius: 4,
-                                      fontSize: 11,
+                                      fontSize: 'var(--font-size-micro)',
                                       cursor: 'pointer',
                                     }}
                                   >
-                                    🖊️ Firmar
+                                    <PenLine aria-hidden="true" size={14} /> Firmar
                                   </button>
                                 )}
                                 <button
                                   onClick={() => handleDeleteAttendance(a.id)}
+                                  aria-label={`Eliminar asistencia de ${a.nombres} ${a.apellidos}`}
+                                  className="ui-icon-button"
                                   style={{
                                     padding: '4px 8px',
                                     background: '#dc2626',
                                     color: '#fff',
                                     border: 'none',
                                     borderRadius: 4,
-                                    fontSize: 11,
+                                    fontSize: 'var(--font-size-micro)',
                                     cursor: 'pointer',
                                   }}
                                 >
-                                  ✕
+                                  <X aria-hidden="true" size={14} />
                                 </button>
                               </td>
                             </tr>
@@ -2093,9 +2426,9 @@ export default function Planes() {
       )}
 
       {/* Legal Note */}
-      <details style={{ marginTop: 24, fontSize: 12, color: '#6b7280' }}>
+      <details style={{ marginTop: 24, fontSize: 'var(--font-size-caption)', color: '#6b7280' }}>
         <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#374151' }}>
-          📋 Normativa coligada
+          <ClipboardList aria-hidden="true" size={16} /> Normativa coligada
         </summary>
         <div
           style={{
@@ -2113,7 +2446,7 @@ export default function Planes() {
             <li>Res. 4272/2021: Permisos de trabajo en alturas y ATS</li>
             <li>Ley 1581/2012: Consentimiento tratamiento de datos sensibles</li>
           </ul>
-          <p style={{ marginTop: 8, fontSize: 11, color: '#6b7280' }}>
+          <p style={{ marginTop: 8, fontSize: 'var(--font-size-micro)', color: '#6b7280' }}>
             Plazos legales: Reporte ARL (2 días hábiles), Reporte MinTrabajo accidentes
             graves/mortales (24 horas).
           </p>

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { Check, Trash2 } from 'lucide-react';
+
 interface SignaturePadProps {
   onSave: (dataUrl: string) => void;
   onCancel: () => void;
@@ -98,7 +100,7 @@ export function SignaturePad({
           htmlFor="signature-canvas"
           style={{
             display: 'block',
-            fontSize: 13,
+            fontSize: 'var(--font-size-label)',
             fontWeight: 'bold',
             color: '#374151',
             marginBottom: 8,
@@ -106,7 +108,7 @@ export function SignaturePad({
         >
           Firma del trabajador (Res. 0312/2019 E19 - Evidencia de entrega)
         </label>
-        <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>
+        <p style={{ fontSize: 'var(--font-size-caption)', color: '#6b7280', margin: 0 }}>
           Firme en el área punteada. Use mouse, lápiz óptico o dedo en pantalla táctil.
         </p>
       </div>
@@ -137,6 +139,7 @@ export function SignaturePad({
       <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
         <button
           type="button"
+          className="ui-icon-button"
           onClick={clearCanvas}
           disabled={!hasSignature}
           style={{
@@ -146,13 +149,13 @@ export function SignaturePad({
             border: '1px solid',
             borderColor: hasSignature ? '#fecaca' : '#e5e7eb',
             borderRadius: 6,
-            fontSize: 13,
+            fontSize: 'var(--font-size-label)',
             fontWeight: 500,
             cursor: hasSignature ? 'pointer' : 'not-allowed',
             transition: 'all 0.15s',
           }}
         >
-          🗑️ Limpiar
+          <Trash2 aria-hidden="true" size={16} /> Limpiar
         </button>
         <button
           type="button"
@@ -163,7 +166,7 @@ export function SignaturePad({
             color: '#374151',
             border: 'none',
             borderRadius: 6,
-            fontSize: 13,
+            fontSize: 'var(--font-size-label)',
             fontWeight: 500,
             cursor: 'pointer',
             flex: 1,
@@ -174,6 +177,7 @@ export function SignaturePad({
         </button>
         <button
           type="button"
+          className="ui-icon-button"
           onClick={saveSignature}
           disabled={!hasSignature}
           style={{
@@ -182,7 +186,7 @@ export function SignaturePad({
             color: '#fff',
             border: 'none',
             borderRadius: 6,
-            fontSize: 13,
+            fontSize: 'var(--font-size-label)',
             fontWeight: 600,
             cursor: hasSignature ? 'pointer' : 'not-allowed',
             flex: 1,
@@ -190,11 +194,11 @@ export function SignaturePad({
             transition: 'background 0.15s',
           }}
         >
-          ✅ Guardar firma
+          <Check aria-hidden="true" size={16} /> Guardar firma
         </button>
       </div>
 
-      <details style={{ marginTop: 12, fontSize: 11, color: '#6b7280' }}>
+      <details style={{ marginTop: 12, fontSize: 'var(--font-size-micro)', color: '#6b7280' }}>
         <summary style={{ cursor: 'pointer' }}>Requisitos legales de la firma</summary>
         <ul style={{ margin: '8px 0 0 18px', padding: 0, lineHeight: 1.6 }}>
           <li>Res. 0312/2019 Estándar E19: “Evidencia de entrega y capacitación” en EPP</li>

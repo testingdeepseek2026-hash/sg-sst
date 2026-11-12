@@ -223,15 +223,27 @@ La Fase 2 debe empezar por componentes comunes y atacar primero el desbordamient
 
 Las Fases 0–6 anteriores permanecen cerradas. Esta iniciativa independiente continúa la metodología ya aplicada a las pantallas corregidas para reducir diferencias de tipografía, iconos y controles sin reabrir los criterios de rediseño ya aceptados.
 
-**Alcance actual:** consolidar una escala tipográfica e iconográfica reutilizable en `web/src/index.css` y aplicarla a Acciones, Alertas, Estándares, Peligros, Inspecciones y Política, que quedaron en edición al cerrar la sesión anterior. Mantener intactos los flujos funcionales, permisos y contratos de API.
+**Alcance del seguimiento:** consolidar una escala tipográfica e iconográfica reutilizable en `web/src/index.css` y aplicarla gradualmente a Acciones, Alertas, Estándares, Peligros, Inspecciones, Política, Trabajadores, Plan anual, firma, Login y ErrorBoundary. Mantener intactos los flujos funcionales, permisos y contratos de API.
 
 **Criterios de cierre:**
 
-- Los tamaños tipográficos e iconográficos repetidos usan tokens semánticos y reglas compartidas.
-- Las seis pantallas mantienen la jerarquía, los controles y los estados visuales de los patrones aceptados.
-- Revisar las rutas afectadas en navegador a 1280×800 y 390×844, con datos ficticios y sin desbordamientos.
-- Ejecutar pruebas web, typecheck, build y lint focalizado; registrar validaciones y limitaciones.
+- [x] Los tamaños tipográficos e iconográficos repetidos usan tokens semánticos y reglas compartidas.
+- [x] Las pantallas intervenidas mantienen la jerarquía, los controles y los estados visuales de los patrones aceptados.
+- [x] Revisar las rutas en navegador a 1280×800 y 390×844, con datos ficticios y sin desbordamientos.
+- [x] Ejecutar pruebas web, typecheck, build y lint focalizado; registrar validaciones y limitaciones.
 
 **Registro de avance — 2026-11-11:** se revisaron las seis rutas en navegador autenticado a 1280×800 y 390×844 usando una base SQLite temporal con datos de semilla. Los títulos móviles ahora usan la misma escala; los iconos Lucide visibles mantienen el tamaño de control compartido de 16 px. En Inspecciones, los campos y observaciones ocupan el ancho disponible en ambas resoluciones. Las seis rutas quedaron sin desbordamiento horizontal. La semilla dejó varios módulos en estado vacío, por lo que la revisión cubrió principalmente formularios, tablas y estados vacíos, no registros poblados ni todos los modales.
 
 **Validación de esta tanda:** `npm --prefix web run test` (81/81), `npm --prefix web run typecheck` y `npm --prefix web run build` pasan. ESLint focalizado reporta 0 errores y 51 advertencias existentes de promesas/handlers; no se modificó lógica TypeScript. Las fases 0–6 siguen cerradas.
+
+**Cierre del seguimiento — 2026-11-12:** se sustituyeron iconos emoji/glifos por Lucide en Trabajadores, Planes y SignaturePad; se migraron tamaños tipográficos en esas vistas, Login y ErrorBoundary a tokens semánticos. Los botones de acciones del trabajador conservan nombres accesibles y la prueba de componentes comprueba que rendericen SVG Lucide. No quedan pictogramas emoji ni declaraciones numéricas directas de tamaño de fuente en `web/src`.
+
+Se recorrieron las 21 rutas en escritorio (1280×800) y móvil (390×844), con encabezado disponible en todas, sin desbordamiento horizontal ni respuestas API 4xx/5xx después de configurar datos ficticios. El primer barrido detectó que el input de archivo oculto de Acciones heredaba el ancho y la altura de los campos del formulario; se corrigió la especificidad del estilo y se añadió una prueba E2E para evitar que vuelva a ampliar el documento. Revisión realizada con SQLite temporal, usuario, empresa y un trabajador ficticios; no se cargaron datos de ejemplo ni reales. Los demás módulos se revisaron principalmente con estados vacíos, por lo que esta comprobación no equivale a cubrir todos sus estados poblados ni a una validación normativa.
+
+Validaciones: `npm --prefix web run test` (81/81), `npm --prefix web run typecheck` (pasa), `npm --prefix web run build` (pasa), `npm --prefix web run test:e2e -- --project=chromium tests/e2e/acciones.spec.ts` (1/1 pasa) y ESLint focalizado (0 errores, 36 advertencias de promesas/handlers). `git diff --check` pasa. Las Fases 0–6 permanecen cerradas.
+
+**Corrección transversal de campos de texto — 2026-11-12:** el barrido encontró 33 `textarea` en 11 páginas. La regla compartida limitaba el ancho máximo, pero dejaba cada campo con su ancho intrínseco. Se añadió `width: 100%` a `.ui-page textarea` y se retiró la regla local de Peligros, corrigiendo la causa común sin cambiar las estructuras de formulario.
+
+La prueba de navegador mide el ancho en `/riesgos`, `/emergencias`, `/incidentes` y `/altura`, en 1280×800 y 390×844, usando respuestas ficticias interceptadas; los cuatro campos ocupan más del 90 % de su contenedor. Pasan `npm --prefix web run test -- tests/components/Hazards.test.tsx` (5/5), `npm --prefix web run test:e2e -- --project=chromium --reporter=line tests/e2e/textarea-width.spec.ts` (1/1), `npm --prefix web run typecheck`, `npm --prefix web run build`, Prettier focalizado y `git diff --check`. Esta comprobación no usa datos reales ni representa validación normativa.
+
+**Ajuste de jerarquía en Configuración de Empresa:** el resumen de estándares carecía de estilos para sus títulos, descripción y tarjetas, por lo que se veía como texto corrido sin jerarquía. Se alineó el título con el del formulario, se aplicaron tokens tipográficos y espaciado compartido, y se organizaron los dos detalles en tarjetas adaptables. También se corrigió “incluídos” por “incluidos”. La prueba E2E verifica la jerarquía, el espaciado y el desbordamiento en 1280×800 y 390×844; E2E (1/1), pruebas de Empresa (3/3), typecheck, build y Prettier pasan.

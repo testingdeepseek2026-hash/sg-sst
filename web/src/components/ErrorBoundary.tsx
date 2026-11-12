@@ -45,10 +45,17 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           }}
         >
           <h2 style={{ color: '#b91c1c', marginBottom: 10 }}>Error en la aplicación</h2>
-          <p style={{ marginBottom: 12, fontSize: 14 }}>
+          <p style={{ marginBottom: 12, fontSize: 'var(--font-size-body)' }}>
             Ha ocurrido un error al cargar esta página.
           </p>
-          <p style={{ fontSize: 12, marginBottom: 16, color: '#6b7280', wordBreak: 'break-word' }}>
+          <p
+            style={{
+              fontSize: 'var(--font-size-caption)',
+              marginBottom: 16,
+              color: '#6b7280',
+              wordBreak: 'break-word',
+            }}
+          >
             <strong>Detalle:</strong> {this.state.error?.message || 'Error desconocido'}
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -61,7 +68,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 border: 'none',
                 borderRadius: 4,
                 cursor: 'pointer',
-                fontSize: 14,
+                fontSize: 'var(--font-size-body)',
               }}
             >
               Intentar de nuevo
@@ -75,20 +82,22 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 border: 'none',
                 borderRadius: 4,
                 cursor: 'pointer',
-                fontSize: 14,
+                fontSize: 'var(--font-size-body)',
               }}
             >
               Recargar página
             </button>
           </div>
           <details style={{ marginTop: 20, textAlign: 'left' }}>
-            <summary style={{ cursor: 'pointer', fontSize: 12, color: '#6b7280' }}>
+            <summary
+              style={{ cursor: 'pointer', fontSize: 'var(--font-size-caption)', color: '#6b7280' }}
+            >
               Ver detalles del error
             </summary>
             <pre
               style={{
                 whiteSpace: 'pre-wrap',
-                fontSize: 10,
+                fontSize: 'var(--font-size-micro)',
                 background: '#f9fafb',
                 padding: 10,
                 borderRadius: 4,

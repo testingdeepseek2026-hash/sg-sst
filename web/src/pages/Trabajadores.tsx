@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 
+import { AlertTriangle, Check, Eye, Info, PenLine, Pencil, Trash2 } from 'lucide-react';
+
 import { SignaturePad } from '@/components/SignaturePad';
 import { api } from '@/lib/api';
 
@@ -637,7 +639,12 @@ export default function Trabajadores() {
               <div>
                 <label
                   htmlFor="worker-tipo-doc"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Tipo Doc. *
                 </label>
@@ -661,7 +668,12 @@ export default function Trabajadores() {
               <div>
                 <label
                   htmlFor="worker-num-doc"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Número Doc. *
                 </label>
@@ -681,7 +693,12 @@ export default function Trabajadores() {
               <div>
                 <label
                   htmlFor="worker-nombres"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Nombres *
                 </label>
@@ -701,7 +718,12 @@ export default function Trabajadores() {
               <div>
                 <label
                   htmlFor="worker-apellidos"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Apellidos *
                 </label>
@@ -721,7 +743,12 @@ export default function Trabajadores() {
               <div>
                 <label
                   htmlFor="worker-cargo"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Cargo *
                 </label>
@@ -741,7 +768,12 @@ export default function Trabajadores() {
               <div>
                 <label
                   htmlFor="worker-fecha-ingreso"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Fecha Ingreso *
                 </label>
@@ -762,7 +794,12 @@ export default function Trabajadores() {
               <div>
                 <label
                   htmlFor="worker-fecha-egreso"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Fecha Egreso
                 </label>
@@ -782,7 +819,12 @@ export default function Trabajadores() {
               <div>
                 <label
                   htmlFor="worker-estado"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Estado
                 </label>
@@ -805,7 +847,12 @@ export default function Trabajadores() {
               <div>
                 <label
                   htmlFor="worker-eps"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   EPS
                 </label>
@@ -824,7 +871,12 @@ export default function Trabajadores() {
               <div>
                 <label
                   htmlFor="worker-afp"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   AFP
                 </label>
@@ -843,7 +895,12 @@ export default function Trabajadores() {
               <div>
                 <label
                   htmlFor="worker-arl"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   ARL
                 </label>
@@ -862,7 +919,12 @@ export default function Trabajadores() {
               <div>
                 <label
                   htmlFor="worker-caja"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Caja Compensación
                 </label>
@@ -881,7 +943,12 @@ export default function Trabajadores() {
               <div>
                 <label
                   htmlFor="worker-telefono"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Teléfono
                 </label>
@@ -900,7 +967,12 @@ export default function Trabajadores() {
               <div>
                 <label
                   htmlFor="worker-email"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
                 >
                   Email
                 </label>
@@ -992,10 +1064,11 @@ export default function Trabajadores() {
                 borderRadius: 8,
                 marginBottom: 12,
                 color: '#991b1b',
-                fontSize: 13,
+                fontSize: 'var(--font-size-label)',
               }}
             >
-              ⚠️ <strong>Falta examen de ingreso obligatorio.</strong> Todo trabajador debe tener
+              <AlertTriangle aria-hidden="true" size={16} />{' '}
+              <strong>Falta examen de ingreso obligatorio.</strong> Todo trabajador debe tener
               examen de ingreso (Res. 0312/2019 E13).
               <button
                 onClick={() => openExamModal()}
@@ -1027,13 +1100,41 @@ export default function Trabajadores() {
             >
               <thead>
                 <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Tipo</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Fecha</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Vencimiento</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Resultado</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Médico / Entidad</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Estado</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acciones</th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Tipo
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Fecha
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Vencimiento
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Resultado
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Médico / Entidad
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Estado
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1060,7 +1161,7 @@ export default function Trabajadores() {
                             display: 'inline-block',
                             padding: '2px 8px',
                             borderRadius: 12,
-                            fontSize: 11,
+                            fontSize: 'var(--font-size-micro)',
                             fontWeight: 'bold',
                             background:
                               ex.resultado === 'no_apto'
@@ -1079,7 +1180,13 @@ export default function Trabajadores() {
                           {ex.resultado.replace('_', ' ')}
                         </span>
                       </td>
-                      <td style={{ padding: 10, fontSize: 12, color: '#4b5563' }}>
+                      <td
+                        style={{
+                          padding: 10,
+                          fontSize: 'var(--font-size-caption)',
+                          color: '#4b5563',
+                        }}
+                      >
                         {ex.medico || '—'} / {ex.entidad || '—'}
                       </td>
                       <td style={{ padding: 10 }}>
@@ -1088,7 +1195,7 @@ export default function Trabajadores() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 4,
-                            fontSize: 11,
+                            fontSize: 'var(--font-size-micro)',
                             fontWeight: 'bold',
                             color: status.text,
                           }}
@@ -1113,7 +1220,7 @@ export default function Trabajadores() {
                             color: '#fff',
                             border: 'none',
                             borderRadius: 4,
-                            fontSize: 11,
+                            fontSize: 'var(--font-size-micro)',
                             cursor: 'pointer',
                           }}
                         >
@@ -1127,7 +1234,7 @@ export default function Trabajadores() {
                             color: '#fff',
                             border: 'none',
                             borderRadius: 4,
-                            fontSize: 11,
+                            fontSize: 'var(--font-size-micro)',
                             cursor: 'pointer',
                           }}
                         >
@@ -1190,13 +1297,41 @@ export default function Trabajadores() {
             >
               <thead>
                 <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Tipo</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Curso</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Entidad</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Emisión</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Vencimiento</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Estado</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acciones</th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Tipo
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Curso
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Entidad
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Emisión
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Vencimiento
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Estado
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1206,9 +1341,13 @@ export default function Trabajadores() {
                     CERT_TYPES.find((t) => t.value === cert.tipo)?.label || cert.tipo;
                   return (
                     <tr key={cert.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: 10, fontSize: 12 }}>{tipoLabel}</td>
+                      <td style={{ padding: 10, fontSize: 'var(--font-size-caption)' }}>
+                        {tipoLabel}
+                      </td>
                       <td style={{ padding: 10 }}>{cert.nombre_curso || '—'}</td>
-                      <td style={{ padding: 10, fontSize: 12 }}>{cert.entidad || '—'}</td>
+                      <td style={{ padding: 10, fontSize: 'var(--font-size-caption)' }}>
+                        {cert.entidad || '—'}
+                      </td>
                       <td style={{ padding: 10 }}>{cert.fecha_emision.slice(0, 10)}</td>
                       <td style={{ padding: 10 }}>
                         {cert.fecha_vencimiento.slice(0, 10)}
@@ -1217,7 +1356,7 @@ export default function Trabajadores() {
                             style={{
                               display: 'inline-block',
                               marginLeft: 6,
-                              fontSize: 10,
+                              fontSize: 'var(--font-size-micro)',
                               background: '#dbeafe',
                               color: '#1e40af',
                               padding: '1px 4px',
@@ -1234,7 +1373,7 @@ export default function Trabajadores() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 4,
-                            fontSize: 11,
+                            fontSize: 'var(--font-size-micro)',
                             fontWeight: 'bold',
                             color: status.text,
                           }}
@@ -1259,7 +1398,7 @@ export default function Trabajadores() {
                             color: '#fff',
                             border: 'none',
                             borderRadius: 4,
-                            fontSize: 11,
+                            fontSize: 'var(--font-size-micro)',
                             cursor: 'pointer',
                           }}
                         >
@@ -1273,7 +1412,7 @@ export default function Trabajadores() {
                             color: '#fff',
                             border: 'none',
                             borderRadius: 4,
-                            fontSize: 11,
+                            fontSize: 'var(--font-size-micro)',
                             cursor: 'pointer',
                           }}
                         >
@@ -1338,13 +1477,41 @@ export default function Trabajadores() {
             >
               <thead>
                 <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Ítem</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Cant.</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Entrega</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Vencimiento</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Firma</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Estado</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acciones</th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Ítem
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Cant.
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Entrega
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Vencimiento
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Firma
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Estado
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1368,7 +1535,7 @@ export default function Trabajadores() {
                       >
                         {item.firmado_por_trabajador ? (
                           <>
-                            <span style={{ color: '#10b981', fontSize: 16 }}>✅</span>
+                            <Check aria-hidden="true" size={16} style={{ color: '#10b981' }} />
                             <button
                               onClick={() => window.open(item.firma_url!, '_blank')}
                               style={{
@@ -1377,7 +1544,7 @@ export default function Trabajadores() {
                                 color: '#166534',
                                 border: 'none',
                                 borderRadius: 4,
-                                fontSize: 10,
+                                fontSize: 'var(--font-size-micro)',
                                 cursor: 'pointer',
                               }}
                             >
@@ -1393,11 +1560,11 @@ export default function Trabajadores() {
                               color: '#fff',
                               border: 'none',
                               borderRadius: 4,
-                              fontSize: 11,
+                              fontSize: 'var(--font-size-micro)',
                               cursor: 'pointer',
                             }}
                           >
-                            🖊️ Firmar
+                            <PenLine aria-hidden="true" size={14} /> Firmar
                           </button>
                         )}
                       </td>
@@ -1407,7 +1574,7 @@ export default function Trabajadores() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 4,
-                            fontSize: 11,
+                            fontSize: 'var(--font-size-micro)',
                             fontWeight: 'bold',
                             color: status.text,
                           }}
@@ -1432,7 +1599,7 @@ export default function Trabajadores() {
                             color: '#fff',
                             border: 'none',
                             borderRadius: 4,
-                            fontSize: 11,
+                            fontSize: 'var(--font-size-micro)',
                             cursor: 'pointer',
                           }}
                         >
@@ -1446,7 +1613,7 @@ export default function Trabajadores() {
                             color: '#fff',
                             border: 'none',
                             borderRadius: 4,
-                            fontSize: 11,
+                            fontSize: 'var(--font-size-micro)',
                             cursor: 'pointer',
                           }}
                         >
@@ -1476,10 +1643,10 @@ export default function Trabajadores() {
                 border: '1px solid #f59e0b',
                 borderRadius: 8,
                 color: '#92400e',
-                fontSize: 13,
+                fontSize: 'var(--font-size-label)',
               }}
             >
-              ⚠️{' '}
+              <AlertTriangle aria-hidden="true" size={16} />{' '}
               <strong>{eppUnsigned} entrega(s) de EPP pendientes de firma del trabajador.</strong>{' '}
               La firma es obligatoria según Res. 0312/2019 E19.
             </div>
@@ -1528,7 +1695,7 @@ export default function Trabajadores() {
                   style={{
                     display: 'block',
                     marginBottom: 6,
-                    fontSize: 13,
+                    fontSize: 'var(--font-size-label)',
                     fontWeight: 'bold',
                     color: '#374151',
                   }}
@@ -1559,7 +1726,7 @@ export default function Trabajadores() {
                     style={{
                       display: 'block',
                       marginBottom: 6,
-                      fontSize: 13,
+                      fontSize: 'var(--font-size-label)',
                       fontWeight: 'bold',
                       color: '#374151',
                     }}
@@ -1586,7 +1753,7 @@ export default function Trabajadores() {
                     style={{
                       display: 'block',
                       marginBottom: 6,
-                      fontSize: 13,
+                      fontSize: 'var(--font-size-label)',
                       fontWeight: 'bold',
                       color: '#374151',
                     }}
@@ -1613,7 +1780,7 @@ export default function Trabajadores() {
                   style={{
                     display: 'block',
                     marginBottom: 6,
-                    fontSize: 13,
+                    fontSize: 'var(--font-size-label)',
                     fontWeight: 'bold',
                     color: '#374151',
                   }}
@@ -1642,7 +1809,7 @@ export default function Trabajadores() {
                   style={{
                     display: 'block',
                     marginBottom: 6,
-                    fontSize: 13,
+                    fontSize: 'var(--font-size-label)',
                     fontWeight: 'bold',
                     color: '#374151',
                   }}
@@ -1659,7 +1826,7 @@ export default function Trabajadores() {
                     padding: 8,
                     border: '1px solid #d1d5db',
                     borderRadius: 6,
-                    fontSize: 12,
+                    fontSize: 'var(--font-size-caption)',
                   }}
                 />
               </div>
@@ -1670,7 +1837,7 @@ export default function Trabajadores() {
                     style={{
                       display: 'block',
                       marginBottom: 6,
-                      fontSize: 13,
+                      fontSize: 'var(--font-size-label)',
                       fontWeight: 'bold',
                       color: '#374151',
                     }}
@@ -1695,7 +1862,7 @@ export default function Trabajadores() {
                     style={{
                       display: 'block',
                       marginBottom: 6,
-                      fontSize: 13,
+                      fontSize: 'var(--font-size-label)',
                       fontWeight: 'bold',
                       color: '#374151',
                     }}
@@ -1721,7 +1888,7 @@ export default function Trabajadores() {
                   style={{
                     display: 'block',
                     marginBottom: 6,
-                    fontSize: 13,
+                    fontSize: 'var(--font-size-label)',
                     fontWeight: 'bold',
                     color: '#374151',
                   }}
@@ -1738,7 +1905,7 @@ export default function Trabajadores() {
                     padding: 8,
                     border: '1px solid #d1d5db',
                     borderRadius: 6,
-                    fontSize: 12,
+                    fontSize: 'var(--font-size-caption)',
                   }}
                 />
               </div>
@@ -1816,7 +1983,7 @@ export default function Trabajadores() {
                   style={{
                     display: 'block',
                     marginBottom: 6,
-                    fontSize: 13,
+                    fontSize: 'var(--font-size-label)',
                     fontWeight: 'bold',
                     color: '#374151',
                   }}
@@ -1847,7 +2014,7 @@ export default function Trabajadores() {
                   style={{
                     display: 'block',
                     marginBottom: 6,
-                    fontSize: 13,
+                    fontSize: 'var(--font-size-label)',
                     fontWeight: 'bold',
                     color: '#374151',
                   }}
@@ -1872,7 +2039,7 @@ export default function Trabajadores() {
                   style={{
                     display: 'block',
                     marginBottom: 6,
-                    fontSize: 13,
+                    fontSize: 'var(--font-size-label)',
                     fontWeight: 'bold',
                     color: '#374151',
                   }}
@@ -1898,7 +2065,7 @@ export default function Trabajadores() {
                     style={{
                       display: 'block',
                       marginBottom: 6,
-                      fontSize: 13,
+                      fontSize: 'var(--font-size-label)',
                       fontWeight: 'bold',
                       color: '#374151',
                     }}
@@ -1925,7 +2092,7 @@ export default function Trabajadores() {
                     style={{
                       display: 'block',
                       marginBottom: 6,
-                      fontSize: 13,
+                      fontSize: 'var(--font-size-label)',
                       fontWeight: 'bold',
                       color: '#374151',
                     }}
@@ -1956,13 +2123,13 @@ export default function Trabajadores() {
                     border: '1px solid #93c5fd',
                     padding: 8,
                     borderRadius: 6,
-                    fontSize: 11,
+                    fontSize: 'var(--font-size-micro)',
                     color: '#1e40af',
                   }}
                 >
-                  ℹ️ Para <strong>Trabajo en Alturas</strong> la vigencia es{' '}
-                  <strong>exactamente 3 años</strong> (Res. 4272/2021 Art. 12). Se calcula
-                  automáticamente al cambiar la fecha de emisión.
+                  <Info aria-hidden="true" size={16} /> Para <strong>Trabajo en Alturas</strong> la
+                  vigencia es <strong>exactamente 3 años</strong> (Res. 4272/2021 Art. 12). Se
+                  calcula automáticamente al cambiar la fecha de emisión.
                 </div>
               )}
               <div>
@@ -1971,7 +2138,7 @@ export default function Trabajadores() {
                   style={{
                     display: 'block',
                     marginBottom: 6,
-                    fontSize: 13,
+                    fontSize: 'var(--font-size-label)',
                     fontWeight: 'bold',
                     color: '#374151',
                   }}
@@ -1988,7 +2155,7 @@ export default function Trabajadores() {
                     padding: 8,
                     border: '1px solid #d1d5db',
                     borderRadius: 6,
-                    fontSize: 12,
+                    fontSize: 'var(--font-size-caption)',
                   }}
                 />
               </div>
@@ -2066,7 +2233,7 @@ export default function Trabajadores() {
                   style={{
                     display: 'block',
                     marginBottom: 6,
-                    fontSize: 13,
+                    fontSize: 'var(--font-size-label)',
                     fontWeight: 'bold',
                     color: '#374151',
                   }}
@@ -2098,7 +2265,7 @@ export default function Trabajadores() {
                     style={{
                       display: 'block',
                       marginBottom: 6,
-                      fontSize: 13,
+                      fontSize: 'var(--font-size-label)',
                       fontWeight: 'bold',
                       color: '#374151',
                     }}
@@ -2127,7 +2294,7 @@ export default function Trabajadores() {
                     style={{
                       display: 'block',
                       marginBottom: 6,
-                      fontSize: 13,
+                      fontSize: 'var(--font-size-label)',
                       fontWeight: 'bold',
                       color: '#374151',
                     }}
@@ -2155,7 +2322,7 @@ export default function Trabajadores() {
                   style={{
                     display: 'block',
                     marginBottom: 6,
-                    fontSize: 13,
+                    fontSize: 'var(--font-size-label)',
                     fontWeight: 'bold',
                     color: '#374151',
                   }}
@@ -2181,7 +2348,7 @@ export default function Trabajadores() {
                   style={{
                     display: 'block',
                     marginBottom: 6,
-                    fontSize: 13,
+                    fontSize: 'var(--font-size-label)',
                     fontWeight: 'bold',
                     color: '#374151',
                   }}
@@ -2198,7 +2365,7 @@ export default function Trabajadores() {
                     padding: 8,
                     border: '1px solid #d1d5db',
                     borderRadius: 6,
-                    fontSize: 12,
+                    fontSize: 'var(--font-size-caption)',
                   }}
                 />
               </div>
@@ -2275,13 +2442,27 @@ export default function Trabajadores() {
         >
           <thead>
             <tr style={{ background: '#ecfdf5', textAlign: 'left' }}>
-              <th style={{ padding: 10, fontSize: 12, color: '#065f46' }}>Documento</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#065f46' }}>Nombre</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#065f46' }}>Cargo</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#065f46' }}>Ingreso</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#065f46' }}>Estado</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#065f46' }}>EPS / ARL</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#065f46' }}>Acciones</th>
+              <th style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#065f46' }}>
+                Documento
+              </th>
+              <th style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#065f46' }}>
+                Nombre
+              </th>
+              <th style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#065f46' }}>
+                Cargo
+              </th>
+              <th style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#065f46' }}>
+                Ingreso
+              </th>
+              <th style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#065f46' }}>
+                Estado
+              </th>
+              <th style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#065f46' }}>
+                EPS / ARL
+              </th>
+              <th style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#065f46' }}>
+                Acciones
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -2301,7 +2482,7 @@ export default function Trabajadores() {
                       display: 'inline-block',
                       padding: '2px 8px',
                       borderRadius: 12,
-                      fontSize: 11,
+                      fontSize: 'var(--font-size-micro)',
                       fontWeight: 'bold',
                       background:
                         w.estado === 'activo'
@@ -2320,51 +2501,55 @@ export default function Trabajadores() {
                     {w.estado}
                   </span>
                 </td>
-                <td style={{ padding: 10, fontSize: 12, color: '#4b5563' }}>
+                <td style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#4b5563' }}>
                   {w.eps || '-'}
                   {w.arl ? ' / ' + w.arl : ''}
                 </td>
                 <td style={{ padding: 10, display: 'flex', gap: 6 }}>
                   <button
                     onClick={() => openWorkerDetail(w)}
+                    className="ui-icon-button"
                     style={{
                       padding: '4px 8px',
                       background: '#0f766e',
                       color: '#fff',
                       border: 'none',
                       borderRadius: 4,
-                      fontSize: 11,
+                      fontSize: 'var(--font-size-caption)',
                       cursor: 'pointer',
                     }}
                   >
-                    👁 Ver ficha
+                    <Eye aria-hidden="true" size={14} /> Ver ficha
                   </button>
                   <button
                     onClick={() => openWorkerDetail(w)}
+                    className="ui-icon-button"
                     style={{
                       padding: '4px 8px',
                       background: '#e5e7eb',
                       border: 'none',
                       borderRadius: 4,
-                      fontSize: 11,
+                      fontSize: 'var(--font-size-caption)',
                       cursor: 'pointer',
                     }}
                   >
-                    ✏️ Editar
+                    <Pencil aria-hidden="true" size={14} /> Editar
                   </button>
                   <button
                     onClick={() => _handleDeleteWorker(w.id)}
+                    aria-label={`Eliminar a ${w.nombres} ${w.apellidos}`}
+                    className="ui-icon-button"
                     style={{
                       padding: '4px 8px',
                       background: '#fee2e2',
                       border: 'none',
                       borderRadius: 4,
-                      fontSize: 11,
+                      fontSize: 'var(--font-size-caption)',
                       cursor: 'pointer',
                       color: '#b91c1c',
                     }}
                   >
-                    🗑️
+                    <Trash2 aria-hidden="true" size={14} />
                   </button>
                 </td>
               </tr>
@@ -2431,7 +2616,7 @@ export default function Trabajadores() {
       </div>
 
       {editingWorker && (
-        <p style={{ marginTop: 10, fontSize: 12, color: '#6b7280' }}>
+        <p style={{ marginTop: 10, fontSize: 'var(--font-size-caption)', color: '#6b7280' }}>
           Editando trabajador. Guarde para aplicar cambios.
         </p>
       )}

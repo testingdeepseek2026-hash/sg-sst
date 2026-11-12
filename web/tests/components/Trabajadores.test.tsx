@@ -78,6 +78,16 @@ describe('Gestión de trabajadores', () => {
     expect(within(workerTable).getByText('Juan Pérez')).toBeInTheDocument();
     expect(within(workerTable).getByText('Electricista')).toBeInTheDocument();
     expect(within(workerTable).getByText('María González')).toBeInTheDocument();
+    expect(
+      within(workerTable)
+        .getAllByRole('button', { name: 'Ver ficha' })[0]
+        .querySelector('svg.lucide-eye'),
+    ).toBeInTheDocument();
+    expect(
+      within(workerTable)
+        .getByRole('button', { name: 'Eliminar a Juan Pérez' })
+        .querySelector('svg.lucide'),
+    ).toBeInTheDocument();
     expect(api.get).toHaveBeenCalledWith('/workers');
   });
 

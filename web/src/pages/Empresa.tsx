@@ -329,7 +329,7 @@ export default function Empresa() {
           className="ui-surface empresa-resumen-estandares"
         >
           <h3 className="empresa-resumen-title">Estándares mínimos aplicables</h3>
-          <p className="empresa-resumen-desc">
+          <p className="ui-page-description empresa-resumen-desc">
             Basado en la clase de riesgo y número de trabajadores:{' '}
             <strong>
               {c.clase_riesgo ?? '—'} / {c.numero_trabajadores ?? '—'}
@@ -351,7 +351,7 @@ export default function Empresa() {
                   </p>
                 </div>
                 <div className="empresa-resumen-card">
-                  <p className="empresa-resumen-card-label">Capítulos incluídos</p>
+                  <p className="empresa-resumen-card-label">Capítulos incluidos</p>
                   <p className="empresa-resumen-card-value">
                     {c.clase_riesgo === 'I'
                       ? 'Capítulo I (peso 1.0)'

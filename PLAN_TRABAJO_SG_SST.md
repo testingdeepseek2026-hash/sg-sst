@@ -1,6 +1,6 @@
 # Plan de trabajo para terminar SG-SST
 
-**Actualizado:** 11 de noviembre de 2026
+**Actualizado:** 12 de noviembre de 2026
 **Proyecto:** Aplicación SG-SST para microempresa colombiana de instalaciones electrónicas  
 **Fuente de requisitos:** [`PROMPT_MAESTRO.md`](./PROMPT_MAESTRO.md)
 
@@ -53,6 +53,10 @@ Las Fases 0–6 del [`PLAN_MEJORA_VISUAL.md`](./PLAN_MEJORA_VISUAL.md) están ce
 La Fase 6 redujo el bundle inicial de 548.17 kB a 191.59 kB (−65 %) mediante carga diferida por ruta. La PWA se validó con una salida limpia de 604.40 KiB, sin artefactos obsoletos. La navegación de producción también confirmó que el HTML/chunks estáticos son accesibles antes del login, mientras API y archivos subidos continúan protegidos.
 
 Validación actual: suite web 81/81; backend 249 pruebas pasaron y 9 se omitieron; typecheck y build de ambos proyectos pasan. La inspección se hizo con una base temporal aislada y no representa validación normativa ni usa datos reales de la empresa.
+
+**Seguimiento independiente de normalización visual (12 de noviembre de 2026):** se verificaron las 21 rutas en escritorio y móvil con datos ficticios. El barrido detectó y corrigió un desbordamiento en Acciones causado por el input de evidencia visualmente oculto; se añadió una prueba E2E. No hubo otros desbordamientos ni errores API al repetir la revisión. Suite web 81/81, typecheck, build y E2E focalizado pasan; ESLint focalizado reporta 0 errores y 36 advertencias de promesas/handlers. El detalle está en [`PLAN_MEJORA_VISUAL.md`](./PLAN_MEJORA_VISUAL.md). Las Fases 0–6 siguen cerradas; esta normalización es una continuación independiente y no representa validación normativa.
+
+**Ajuste transversal de campos de texto (12 de noviembre de 2026):** se encontró el mismo ancho intrínseco en 33 `textarea` repartidos en 11 vistas; el estilo compartido ahora los expande al ancho de su contenedor. Una prueba de navegador comprobó cuatro rutas en escritorio y móvil. Pasan la prueba focalizada de componente (5/5), la E2E (1/1), typecheck y build. El detalle y las limitaciones están en [`PLAN_MEJORA_VISUAL.md`](./PLAN_MEJORA_VISUAL.md).
 
 ## Datos por confirmar con la empresa
 
