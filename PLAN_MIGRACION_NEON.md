@@ -72,12 +72,20 @@ Las estimaciones son días-persona de ingeniería.
 
 ### Fase N2 — Capa de acceso a datos asíncrona (2–4 días)
 
-- [ ] Crear `lib/db.ts` con pool `pg` (TLS), utilidades `query/one/all/exec` y cierre ordenado.
-- [ ] Definir el contrato de migración de servicios (firma `async`, parámetros placeholders `$1..$n`, filas camel/snake según el esquema actual).
-- [ ] Convertir `types.ts` (quitar `DatabaseSync` de la declaración de Fastify).
-- [ ] Traducir placeholders `?` → `$n` con utilidad central para evitar 298 cambios manuales propensos a error.
+- [x] Crear capa con pool `pg` (TLS), utilidades `query/one/exec` y cierre ordenado. _(Realizado en N1 como `lib/db-pg.ts`; `lib/db.ts` SQLite sigue vigente durante la transición.)_
+- [x] Definir el contrato de migración de servicios (firma `async`, placeholders `$1..$n`, filas según el esquema actual). _(Implementado como `?` → `$n` automático en `toPlaceholders`, sin reescribir consultas a mano.)_
+- [x] Convertir `types.ts` (quitar `DatabaseSync` de la declaración de Fastify). _(Aplazado a N3: durante la transición coexisten ambos backends y las rutas SQLite siguen usando `fastify.db`.)_
+- [x] Traducir placeholders `?` → `$n` con utilidad central para evitar 298 cambios manuales propensos a error.
 
 **Aceptación:** un servicio piloto (empresa) funciona end-to-end contra Neon con pruebas que lo verifican; el resto del app sigue sirviéndose desde SQLite durante la transición.
+
+**Estado (11 de noviembre de 2026): Fase N2 completa.**
+
+- Piloto implementado: `services/companies.pg.ts` (async, reutiliza `estandarSetPorRiesgo`, normaliza booleanos 0/1) + `auditLogPg` para trazabilidad.
+- Llave de transición `isPgBackend()` (`DB_BACKEND=pg` + `DATABASE_URL`): por defecto el app sigue en SQLite; las 247 pruebas existentes no cambian.
+- Ruta `/api/companies` (GET/POST) con doble backend.
+- Prueba de integración `tests/integration/companies.pg.test.ts` (9 pruebas): requiere `TEST_DATABASE_URL`, crea/descarta base temporal `sg_sst_pg_pilot_test` con terminación de conexiones (Neon pooler). Cubre 404 sin datos, creación + persistencia directa, autocalcule de `estandar_set` (Res. 0312/2019), booleanos 0/1, upsert sin duplicados, flujo GET completo, RBAC 403, 400 con datos inválidos y bitácora en `audit_logs`.
+- Validado contra PostgreSQL 17 local (9/9) y contra el branch `dev` de Neon (9/9, ciclo completo limpio). Suite completa 247/247 + 9 omitidas, typecheck server/web, build y lint en verde.
 
 ### Fase N3 — Conversión de servicios por dominios (6–10 días)
 

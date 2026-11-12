@@ -23,6 +23,16 @@ export interface PgQueryResult {
   rowCount: number;
 }
 
+/**
+ * Llave explícita de backend (Fase N2, transición N2–N3):
+ * las rutas migradas consultan Postgres solo cuando DB_BACKEND=pg y existe
+ * DATABASE_URL. Por defecto el app sigue en SQLite para no romper pruebas
+ * ni operación. Al completar N3 la llave se retira y Postgres queda único.
+ */
+export function isPgBackend(): boolean {
+  return process.env.DB_BACKEND === 'pg' && !!process.env.DATABASE_URL;
+}
+
 export function getPgPool(): pg.Pool {
   if (pool) return pool;
   const connectionString = process.env.DATABASE_URL;
