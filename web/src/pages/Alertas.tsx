@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { Bell, CheckCheck, RefreshCw, Send, Settings } from 'lucide-react';
+import { Bell, CheckCheck, Eye, FlaskConical, RefreshCw, Send, Settings } from 'lucide-react';
 
 import { api } from '../lib/api';
 
@@ -158,26 +158,12 @@ export default function Alertas() {
   };
 
   const getPrioridadBadge = (p: string) => {
-    const colors: Record<string, { bg: string; text: string }> = {
-      critica: { bg: '#fee2e2', text: '#991b1b' },
-      alta: { bg: '#fef3c7', text: '#92400e' },
-      media: { bg: '#dbeafe', text: '#1e40af' },
+    const clases: Record<string, string> = {
+      critica: 'ui-badge ui-badge--danger',
+      alta: 'ui-badge ui-badge--warn',
+      media: 'ui-badge ui-badge--info',
     };
-    const c = colors[p] || { bg: '#f3f4f6', text: '#374151' };
-    return (
-      <span
-        style={{
-          background: c.bg,
-          color: c.text,
-          padding: '2px 8px',
-          borderRadius: 12,
-          fontSize: 11,
-          fontWeight: 'bold',
-        }}
-      >
-        {p.toUpperCase()}
-      </span>
-    );
+    return <span className={clases[p] || 'ui-badge'}>{p.toUpperCase()}</span>;
   };
 
   const getTipoLabel = (t: string) => {
@@ -196,9 +182,7 @@ export default function Alertas() {
   return (
     <div className="ui-page alerts-page">
       <div className="ui-page-header">
-        <h1 className="ui-page-title" style={{ margin: 0 }}>
-          Alertas y recordatorios de vencimiento
-        </h1>
+        <h1 className="ui-page-title">Alertas y recordatorios de vencimiento</h1>
       </div>
 
       {success && <div className="ui-feedback ui-feedback--success">{success}</div>}
@@ -236,219 +220,106 @@ export default function Alertas() {
       {/* TAB 1: PENDIENTES */}
       {activeTab === 'pendientes' && (
         <div>
-          {/* Stats Cards */}
+          {/* Resumen */}
           {stats && (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                gap: 12,
-                marginBottom: 16,
-              }}
-            >
-              <div
-                style={{
-                  background: '#fff',
-                  padding: 16,
-                  borderRadius: 10,
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                  borderLeft: '4px solid #f59e0b',
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: '#6b7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                  }}
-                >
-                  Pendientes
-                </div>
-                <div style={{ fontSize: 28, fontWeight: 'bold', color: '#f59e0b' }}>
-                  {stats.pendientes}
-                </div>
+            <div className="ui-kpi-grid">
+              <div className="ui-kpi ui-kpi--warn">
+                <div className="ui-kpi-label">Pendientes</div>
+                <div className="ui-kpi-value">{stats.pendientes}</div>
               </div>
-              <div
-                style={{
-                  background: '#fff',
-                  padding: 16,
-                  borderRadius: 10,
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                  borderLeft: '4px solid #10b981',
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: '#6b7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                  }}
-                >
-                  Enviadas
-                </div>
-                <div style={{ fontSize: 28, fontWeight: 'bold', color: '#10b981' }}>
-                  {stats.enviadas}
-                </div>
+              <div className="ui-kpi ui-kpi--ok">
+                <div className="ui-kpi-label">Enviadas</div>
+                <div className="ui-kpi-value">{stats.enviadas}</div>
               </div>
-              <div
-                style={{
-                  background: '#fff',
-                  padding: 16,
-                  borderRadius: 10,
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                  borderLeft: '4px solid #ef4444',
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: '#6b7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                  }}
-                >
-                  Vencidas
-                </div>
-                <div style={{ fontSize: 28, fontWeight: 'bold', color: '#ef4444' }}>
-                  {stats.vencidas}
-                </div>
+              <div className="ui-kpi ui-kpi--danger">
+                <div className="ui-kpi-label">Vencidas</div>
+                <div className="ui-kpi-value">{stats.vencidas}</div>
               </div>
-              <div
-                style={{
-                  background: '#fff',
-                  padding: 16,
-                  borderRadius: 10,
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                  borderLeft: '4px solid #0f766e',
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: '#6b7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                  }}
-                >
-                  Total
-                </div>
-                <div style={{ fontSize: 28, fontWeight: 'bold', color: '#0f766e' }}>
-                  {stats.total}
-                </div>
+              <div className="ui-kpi">
+                <div className="ui-kpi-label">Total</div>
+                <div className="ui-kpi-value">{stats.total}</div>
               </div>
             </div>
           )}
 
-          {/* Actions */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          {/* Acciones */}
+          <div className="alerts-actions">
             <button
-              onClick={handleGenerate}
+              className="ui-primary-button"
               disabled={loading || sending}
-              style={{
-                padding: '8px 14px',
-                background: '#0f766e',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 6,
-                fontWeight: 'bold',
-                cursor: loading || sending ? 'not-allowed' : 'pointer',
-              }}
+              onClick={handleGenerate}
+              type="button"
             >
               <RefreshCw aria-hidden="true" size={16} />
               {loading ? 'Generando...' : 'Generar alertas'}
             </button>
             <button
-              onClick={handleSendAll}
+              className="ui-primary-button alerts-button--ok"
               disabled={!alerts.length || sending}
-              style={{
-                padding: '8px 14px',
-                background: '#10b981',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 6,
-                fontWeight: 'bold',
-                cursor: alerts.length && !sending ? 'pointer' : 'not-allowed',
-              }}
+              onClick={handleSendAll}
+              type="button"
             >
               <Send aria-hidden="true" size={16} />
               {sending ? 'Enviando...' : `Enviar todas (${alerts.length})`}
             </button>
             {selectedIds.length > 0 && (
               <button
-                onClick={handleSendSelected}
+                className="ui-primary-button alerts-button--info"
                 disabled={sending}
-                style={{
-                  padding: '8px 14px',
-                  background: '#2563eb',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 6,
-                  fontWeight: 'bold',
-                  cursor: sending ? 'not-allowed' : 'pointer',
-                }}
+                onClick={handleSendSelected}
+                type="button"
               >
-                ✅ Marcar {selectedIds.length} como enviada(s)
+                <CheckCheck aria-hidden="true" size={16} />
+                Marcar {selectedIds.length} como enviada(s)
               </button>
             )}
           </div>
 
-          {/* Table */}
-          <div
-            className="alerts-table-desktop"
-            style={{
-              overflowX: 'auto',
-              background: '#fff',
-              borderRadius: 8,
-              boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-            }}
-          >
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
+          {/* Tabla */}
+          <div className="ui-surface ui-table-wrap alerts-table-desktop">
+            <table className="ui-table alerts-table">
               <thead>
-                <tr style={{ background: '#fef2f2', textAlign: 'left' }}>
-                  <th style={{ padding: 10, fontSize: 12, width: 40 }}>
+                <tr>
+                  <th className="alerts-table-check">
                     <input
-                      type="checkbox"
+                      aria-label="Seleccionar todas las alertas"
                       checked={selectedIds.length === alerts.length && alerts.length > 0}
                       onChange={(e) => handleSelectAll(e.target.checked)}
+                      type="checkbox"
                     />
                   </th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Tipo</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Trabajador / Ítem</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Vence</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Prioridad</th>
-                  <th style={{ padding: 10, fontSize: 12, color: '#991b1b' }}>Detalle</th>
+                  <th>Tipo</th>
+                  <th>Trabajador / Ítem</th>
+                  <th>Vence</th>
+                  <th>Prioridad</th>
+                  <th>Detalle</th>
                 </tr>
               </thead>
               <tbody>
                 {alerts.map((a) => (
-                  <tr key={a.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                    <td style={{ padding: 10, textAlign: 'center' }}>
+                  <tr key={a.id}>
+                    <td className="alerts-table-check">
                       <input
-                        type="checkbox"
+                        aria-label={`Seleccionar fila de ${a.worker_nombre || a.item_nombre || a.entidad}`}
                         checked={selectedIds.includes(a.id)}
                         onChange={(e) => handleSelectOne(a.id, e.target.checked)}
+                        type="checkbox"
                       />
                     </td>
-                    <td style={{ padding: 10, fontSize: 12 }}>{getTipoLabel(a.tipo)}</td>
-                    <td style={{ padding: 10, fontSize: 12 }}>
+                    <td>{getTipoLabel(a.tipo)}</td>
+                    <td>
                       {a.worker_nombre
                         ? `${a.worker_nombre} ${a.worker_apellido}`
                         : a.item_nombre || a.entidad}
                     </td>
-                    <td style={{ padding: 10, fontSize: 12, fontWeight: 500 }}>
-                      {a.fecha_vencimiento}
-                    </td>
-                    <td style={{ padding: 10 }}>{getPrioridadBadge(a.prioridad)}</td>
-                    <td style={{ padding: 10, fontSize: 12, color: '#6b7280' }}>
-                      {a.detalle || '—'}
-                    </td>
+                    <td>{a.fecha_vencimiento}</td>
+                    <td>{getPrioridadBadge(a.prioridad)}</td>
+                    <td>{a.detalle || '—'}</td>
                   </tr>
                 ))}
                 {alerts.length === 0 && (
                   <tr>
-                    <td colSpan={6} style={{ padding: 30, textAlign: 'center', color: '#9ca3af' }}>
+                    <td className="alerts-empty-cell" colSpan={6}>
                       No hay alertas pendientes
                     </td>
                   </tr>
@@ -497,44 +368,34 @@ export default function Alertas() {
 
       {/* TAB 2: HISTORIAL ENVIADAS */}
       {activeTab === 'historial' && (
-        <div
-          className="alerts-table-desktop"
-          style={{
-            overflowX: 'auto',
-            background: '#fff',
-            borderRadius: 8,
-            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-          }}
-        >
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
+        <div className="ui-surface ui-table-wrap alerts-table-desktop">
+          <table className="ui-table alerts-table">
             <thead>
-              <tr style={{ background: '#ecfdf5', textAlign: 'left' }}>
-                <th style={{ padding: 10, fontSize: 12, color: '#065f46' }}>Tipo</th>
-                <th style={{ padding: 10, fontSize: 12, color: '#065f46' }}>Trabajador / Ítem</th>
-                <th style={{ padding: 10, fontSize: 12, color: '#065f46' }}>Vencía</th>
-                <th style={{ padding: 10, fontSize: 12, color: '#065f46' }}>Prioridad</th>
-                <th style={{ padding: 10, fontSize: 12, color: '#065f46' }}>Enviada</th>
+              <tr>
+                <th>Tipo</th>
+                <th>Trabajador / Ítem</th>
+                <th>Vencía</th>
+                <th>Prioridad</th>
+                <th>Enviada</th>
               </tr>
             </thead>
             <tbody>
               {sentAlerts.map((a) => (
-                <tr key={a.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: 10, fontSize: 12 }}>{getTipoLabel(a.tipo)}</td>
-                  <td style={{ padding: 10, fontSize: 12 }}>
+                <tr key={a.id}>
+                  <td>{getTipoLabel(a.tipo)}</td>
+                  <td>
                     {a.worker_nombre
                       ? `${a.worker_nombre} ${a.worker_apellido}`
                       : a.item_nombre || a.entidad}
                   </td>
-                  <td style={{ padding: 10, fontSize: 12 }}>{a.fecha_vencimiento}</td>
-                  <td style={{ padding: 10 }}>{getPrioridadBadge(a.prioridad)}</td>
-                  <td style={{ padding: 10, fontSize: 12, color: '#10b981' }}>
-                    {a.enviado_en ? new Date(a.enviado_en).toLocaleString('es-CO') : '—'}
-                  </td>
+                  <td>{a.fecha_vencimiento}</td>
+                  <td>{getPrioridadBadge(a.prioridad)}</td>
+                  <td>{a.enviado_en ? new Date(a.enviado_en).toLocaleString('es-CO') : '—'}</td>
                 </tr>
               ))}
               {sentAlerts.length === 0 && (
                 <tr>
-                  <td colSpan={5} style={{ padding: 30, textAlign: 'center', color: '#9ca3af' }}>
+                  <td className="alerts-empty-cell" colSpan={5}>
                     No hay alertas enviadas aún
                   </td>
                 </tr>
@@ -580,32 +441,18 @@ export default function Alertas() {
 
       {/* TAB 3: CONFIGURACIÓN */}
       {activeTab === 'config' && (
-        <div style={{ maxWidth: 700 }}>
-          <div
-            style={{
-              background: '#fff',
-              padding: 20,
-              borderRadius: 10,
-              boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-              marginBottom: 16,
-            }}
-          >
-            <h2 style={{ color: '#0f766e', marginBottom: 16 }}>Configuración SMTP para Alertas</h2>
-            <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 16 }}>
+        <div className="alerts-config">
+          <div className="ui-surface alerts-config-card">
+            <h2 className="alerts-config-title">Configuración SMTP para Alertas</h2>
+            <p className="alerts-config-help">
               Configure el servidor de correo para envío automático de alertas. Si deja campos
               vacíos, el sistema funcionará en <strong>modo simulación</strong> (logs en consola).
             </p>
 
-            <form
-              onSubmit={handleSaveSmtp}
-              style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
-            >
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <form onSubmit={handleSaveSmtp}>
+              <div className="ui-form-grid">
                 <div>
-                  <label
-                    htmlFor="alertas-host"
-                    style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                  >
+                  <label className="ui-field-label" htmlFor="alertas-host">
                     Servidor SMTP (Host) *
                   </label>
                   <input
@@ -613,19 +460,10 @@ export default function Alertas() {
                     value={smtpConfig.smtp_host}
                     onChange={(e) => setSmtpConfig({ ...smtpConfig, smtp_host: e.target.value })}
                     placeholder="smtp.gmail.com"
-                    style={{
-                      width: '100%',
-                      padding: 8,
-                      border: '1px solid #d1d5db',
-                      borderRadius: 6,
-                    }}
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="alertas-puerto"
-                    style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                  >
+                  <label className="ui-field-label" htmlFor="alertas-puerto">
                     Puerto *
                   </label>
                   <input
@@ -634,20 +472,11 @@ export default function Alertas() {
                     value={smtpConfig.smtp_port}
                     onChange={(e) => setSmtpConfig({ ...smtpConfig, smtp_port: e.target.value })}
                     placeholder="587"
-                    style={{
-                      width: '100%',
-                      padding: 8,
-                      border: '1px solid #d1d5db',
-                      borderRadius: 6,
-                    }}
                   />
                 </div>
               </div>
               <div>
-                <label
-                  htmlFor="alertas-usuario"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                >
+                <label className="ui-field-label" htmlFor="alertas-usuario">
                   Usuario *
                 </label>
                 <input
@@ -656,19 +485,10 @@ export default function Alertas() {
                   value={smtpConfig.smtp_user}
                   onChange={(e) => setSmtpConfig({ ...smtpConfig, smtp_user: e.target.value })}
                   placeholder="alertas@empresa.com"
-                  style={{
-                    width: '100%',
-                    padding: 8,
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                  }}
                 />
               </div>
               <div>
-                <label
-                  htmlFor="alertas-password"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                >
+                <label className="ui-field-label" htmlFor="alertas-password">
                   Contraseña / App Password *
                 </label>
                 <input
@@ -677,19 +497,10 @@ export default function Alertas() {
                   value={smtpConfig.smtp_pass}
                   onChange={(e) => setSmtpConfig({ ...smtpConfig, smtp_pass: e.target.value })}
                   placeholder="••••••••"
-                  style={{
-                    width: '100%',
-                    padding: 8,
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                  }}
                 />
               </div>
               <div>
-                <label
-                  htmlFor="alertas-from"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                >
+                <label className="ui-field-label" htmlFor="alertas-from">
                   Remitente (From) *
                 </label>
                 <input
@@ -697,69 +508,32 @@ export default function Alertas() {
                   value={smtpConfig.smtp_from}
                   onChange={(e) => setSmtpConfig({ ...smtpConfig, smtp_from: e.target.value })}
                   placeholder="SG-SST Alertas <alertas@empresa.com>"
-                  style={{
-                    width: '100%',
-                    padding: 8,
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                  }}
                 />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <label
-                  htmlFor="alertas-enabled"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    cursor: 'pointer',
-                    fontSize: 13,
-                  }}
-                >
-                  <input
-                    id="alertas-enabled"
-                    type="checkbox"
-                    checked={smtpConfig.alerts_enabled}
-                    onChange={(e) =>
-                      setSmtpConfig({ ...smtpConfig, alerts_enabled: e.target.checked })
-                    }
-                  />
-                  <span>Activar scheduler automático (diario 07:00, semanal lunes 08:00)</span>
-                </label>
+              <label className="alerts-config-switch" htmlFor="alertas-enabled">
+                <input
+                  id="alertas-enabled"
+                  type="checkbox"
+                  checked={smtpConfig.alerts_enabled}
+                  onChange={(e) =>
+                    setSmtpConfig({ ...smtpConfig, alerts_enabled: e.target.checked })
+                  }
+                />
+                <span>Activar scheduler automático (diario 07:00, semanal lunes 08:00)</span>
+              </label>
+              <div className="ui-form-actions">
+                <button className="ui-primary-button" type="submit">
+                  Guardar configuración
+                </button>
               </div>
-              <button
-                type="submit"
-                style={{
-                  padding: '10px 18px',
-                  background: '#0f766e',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 6,
-                  fontWeight: 'bold',
-                  alignSelf: 'flex-start',
-                }}
-              >
-                Guardar configuración
-              </button>
             </form>
           </div>
 
-          <div
-            style={{
-              background: '#fff',
-              padding: 20,
-              borderRadius: 10,
-              boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-              marginBottom: 16,
-            }}
-          >
-            <h2 style={{ color: '#0f766e', marginBottom: 16 }}>Pruebas y Previsualización</h2>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'end' }}>
-              <div style={{ flex: 1, minWidth: 250 }}>
-                <label
-                  htmlFor="alertas-test-email"
-                  style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 4 }}
-                >
+          <div className="ui-surface alerts-config-card">
+            <h2 className="alerts-config-title">Pruebas y Previsualización</h2>
+            <div className="alerts-config-row">
+              <div className="alerts-config-test">
+                <label className="ui-field-label" htmlFor="alertas-test-email">
                   Email destino para prueba
                 </label>
                 <input
@@ -768,68 +542,33 @@ export default function Alertas() {
                   value={testEmail}
                   onChange={(e) => setTestEmail(e.target.value)}
                   placeholder="admin@empresa.com"
-                  style={{
-                    width: '100%',
-                    padding: 8,
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                  }}
                 />
               </div>
               <button
-                onClick={handleTestEmail}
+                className="ui-primary-button alerts-button--info"
                 disabled={!testEmail || sending}
-                style={{
-                  padding: '10px 18px',
-                  background: '#2563eb',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 6,
-                  fontWeight: 'bold',
-                  cursor: testEmail && !sending ? 'pointer' : 'not-allowed',
-                }}
+                onClick={handleTestEmail}
+                type="button"
               >
-                {sending ? 'Enviando...' : '🧪 Enviar email de prueba'}
+                <FlaskConical aria-hidden="true" size={16} />
+                {sending ? 'Enviando...' : 'Enviar email de prueba'}
               </button>
               <button
-                onClick={handlePreview}
+                className="ui-action-button"
                 disabled={sending}
-                style={{
-                  padding: '10px 18px',
-                  background: '#6b7280',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 6,
-                  fontWeight: 'bold',
-                  cursor: sending ? 'not-allowed' : 'pointer',
-                }}
+                onClick={handlePreview}
+                type="button"
               >
-                👁️ Previsualizar resumen diario
+                <Eye aria-hidden="true" size={16} />
+                Previsualizar resumen diario
               </button>
             </div>
             {previewHtml && (
-              <div
-                style={{
-                  marginTop: 16,
-                  border: '1px solid #d1d5db',
-                  borderRadius: 6,
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    background: '#f3f4f6',
-                    padding: 8,
-                    borderBottom: '1px solid #d1d5db',
-                    fontWeight: 'bold',
-                    fontSize: 13,
-                  }}
-                >
-                  Vista previa (HTML)
-                </div>
+              <div className="alerts-preview">
+                <div className="alerts-preview-bar">Vista previa (HTML)</div>
                 <iframe
+                  className="alerts-preview-frame"
                   srcDoc={previewHtml}
-                  style={{ width: '100%', height: 300, border: 'none' }}
                   title="Previsualización de alerta"
                 />
               </div>

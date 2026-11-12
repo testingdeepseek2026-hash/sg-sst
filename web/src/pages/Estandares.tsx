@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { Check, ClipboardList, Paperclip, RotateCw, Save } from 'lucide-react';
+
 import { api } from '../lib/api';
 
 interface Standard {
@@ -200,108 +202,66 @@ export default function Estandares() {
   ).length;
 
   return (
-    <div className="standards-page" style={{ padding: 20, maxWidth: 1000 }}>
-      <div
-        className="standards-page-header"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 16,
-        }}
-      >
-        <h1 style={{ margin: 0, color: '#0f766e' }}>
-          Autoevaluación Estándares Mínimos (Res. 0312/2019)
-        </h1>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 13, color: '#374151' }}>
-            Puntaje ponderado:{' '}
-            <b style={{ color: getScoreColor(calculateScore()) }}>{calculateScore()}%</b>
-          </span>
+    <div className="standards-page ui-page">
+      <header className="ui-page-header standards-page-header">
+        <div>
+          <h1 className="ui-page-title">Autoevaluación Estándares Mínimos (Res. 0312/2019)</h1>
+          <p className="ui-page-description">
+            Seleccione el conjunto aplicable según clase de riesgo y tamaño. Cada estándar permite
+            observaciones, evidencia y plan de mejora automático para incumplimientos.
+          </p>
         </div>
-      </div>
-
-      <p style={{ color: '#6b7280', fontSize: 12, marginBottom: 14 }}>
-        Seleccione el conjunto aplicable según clase de riesgo y tamaño. Cada estándar permite
-        observaciones, evidencia y plan de mejora automático para incumplimientos.
-      </p>
-
-      {message && (
-        <div
-          style={{
-            background: message.type === 'success' ? '#ecfdf5' : '#fef2f2',
-            border: `1px solid ${message.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
-            color: message.type === 'success' ? '#065f46' : '#991b1b',
-            padding: 10,
-            borderRadius: 8,
-            marginBottom: 14,
-          }}
-        >
-          {message.text}
+        <div className="standards-score-chip">
+          <span className="standards-score-label">Puntaje ponderado</span>
+          <b className="standards-score-value" style={{ color: getScoreColor(calculateScore()) }}>
+            {calculateScore()}%
+          </b>
         </div>
-      )}
+      </header>
 
-      <div
-        className="standards-filters"
-        style={{
-          marginBottom: 14,
-          display: 'flex',
-          gap: 12,
-          alignItems: 'center',
-          flexWrap: 'wrap',
-        }}
-      >
-        <label htmlFor="estandar-set" style={{ fontSize: 13, color: '#374151' }}>
-          Estándar aplicable:
-        </label>
-        <select
-          id="estandar-set"
-          className="standards-filter-select"
-          value={setSel}
-          onChange={(e) => setSetSel(e.target.value)}
-          disabled={loading}
-          style={{ padding: 6, borderRadius: 6, border: '1px solid #d1d5db' }}
-        >
-          {setOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <label htmlFor="clase-riesgo" style={{ fontSize: 13, color: '#374151', marginLeft: 16 }}>
-          Clase riesgo:
-        </label>
-        <select
-          id="clase-riesgo"
-          className="standards-filter-select"
-          value={claseRiesgo}
-          onChange={(e) => setClaseRiesgo(e.target.value)}
-          disabled={loading}
-          style={{ padding: 6, borderRadius: 6, border: '1px solid #d1d5db' }}
-        >
-          <option value="I">I</option>
-          <option value="II">II</option>
-          <option value="III">III</option>
-          <option value="IV">IV</option>
-          <option value="V">V</option>
-        </select>
+      {message && <div className={`ui-feedback ui-feedback--${message.type}`}>{message.text}</div>}
+
+      <div className="standards-filters ui-surface">
+        <div className="standards-filter-field">
+          <label className="ui-field-label" htmlFor="estandar-set">
+            Estándar aplicable:
+          </label>
+          <select
+            id="estandar-set"
+            className="standards-filter-select"
+            value={setSel}
+            onChange={(e) => setSetSel(e.target.value)}
+            disabled={loading}
+          >
+            {setOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="standards-filter-field">
+          <label className="ui-field-label" htmlFor="clase-riesgo">
+            Clase riesgo:
+          </label>
+          <select
+            id="clase-riesgo"
+            className="standards-filter-select standards-filter-select--narrow"
+            value={claseRiesgo}
+            onChange={(e) => setClaseRiesgo(e.target.value)}
+            disabled={loading}
+          >
+            <option value="I">I</option>
+            <option value="II">II</option>
+            <option value="III">III</option>
+            <option value="IV">IV</option>
+            <option value="V">V</option>
+          </select>
+        </div>
       </div>
 
       {cumplimiento && (
-        <div
-          style={{
-            background: '#ecfdf5',
-            padding: 12,
-            borderRadius: 8,
-            marginBottom: 14,
-            fontSize: 13,
-            color: '#065f46',
-            display: 'flex',
-            gap: 16,
-            flexWrap: 'wrap',
-            alignItems: 'center',
-          }}
-        >
+        <div className="standards-summary">
           <div>
             Cumplimiento simple: <b>{cumplimiento.porcentaje}%</b> ({cumplimiento.cumplidos}/
             {cumplimiento.total})
@@ -319,31 +279,27 @@ export default function Estandares() {
         </div>
       )}
 
-      <div className="standards-table-wrap">
-        <table
-          style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            background: '#fff',
-            borderRadius: 8,
-            overflow: 'hidden',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-          }}
-        >
+      <div className="standards-table-wrap ui-surface">
+        <table className="ui-table standards-table">
           <thead>
-            <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151', width: '60px' }}>Código</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Estándar</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151', width: '80px' }}>Cap.</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151', width: '80px' }}>Cumple</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Observaciones</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Plan de Mejora</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151', width: '120px' }}>
-                Evidencia
-              </th>
+            <tr>
+              <th className="standards-col-codigo">Código</th>
+              <th>Estándar</th>
+              <th className="standards-col-cap">Cap.</th>
+              <th className="standards-col-cumple">Cumple</th>
+              <th>Observaciones</th>
+              <th>Plan de Mejora</th>
+              <th className="standards-col-evidencia">Evidencia</th>
             </tr>
           </thead>
           <tbody>
+            {stds.length === 0 && (
+              <tr>
+                <td className="standards-empty" colSpan={7}>
+                  No hay estándares para el conjunto y la clase de riesgo seleccionados.
+                </td>
+              </tr>
+            )}
             {stds.map((s) => {
               const a = assess[s.id] || {
                 cumple: false,
@@ -353,89 +309,31 @@ export default function Estandares() {
               };
               const isIncumplido = !a.cumple;
               return (
-                <tr
-                  key={s.id}
-                  style={{
-                    borderBottom: '1px solid #f3f4f6',
-                    background: isIncumplido ? '#fef2f2' : '',
-                  }}
-                >
-                  <td
-                    style={{
-                      padding: 10,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: isIncumplido ? '#dc2626' : '#111827',
-                    }}
-                  >
-                    {s.codigo}
+                <tr key={s.id} className={isIncumplido ? 'standards-row--incumplido' : undefined}>
+                  <td className="standards-codigo">{s.codigo}</td>
+                  <td className="standards-nombre">
+                    <div className="standards-nombre-titulo">{s.titulo}</div>
+                    <div className="standards-nombre-desc">{s.descripcion}</div>
                   </td>
-                  <td style={{ padding: 10, fontSize: 12, maxWidth: '300px' }}>
-                    <div style={{ fontWeight: 500 }}>{s.titulo}</div>
-                    <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
-                      {s.descripcion}
-                    </div>
-                  </td>
-                  <td style={{ padding: 10, fontSize: 12, textAlign: 'center' }}>
-                    <span
-                      style={{
-                        padding: '2px 8px',
-                        borderRadius: 12,
-                        fontSize: 10,
-                        fontWeight: 'bold',
-                        background:
-                          s.capitulo === 'I'
-                            ? '#dbeafe'
-                            : s.capitulo === 'II'
-                              ? '#fef3c7'
-                              : '#fce7f3',
-                        color:
-                          s.capitulo === 'I'
-                            ? '#1e40af'
-                            : s.capitulo === 'II'
-                              ? '#92400e'
-                              : '#9d174d',
-                      }}
-                    >
+                  <td className="standards-cap">
+                    <span className={`standards-cap-badge standards-cap-badge--${s.capitulo}`}>
                       {s.capitulo}
                     </span>
                   </td>
-                  <td style={{ padding: 10, textAlign: 'center' }}>
-                    <label
-                      htmlFor={`check-${s.id}`}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6,
-                        cursor: 'pointer',
-                        margin: 0,
-                      }}
-                    >
+                  <td className="standards-cumple">
+                    <label className="standards-check" htmlFor={`check-${s.id}`}>
                       <input
                         id={`check-${s.id}`}
                         type="checkbox"
                         checked={!!a.cumple}
                         onChange={() => toggle(s.id)}
                       />
-                      <span
-                        style={{
-                          position: 'absolute',
-                          width: 1,
-                          height: 1,
-                          padding: 0,
-                          margin: -1,
-                          overflow: 'hidden',
-                          clip: 'rect(0,0,0,0)',
-                          whiteSpace: 'nowrap',
-                          border: 0,
-                        }}
-                      >
+                      <span className="ui-visually-hidden">
                         Marcar estándar {s.codigo} como cumplido
                       </span>
                     </label>
                   </td>
-                  <td style={{ padding: 8 }}>
+                  <td>
                     <textarea
                       value={a.observaciones || ''}
                       onChange={(e) => handleObservacionesChange(s.id, e.target.value)}
@@ -445,20 +343,11 @@ export default function Estandares() {
                           : 'Observaciones opcionales'
                       }
                       rows={2}
-                      style={{
-                        width: '100%',
-                        padding: 6,
-                        border: isIncumplido ? '1px solid #fca5a5' : '1px solid #d1d5db',
-                        borderRadius: 6,
-                        fontSize: 11,
-                        fontFamily: 'inherit',
-                        resize: 'vertical',
-                        background: isIncumplido ? '#fef2f2' : '#fff',
-                      }}
+                      className={`standards-textarea${isIncumplido ? ' standards-textarea--incumplido' : ''}`}
                       required={isIncumplido}
                     />
                   </td>
-                  <td style={{ padding: 8 }}>
+                  <td>
                     <textarea
                       value={a.plan_mejora || ''}
                       onChange={(e) => handlePlanMejoraChange(s.id, e.target.value)}
@@ -466,51 +355,27 @@ export default function Estandares() {
                         isIncumplido ? 'Se genera automático al guardar...' : 'No requerido'
                       }
                       rows={2}
-                      style={{
-                        width: '100%',
-                        padding: 6,
-                        border: isIncumplido ? '1px solid #fca5a5' : '1px solid #d1d5db',
-                        borderRadius: 6,
-                        fontSize: 11,
-                        fontFamily: 'inherit',
-                        resize: 'vertical',
-                        background: isIncumplido ? '#fef2f2' : '#f9fafb',
-                      }}
+                      className={`standards-textarea standards-textarea--plan${isIncumplido ? ' standards-textarea--incumplido' : ''}`}
                       readOnly={!isIncumplido}
                     />
                     {isIncumplido && a.plan_mejora && (
-                      <div style={{ fontSize: 10, color: '#6b7280', marginTop: 4 }}>
-                        ✓ Plan generado (editable)
+                      <div className="standards-plan-hint">
+                        <Check aria-hidden="true" size={12} /> Plan generado (editable)
                       </div>
                     )}
                   </td>
-                  <td style={{ padding: 8, textAlign: 'center' }}>
+                  <td className="standards-evidencia">
                     {a.evidencia_url ? (
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 4,
-                          alignItems: 'center',
-                        }}
-                      >
+                      <div className="standards-evidencia-subida">
                         <a
                           href={a.evidencia_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{
-                            padding: '4px 8px',
-                            background: '#dbeafe',
-                            color: '#1e40af',
-                            borderRadius: 4,
-                            fontSize: 11,
-                            fontWeight: 500,
-                            textDecoration: 'none',
-                          }}
+                          className="standards-evidencia-link"
                         >
-                          📎 Ver evidencia
+                          <Paperclip aria-hidden="true" size={12} /> Ver evidencia
                         </a>
-                        <span style={{ fontSize: 10, color: '#6b7280' }}>Subida</span>
+                        <span className="standards-evidencia-estado">Subida</span>
                       </div>
                     ) : (
                       <input
@@ -520,10 +385,7 @@ export default function Estandares() {
                           const f = e.target.files?.[0];
                           if (f) handleFileUpload(s.id, f);
                         }}
-                        style={{
-                          fontSize: 11,
-                          padding: 4,
-                        }}
+                        className="standards-evidencia-input"
                       />
                     )}
                   </td>
@@ -534,70 +396,35 @@ export default function Estandares() {
         </table>
       </div>
 
-      <div
-        style={{
-          marginTop: 16,
-          display: 'flex',
-          gap: 8,
-          justifyContent: 'flex-end',
-          flexWrap: 'wrap',
-        }}
-      >
+      <div className="standards-actions">
         <button
+          className="ui-primary-button"
           onClick={save}
           disabled={saving || loading}
-          style={{
-            padding: '10px 18px',
-            background: saving || loading ? '#94a3b8' : '#0f766e',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 6,
-            fontWeight: 'bold',
-            fontSize: 13,
-            cursor: saving || loading ? 'not-allowed' : 'pointer',
-          }}
+          type="button"
         >
-          {saving ? 'Guardando...' : '💾 Guardar evaluación completa'}
+          <Save aria-hidden="true" size={16} />
+          {saving ? 'Guardando...' : 'Guardar evaluación completa'}
         </button>
-        <button
-          onClick={loadData}
-          disabled={loading}
-          style={{
-            padding: '10px 18px',
-            background: '#e5e7eb',
-            color: '#374151',
-            border: 'none',
-            borderRadius: 6,
-            fontWeight: 'bold',
-            fontSize: 13,
-            cursor: loading ? 'not-allowed' : 'pointer',
-          }}
-        >
-          🔄 Recargar
+        <button className="ui-action-button" onClick={loadData} disabled={loading} type="button">
+          <RotateCw aria-hidden="true" size={16} />
+          Recargar
         </button>
       </div>
 
-      <details style={{ marginTop: 24, fontSize: 12, color: '#6b7280' }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#374151' }}>
-          📋 Metodología de evaluación y ponderación
+      <details className="standards-metodologia">
+        <summary>
+          <ClipboardList aria-hidden="true" size={14} /> Metodología de evaluación y ponderación
         </summary>
-        <div
-          style={{
-            marginTop: 12,
-            padding: 12,
-            background: '#f9fafb',
-            borderRadius: 6,
-            lineHeight: 1.7,
-          }}
-        >
+        <div className="standards-metodologia-body">
           <strong>Ponderación por Capítulo (GTC 45 / Res. 0312/2019):</strong>
-          <ul style={{ margin: '8px 0 0 20px' }}>
+          <ul>
             <li>Capítulo I (Estructura): peso 1.0 — Fundamentos y organización del SG-SST</li>
             <li>Capítulo II (Proceso): peso 1.5 — Implementación operativa</li>
             <li>Capítulo III (Resultado): peso 2.0 — Desempeño y resultados</li>
           </ul>
           <strong>Reglas de negocio:</strong>
-          <ul style={{ margin: '8px 0 0 20px' }}>
+          <ul>
             <li>
               Incumplimientos <strong>requieren</strong> observaciones y generan plan de mejora
               automático

@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import {
+  Camera,
+  Check,
+  CircleCheck,
+  ClipboardList,
+  Clock,
+  PenLine,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react';
+
 import { SignaturePad } from '@/components/SignaturePad';
 import { api } from '@/lib/api';
 
@@ -392,15 +404,15 @@ const INSPECTION_CHECKLISTS: Record<string, { id: string; label: string; descrip
   };
 
 const TIPO_LABELS: Record<string, string> = {
-  herramientas: '🔧 Herramientas',
-  epp: '🛡️ EPP / Dotación',
-  escaleras: '🪜 Escaleras',
-  arneses: '🪢 Arnés / Alturas',
-  vehiculo: '🚗 Vehículo',
-  botiquin: '🩹 Botiquín',
-  extintores: '🧯 Extintores',
-  puesto_trabajo: '🪑 Puesto de Trabajo',
-  obra: '🏗️ Obra / Instalación',
+  herramientas: 'Herramientas',
+  epp: 'EPP / Dotación',
+  escaleras: 'Escaleras',
+  arneses: 'Arnés / Alturas',
+  vehiculo: 'Vehículo',
+  botiquin: 'Botiquín',
+  extintores: 'Extintores',
+  puesto_trabajo: 'Puesto de Trabajo',
+  obra: 'Obra / Instalación',
 };
 
 const ESTADO_COLORS: Record<string, { bg: string; text: string }> = {
@@ -623,11 +635,9 @@ export default function Inspecciones() {
   return (
     <div className="ui-page inspections-page">
       <div className="ui-page-header inspections-page-header">
-        <h1 className="ui-page-title" style={{ margin: 0 }}>
-          Inspecciones en Obra y Puestos de Trabajo
-        </h1>
+        <h1 className="ui-page-title">Inspecciones en Obra y Puestos de Trabajo</h1>
         <button className="ui-primary-button" onClick={newInspection} type="button">
-          + Nueva Inspección
+          <Plus aria-hidden="true" size={16} /> Nueva Inspección
         </button>
       </div>
 
@@ -649,15 +659,9 @@ export default function Inspecciones() {
               ? 'Ver Inspección'
               : 'Nueva Inspección'}
         </h3>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <form onSubmit={handleSubmit} className="inspections-form-fields">
           {/* Datos generales */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: 12,
-            }}
-          >
+          <div className="inspections-form-grid">
             <div>
               <label className="ui-field-label" htmlFor="insp-tipo">
                 Tipo *
@@ -666,7 +670,6 @@ export default function Inspecciones() {
                 id="insp-tipo"
                 value={form.tipo}
                 onChange={(e) => handleInputChange('tipo', e.target.value)}
-                style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
                 required
               >
                 {Object.entries(TIPO_LABELS).map(([k, v]) => (
@@ -685,7 +688,6 @@ export default function Inspecciones() {
                 type="date"
                 value={form.fecha}
                 onChange={(e) => handleInputChange('fecha', e.target.value)}
-                style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
                 required
               />
             </div>
@@ -698,7 +700,6 @@ export default function Inspecciones() {
                 value={form.lugar}
                 onChange={(e) => handleInputChange('lugar', e.target.value)}
                 placeholder="Ej: Planta 2, Fachada norte, Vehículo placa XXX"
-                style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
               />
             </div>
             <div>
@@ -710,7 +711,6 @@ export default function Inspecciones() {
                 value={form.responsable}
                 onChange={(e) => handleInputChange('responsable', e.target.value)}
                 placeholder="Nombre del inspector"
-                style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
               />
             </div>
             <div>
@@ -721,7 +721,6 @@ export default function Inspecciones() {
                 id="insp-estado"
                 value={form.estado}
                 onChange={(e) => handleInputChange('estado', e.target.value)}
-                style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
               >
                 <option value="pendiente">Pendiente</option>
                 <option value="aprobada">Aprobada</option>
@@ -738,39 +737,35 @@ export default function Inspecciones() {
                 value={form.firmado_por}
                 onChange={(e) => handleInputChange('firmado_por', e.target.value)}
                 placeholder="Nombre quien firma"
-                style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
               />
             </div>
           </div>
 
           {/* Progreso del checklist */}
           {totalItems > 0 && (
-            <div
-              style={{
-                padding: 12,
-                background: '#f0fdf4',
-                borderRadius: 8,
-                border: '1px solid #bbf7d0',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ fontWeight: 600, color: '#166534' }}>
+            <div className="inspections-progress">
+              <div className="inspections-progress-header">
+                <span className="inspections-progress-label">
                   Progreso: {completedItems} / {totalItems} items ({progress}%)
                 </span>
-                <span style={{ color: progress === 100 ? '#16a34a' : '#f59e0b' }}>
-                  {progress === 100 ? '✅ Completo' : '⏳ Pendiente'}
+                <span
+                  className={`inspections-progress-estado${progress === 100 ? ' inspections-progress-estado--completo' : ''}`}
+                >
+                  {progress === 100 ? (
+                    <>
+                      <CircleCheck aria-hidden="true" size={14} /> Completo
+                    </>
+                  ) : (
+                    <>
+                      <Clock aria-hidden="true" size={14} /> Pendiente
+                    </>
+                  )}
                 </span>
               </div>
-              <div
-                style={{ height: 8, background: '#e5e7eb', borderRadius: 4, overflow: 'hidden' }}
-              >
+              <div className="inspections-progress-bar">
                 <div
-                  style={{
-                    height: '100%',
-                    width: `${progress}%`,
-                    background: progress === 100 ? '#16a34a' : '#f59e0b',
-                    transition: 'width 0.3s',
-                  }}
+                  className={`inspections-progress-fill${progress === 100 ? ' inspections-progress-fill--completo' : ''}`}
+                  style={{ width: `${progress}%` }}
                 ></div>
               </div>
             </div>
@@ -778,41 +773,25 @@ export default function Inspecciones() {
 
           {/* Checklist específico */}
           {checklist.length > 0 && (
-            <details style={{ marginTop: 8 }}>
-              <summary
-                style={{ cursor: 'pointer', fontWeight: 600, color: '#0f766e', fontSize: 14 }}
-              >
-                📋 Checklist: {TIPO_LABELS[form.tipo]} ({completedItems}/{totalItems})
+            <details className="inspections-checklist-details">
+              <summary className="inspections-checklist-summary">
+                <ClipboardList aria-hidden="true" size={14} /> Checklist: {TIPO_LABELS[form.tipo]} (
+                {completedItems}/{totalItems})
               </summary>
-              <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
+              <div className="inspections-checklist-list">
                 {checklist.map((item) => (
-                  <label
-                    key={item.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: 10,
-                      padding: 10,
-                      background: '#f9fafb',
-                      borderRadius: 6,
-                      cursor: 'pointer',
-                      border: '1px solid #e5e7eb',
-                    }}
-                  >
+                  <label key={item.id} className="inspections-checklist-item">
                     <input
                       type="checkbox"
                       checked={!!form.checklist[item.id]}
                       onChange={(e) =>
                         handleInputChange('checklist', { [item.id]: e.target.checked })
                       }
-                      style={{ marginTop: 2, width: 18, height: 18, accentColor: '#0f766e' }}
                     />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 500, fontSize: 13 }}>{item.label}</div>
+                    <div>
+                      <div className="inspections-checklist-label">{item.label}</div>
                       {item.descripcion && (
-                        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
-                          {item.descripcion}
-                        </div>
+                        <div className="inspections-checklist-desc">{item.descripcion}</div>
                       )}
                     </div>
                   </label>
@@ -832,21 +811,14 @@ export default function Inspecciones() {
               onChange={(e) => handleInputChange('observaciones', e.target.value)}
               rows={3}
               placeholder="Hallazgos, recomendaciones, acciones correctivas..."
-              style={{
-                width: '100%',
-                padding: 8,
-                border: '1px solid #d1d5db',
-                borderRadius: 6,
-                fontFamily: 'inherit',
-                resize: 'vertical',
-              }}
+              className="inspections-observaciones"
             />
           </div>
 
           {/* Captura de fotos */}
           <div>
             <label className="ui-field-label" htmlFor="photo-input">
-              📷 Evidencia fotográfica
+              Evidencia fotográfica
             </label>
             <input
               type="file"
@@ -858,57 +830,23 @@ export default function Inspecciones() {
             />
             <button
               type="button"
+              className="inspections-photo-button"
               onClick={() => document.getElementById('photo-input')?.click()}
-              style={{
-                padding: '8px 16px',
-                background: '#e0f2fe',
-                color: '#0369a1',
-                border: '1px solid #bae6fd',
-                borderRadius: 6,
-                cursor: 'pointer',
-                fontSize: 13,
-                marginBottom: 8,
-              }}
             >
-              📷 Agregar fotos
+              <Camera aria-hidden="true" size={14} /> Agregar fotos
             </button>
             {form.fotos.length > 0 && (
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <div className="inspections-fotos-list">
                 {form.fotos.map((photo, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      position: 'relative',
-                      width: 100,
-                      height: 100,
-                      borderRadius: 6,
-                      overflow: 'hidden',
-                      border: '1px solid #d1d5db',
-                    }}
-                  >
-                    <img
-                      src={photo}
-                      alt={`Foto ${idx + 1}`}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
+                  <div key={idx} className="inspections-foto-thumb">
+                    <img src={photo} alt={`Foto ${idx + 1}`} />
                     <button
                       type="button"
+                      className="inspections-foto-remove"
+                      aria-label={`Eliminar foto ${idx + 1}`}
                       onClick={() => removePhoto(idx)}
-                      style={{
-                        position: 'absolute',
-                        top: 2,
-                        right: 2,
-                        padding: '2px 6px',
-                        background: '#fee2e2',
-                        color: '#991b1b',
-                        border: 'none',
-                        borderRadius: '50%',
-                        cursor: 'pointer',
-                        fontSize: 10,
-                        lineHeight: 1,
-                      }}
                     >
-                      ✕
+                      <X aria-hidden="true" size={10} />
                     </button>
                   </div>
                 ))}
@@ -919,32 +857,15 @@ export default function Inspecciones() {
           {/* Firma digital */}
           <div>
             <label className="ui-field-label" htmlFor="inspection-signature">
-              ✍️ Firma digital del responsable
+              Firma digital del responsable
             </label>
             {form.firma_url ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <img
-                  src={form.firma_url}
-                  alt="Firma"
-                  style={{
-                    maxHeight: 60,
-                    border: '1px solid #d1d5db',
-                    borderRadius: 4,
-                    background: '#fff',
-                  }}
-                />
+              <div className="inspections-firma-row">
+                <img src={form.firma_url} alt="Firma" className="inspections-firma-img" />
                 <button
                   type="button"
+                  className="ui-action-button"
                   onClick={() => handleInputChange('firma_url', '')}
-                  style={{
-                    padding: '6px 12px',
-                    background: '#fee2e2',
-                    color: '#991b1b',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                    fontSize: 12,
-                  }}
                 >
                   Eliminar firma
                 </button>
@@ -952,18 +873,10 @@ export default function Inspecciones() {
             ) : (
               <button
                 type="button"
+                className="inspections-firma-button"
                 onClick={() => handleSign({ id: 'new' } as Inspection)}
-                style={{
-                  padding: '8px 16px',
-                  background: '#fef3c7',
-                  color: '#92400e',
-                  border: '1px solid #fde68a',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontSize: 13,
-                }}
               >
-                ✍️ Firmar en pantalla
+                <PenLine aria-hidden="true" size={14} /> Firmar en pantalla
               </button>
             )}
           </div>
@@ -982,21 +895,18 @@ export default function Inspecciones() {
 
       {/* Lista de inspecciones */}
       <div className="ui-surface inspections-table-wrap">
-        <table
-          className="inspections-table"
-          style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}
-        >
+        <table className="ui-table inspections-table">
           <thead>
-            <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Tipo</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Fecha</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Lugar</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Responsable</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Estado</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Checklist</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Fotos</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Firma</th>
-              <th style={{ padding: 10, fontSize: 12, color: '#374151' }}>Acciones</th>
+            <tr>
+              <th>Tipo</th>
+              <th>Fecha</th>
+              <th>Lugar</th>
+              <th>Responsable</th>
+              <th>Estado</th>
+              <th>Checklist</th>
+              <th>Fotos</th>
+              <th>Firma</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -1008,80 +918,52 @@ export default function Inspecciones() {
               const hasFotos = x.archivo_fotos && JSON.parse(x.archivo_fotos).length > 0;
               const hasFirma = !!x.firma_url;
               return (
-                <tr key={x.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: 10, fontSize: 12 }}>{TIPO_LABELS[x.tipo] || x.tipo}</td>
-                  <td style={{ padding: 10, fontSize: 12 }}>{x.fecha}</td>
-                  <td style={{ padding: 10, fontSize: 12 }}>{x.lugar || '—'}</td>
-                  <td style={{ padding: 10, fontSize: 12 }}>{x.responsable || '—'}</td>
-                  <td style={{ padding: 10 }}>
+                <tr key={x.id}>
+                  <td>{TIPO_LABELS[x.tipo] || x.tipo}</td>
+                  <td>{x.fecha}</td>
+                  <td>{x.lugar || '—'}</td>
+                  <td>{x.responsable || '—'}</td>
+                  <td>
                     <span
-                      style={{
-                        padding: '2px 8px',
-                        borderRadius: 12,
-                        fontSize: 11,
-                        fontWeight: 'bold',
-                        background: estadoColor.bg,
-                        color: estadoColor.text,
-                      }}
+                      className="inspections-estado-badge"
+                      style={{ background: estadoColor.bg, color: estadoColor.text }}
                     >
                       {x.estado}
                     </span>
                   </td>
-                  <td style={{ padding: 10, fontSize: 12 }}>
-                    {total > 0 ? `${completed}/${total}` : '—'}
+                  <td>{total > 0 ? `${completed}/${total}` : '—'}</td>
+                  <td className="inspections-cell-icon">
+                    {hasFotos ? <Camera aria-label="Con fotos" size={14} /> : '—'}
                   </td>
-                  <td style={{ padding: 10, textAlign: 'center' }}>{hasFotos ? '📷' : '—'}</td>
-                  <td style={{ padding: 10, textAlign: 'center' }}>{hasFirma ? '✅' : '—'}</td>
-                  <td style={{ padding: 10, display: 'flex', gap: 6 }}>
-                    <button
-                      onClick={() => openInspection(x)}
-                      style={{
-                        padding: '4px 8px',
-                        background: '#0f766e',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 4,
-                        fontSize: 11,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Ver
-                    </button>
-                    <button
-                      onClick={() => editInspection(x)}
-                      style={{
-                        padding: '4px 8px',
-                        background: '#2563eb',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 4,
-                        fontSize: 11,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDelete(x.id)}
-                      style={{
-                        padding: '4px 8px',
-                        background: '#dc2626',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 4,
-                        fontSize: 11,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      ✕
-                    </button>
+                  <td className="inspections-cell-icon">
+                    {hasFirma ? <PenLine aria-label="Con firma" size={14} /> : '—'}
+                  </td>
+                  <td>
+                    <div className="inspections-fila-acciones">
+                      <button className="inspections-button-ver" onClick={() => openInspection(x)}>
+                        Ver
+                      </button>
+                      <button
+                        className="inspections-button-editar"
+                        onClick={() => editInspection(x)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        className="inspections-button-eliminar"
+                        aria-label={`Eliminar inspección ${x.id}`}
+                        onClick={() => handleDelete(x.id)}
+                      >
+                        <Trash2 aria-hidden="true" size={13} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
             })}
             {inspections.length === 0 && (
               <tr>
-                <td colSpan={9} style={{ padding: 30, textAlign: 'center', color: '#9ca3af' }}>
+                <td className="inspections-empty" colSpan={9}>
                   No hay inspecciones registradas
                 </td>
               </tr>
@@ -1092,67 +974,19 @@ export default function Inspecciones() {
 
       {/* Modal Ver Inspección */}
       {viewingInspection && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: 20,
-            overflow: 'auto',
-          }}
-        >
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: 12,
-              width: '100%',
-              maxWidth: 900,
-              maxHeight: '90vh',
-              overflow: 'auto',
-            }}
-          >
-            <div
-              style={{
-                padding: 20,
-                borderBottom: '1px solid #e5e7eb',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <h3 style={{ margin: 0, color: '#0f766e' }}>
+        <div className="inspections-modal-backdrop">
+          <div className="inspections-modal">
+            <div className="inspections-modal-header">
+              <h3>
                 {TIPO_LABELS[viewingInspection.tipo] || viewingInspection.tipo} -{' '}
                 {viewingInspection.fecha}
               </h3>
-              <button
-                onClick={() => setViewingInspection(null)}
-                style={{
-                  padding: '8px 12px',
-                  background: '#e5e7eb',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                }}
-              >
-                ✕ Cerrar
+              <button className="ui-action-button" onClick={() => setViewingInspection(null)}>
+                <X aria-hidden="true" size={14} /> Cerrar
               </button>
             </div>
-            <div style={{ padding: 20, maxHeight: '70vh', overflow: 'auto' }}>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                  gap: 12,
-                  marginBottom: 16,
-                }}
-              >
+            <div className="inspections-modal-body">
+              <div className="inspections-view-grid">
                 <div>
                   <strong>Lugar:</strong> {viewingInspection.lugar || '—'}
                 </div>
@@ -1162,11 +996,8 @@ export default function Inspecciones() {
                 <div>
                   <strong>Estado:</strong>{' '}
                   <span
+                    className="inspections-estado-badge"
                     style={{
-                      padding: '2px 8px',
-                      borderRadius: 12,
-                      fontSize: 11,
-                      fontWeight: 'bold',
                       background: (ESTADO_COLORS[viewingInspection.estado] || { bg: '#f3f4f6' }).bg,
                       color: (ESTADO_COLORS[viewingInspection.estado] || { text: '#374151' }).text,
                     }}
@@ -1179,27 +1010,19 @@ export default function Inspecciones() {
                 </div>
               </div>
               {viewingInspection.observaciones && (
-                <div style={{ marginBottom: 16 }}>
+                <div>
                   <strong>Observaciones:</strong>
-                  <p
-                    style={{
-                      marginTop: 4,
-                      whiteSpace: 'pre-wrap',
-                      background: '#f9fafb',
-                      padding: 12,
-                      borderRadius: 6,
-                    }}
-                  >
+                  <p className="inspections-view-observaciones">
                     {viewingInspection.observaciones}
                   </p>
                 </div>
               )}
               {viewingInspection.resultado_json && (
-                <details style={{ marginBottom: 16 }}>
-                  <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#0f766e' }}>
-                    📋 Checklist completado
+                <details>
+                  <summary className="inspections-checklist-summary">
+                    <ClipboardList aria-hidden="true" size={14} /> Checklist completado
                   </summary>
-                  <div style={{ marginTop: 12 }}>
+                  <div className="inspections-view-checklist">
                     {(() => {
                       try {
                         const data = JSON.parse(viewingInspection.resultado_json!);
@@ -1207,32 +1030,16 @@ export default function Inspecciones() {
                         return items.map((item) => (
                           <div
                             key={item.id}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 8,
-                              padding: 8,
-                              background: data[item.id] ? '#dcfce7' : '#fee2e2',
-                              borderRadius: 4,
-                              marginBottom: 4,
-                            }}
+                            className={`inspections-view-item${data[item.id] ? ' inspections-view-item--ok' : ''}`}
                           >
-                            <span
-                              style={{
-                                width: 20,
-                                height: 20,
-                                borderRadius: '50%',
-                                background: data[item.id] ? '#16a34a' : '#ef4444',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: '#fff',
-                                fontSize: 12,
-                              }}
-                            >
-                              {data[item.id] ? '✓' : '✗'}
+                            <span className="inspections-view-item-dot">
+                              {data[item.id] ? (
+                                <Check aria-hidden="true" size={12} />
+                              ) : (
+                                <X aria-hidden="true" size={12} />
+                              )}
                             </span>
-                            <span style={{ fontSize: 13 }}>{item.label}</span>
+                            <span>{item.label}</span>
                           </div>
                         ));
                       } catch {
@@ -1243,37 +1050,28 @@ export default function Inspecciones() {
                 </details>
               )}
               {viewingInspection.archivo_fotos && (
-                <details style={{ marginBottom: 16 }}>
-                  <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#0f766e' }}>
-                    📷 Fotos ({JSON.parse(viewingInspection.archivo_fotos).length})
+                <details>
+                  <summary className="inspections-checklist-summary">
+                    <Camera aria-hidden="true" size={14} /> Fotos (
+                    {JSON.parse(viewingInspection.archivo_fotos).length})
                   </summary>
-                  <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <div className="inspections-view-fotos">
                     {JSON.parse(viewingInspection.archivo_fotos).map(
                       (photo: string, idx: number) => (
-                        <img
-                          key={idx}
-                          src={photo}
-                          alt={`Foto ${idx + 1}`}
-                          style={{
-                            maxWidth: 200,
-                            maxHeight: 150,
-                            borderRadius: 6,
-                            border: '1px solid #d1d5db',
-                          }}
-                        />
+                        <img key={idx} src={photo} alt={`Foto ${idx + 1}`} />
                       )
                     )}
                   </div>
                 </details>
               )}
               {viewingInspection.firma_url && (
-                <div style={{ marginBottom: 16 }}>
+                <div>
                   <strong>Firma:</strong>
-                  <div style={{ marginTop: 8 }}>
+                  <div className="inspections-firma-row">
                     <img
                       src={viewingInspection.firma_url}
                       alt="Firma"
-                      style={{ maxHeight: 80, border: '1px solid #d1d5db', borderRadius: 4 }}
+                      className="inspections-firma-img inspections-firma-img--grande"
                     />
                   </div>
                 </div>
@@ -1285,31 +1083,9 @@ export default function Inspecciones() {
 
       {/* Modal Firma */}
       {signingInspection && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1001,
-            padding: 20,
-          }}
-        >
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: 12,
-              width: '100%',
-              maxWidth: 500,
-              padding: 20,
-            }}
-          >
-            <h3 style={{ margin: '0 0 16px', color: '#0f766e' }}>
+        <div className="inspections-modal-backdrop">
+          <div className="inspections-modal inspections-modal--firma">
+            <h3 className="inspections-modal-title">
               Firma digital - {TIPO_LABELS[form.tipo] || form.tipo}
             </h3>
             <SignaturePad
