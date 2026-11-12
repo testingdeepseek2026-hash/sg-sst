@@ -71,6 +71,40 @@ textarea {
   color: var(--color-text-primary);
 }
 
+.app-loading {
+  display: flex;
+  min-height: min(60vh, 480px);
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  color: var(--color-brand-700);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.app-loading--screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--color-canvas);
+}
+
+.app-loading-indicator {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  border: 2px solid var(--color-brand-100);
+  border-top-color: var(--color-brand-700);
+  border-radius: 50%;
+  animation: app-loading-spin 700ms linear infinite;
+}
+
+@keyframes app-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .ui-page-title {
   color: var(--color-brand-700);
   font-size: clamp(1.25rem, 2vw, 1.75rem);
@@ -2347,6 +2381,24 @@ textarea {
   overscroll-behavior-x: contain;
 }
 
+.policy-page,
+.standards-page {
+  width: 100%;
+  min-width: 0;
+}
+
+.policy-table-section,
+.standards-table-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.policy-table {
+  min-width: 720px;
+}
+
 .ui-table {
   width: 100%;
   min-width: min(560px, 100%);
@@ -2580,6 +2632,51 @@ textarea {
 }
 
 @media (max-width: 767px) {
+  .policy-page,
+  .standards-page {
+    padding: var(--space-4) !important;
+  }
+
+  .policy-page-header,
+  .standards-page-header {
+    align-items: stretch !important;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .policy-page-header h1,
+  .standards-page-header h1 {
+    min-width: 0;
+    font-size: 1.5rem;
+    line-height: 1.25;
+  }
+
+  .policy-page-header-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .policy-page-header-actions button {
+    min-height: 44px;
+    padding-inline: var(--space-2) !important;
+  }
+
+  .standards-filters select {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 44px;
+  }
+
+  .standards-filters label {
+    margin-left: 0 !important;
+  }
+
+  .standards-table-wrap {
+    width: 100%;
+  }
+
   .workers-page,
   .alerts-page,
   .inspections-page {
@@ -3010,6 +3107,11 @@ textarea {
   gap: var(--space-3);
   padding: var(--space-4);
   margin-bottom: var(--space-4);
+}
+
+.importar-form input[type='file'] {
+  width: 100%;
+  min-width: 0;
 }
 
 .importar-form-row {
@@ -4068,7 +4170,9 @@ textarea {
 
 @media (prefers-reduced-motion: reduce) {
   .app-sidebar,
-  .app-navigation-link {
+  .app-navigation-link,
+  .app-loading-indicator {
     transition: none;
+    animation: none;
   }
 }

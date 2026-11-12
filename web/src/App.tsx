@@ -1,32 +1,47 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import Layout from './components/Layout';
 import { api } from './lib/api';
-import Acciones from './pages/Acciones';
-import Alertas from './pages/Alertas';
-import Altura from './pages/Altura';
-import Auditorias from './pages/Auditorias';
-import Bitacora from './pages/Bitacora';
-import Contratistas from './pages/Contratistas';
-import Dashboard from './pages/Dashboard';
-import Documentos from './pages/Documentos';
-import Emergencias from './pages/Emergencias';
-import Empresa from './pages/Empresa';
-import Estandares from './pages/Estandares';
-import Hazards from './pages/Hazards';
-import Importar from './pages/Importar';
-import Incidentes from './pages/Incidentes';
-import Indicadores from './pages/Indicadores';
-import Inspecciones from './pages/Inspecciones';
-import Login from './pages/Login';
-import Planes from './pages/Planes';
-import Politica from './pages/Politica';
-import Roles from './pages/Roles';
-import Trabajadores from './pages/Trabajadores';
-import Usuarios from './pages/Usuarios';
+
+const Acciones = lazy(() => import('./pages/Acciones'));
+const Alertas = lazy(() => import('./pages/Alertas'));
+const Altura = lazy(() => import('./pages/Altura'));
+const Auditorias = lazy(() => import('./pages/Auditorias'));
+const Bitacora = lazy(() => import('./pages/Bitacora'));
+const Contratistas = lazy(() => import('./pages/Contratistas'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Documentos = lazy(() => import('./pages/Documentos'));
+const Emergencias = lazy(() => import('./pages/Emergencias'));
+const Empresa = lazy(() => import('./pages/Empresa'));
+const Estandares = lazy(() => import('./pages/Estandares'));
+const Hazards = lazy(() => import('./pages/Hazards'));
+const Importar = lazy(() => import('./pages/Importar'));
+const Incidentes = lazy(() => import('./pages/Incidentes'));
+const Indicadores = lazy(() => import('./pages/Indicadores'));
+const Inspecciones = lazy(() => import('./pages/Inspecciones'));
+const Login = lazy(() => import('./pages/Login'));
+const Planes = lazy(() => import('./pages/Planes'));
+const Politica = lazy(() => import('./pages/Politica'));
+const Roles = lazy(() => import('./pages/Roles'));
+const Trabajadores = lazy(() => import('./pages/Trabajadores'));
+const Usuarios = lazy(() => import('./pages/Usuarios'));
 
 const PUBLIC_PAGES = ['/login'];
+
+function AppLoading({ fullScreen = false }: { fullScreen?: boolean }) {
+  return (
+    <div
+      aria-busy="true"
+      aria-live="polite"
+      className={`app-loading${fullScreen ? ' app-loading--screen' : ''}`}
+      role="status"
+    >
+      <span aria-hidden="true" className="app-loading-indicator" />
+      <span>Cargando SG-SST…</span>
+    </div>
+  );
+}
 
 function App() {
   const [user, setUser] = useState<{
@@ -65,31 +80,26 @@ function App() {
     }
   }, [loading, user, location.pathname, navigate]);
 
-  if (loading)
-    return (
-      <div
-        style={{
-          display: 'flex',
-          height: '100vh',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#f3f4f6',
-        }}
-      >
-        <div style={{ fontSize: 18, color: '#0f766e' }}>Cargando SG-SST…</div>
-      </div>
-    );
+  if (loading) return <AppLoading fullScreen />;
 
   const isAuth = !!user;
 
   // Si no está autenticado y es una página pública, mostrar login
   if (!isAuth && PUBLIC_PAGES.includes(location.pathname)) {
-    return <Login onLogin={(u) => setUser(u)} />;
+    return (
+      <Suspense fallback={<AppLoading fullScreen />}>
+        <Login onLogin={(u) => setUser(u)} />
+      </Suspense>
+    );
   }
 
   // Si no está autenticado y no es una página pública, mostrar login (el useEffect se encargará de redirigir)
   if (!isAuth) {
-    return <Login onLogin={(u) => setUser(u)} />;
+    return (
+      <Suspense fallback={<AppLoading fullScreen />}>
+        <Login onLogin={(u) => setUser(u)} />
+      </Suspense>
+    );
   }
 
   return (
@@ -100,30 +110,32 @@ function App() {
         api.post('/users/logout');
       }}
     >
-      <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="empresa" element={<Empresa />} />
-        <Route path="usuarios" element={<Usuarios />} />
-        <Route path="roles" element={<Roles />} />
-        <Route path="trabajadores" element={<Trabajadores />} />
-        <Route path="riesgos" element={<Hazards />} />
-        <Route path="estandar" element={<Estandares />} />
-        <Route path="planes" element={<Planes />} />
-        <Route path="indicadores" element={<Indicadores />} />
-        <Route path="incidentes" element={<Incidentes />} />
-        <Route path="inspecciones" element={<Inspecciones />} />
-        <Route path="altura" element={<Altura />} />
-        <Route path="documentos" element={<Documentos />} />
-        <Route path="acciones" element={<Acciones />} />
-        <Route path="auditorias" element={<Auditorias />} />
-        <Route path="bitacora" element={<Bitacora />} />
-        <Route path="emergencias" element={<Emergencias />} />
-        <Route path="contratistas" element={<Contratistas />} />
-        <Route path="alertas" element={<Alertas />} />
-        <Route path="importar" element={<Importar />} />
-        <Route path="politica" element={<Politica />} />
-      </Routes>
+      <Suspense fallback={<AppLoading />}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="empresa" element={<Empresa />} />
+          <Route path="usuarios" element={<Usuarios rol={user.rol} />} />
+          <Route path="roles" element={<Roles />} />
+          <Route path="trabajadores" element={<Trabajadores />} />
+          <Route path="riesgos" element={<Hazards />} />
+          <Route path="estandar" element={<Estandares />} />
+          <Route path="planes" element={<Planes />} />
+          <Route path="indicadores" element={<Indicadores />} />
+          <Route path="incidentes" element={<Incidentes />} />
+          <Route path="inspecciones" element={<Inspecciones />} />
+          <Route path="altura" element={<Altura />} />
+          <Route path="documentos" element={<Documentos />} />
+          <Route path="acciones" element={<Acciones />} />
+          <Route path="auditorias" element={<Auditorias />} />
+          <Route path="bitacora" element={<Bitacora />} />
+          <Route path="emergencias" element={<Emergencias />} />
+          <Route path="contratistas" element={<Contratistas />} />
+          <Route path="alertas" element={<Alertas />} />
+          <Route path="importar" element={<Importar />} />
+          <Route path="politica" element={<Politica />} />
+        </Routes>
+      </Suspense>
     </Layout>
   );
 }

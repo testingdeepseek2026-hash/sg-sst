@@ -57,7 +57,11 @@ export function isPublicPath(url: string): boolean {
  * Idempotente: si request.user ya existe, no repite la búsqueda
  */
 export async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
-  if (isPublicPath(request.url)) return;
+  const pathname = request.url.split('?')[0];
+  if (isPublicPath(pathname)) return;
+
+  const isUploadPath = pathname === '/uploads' || pathname.startsWith('/uploads/');
+  if (!pathname.startsWith('/api/') && !isUploadPath) return;
 
   // Idempotente: si ya hay usuario (ej. hook global previo), no repetir
   if (request.user) return;

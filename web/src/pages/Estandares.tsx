@@ -72,9 +72,7 @@ export default function Estandares() {
       ]);
       // Filtrar estándares por clase de riesgo según Res. 0312/2019 y RISK_CHAPTER_MAP
       const allowedChapters = RISK_CHAPTER_MAP[claseRiesgo] || ['I', 'II', 'III'];
-      const filteredStds = s.filter((s: Standard) =>
-        allowedChapters.includes(s.capitulo || '')
-      );
+      const filteredStds = s.filter((s: Standard) => allowedChapters.includes(s.capitulo || ''));
       setStds(filteredStds as Standard[]);
       setCumplimiento(c as Cumplimiento);
       // Cargar evaluaciones existentes
@@ -89,7 +87,7 @@ export default function Estandares() {
     } finally {
       setLoading(false);
     }
-  }, [setSel]);
+  }, [claseRiesgo, setSel]);
 
   useEffect(() => {
     loadData();
@@ -202,8 +200,9 @@ export default function Estandares() {
   ).length;
 
   return (
-    <div style={{ padding: 20, maxWidth: 1000 }}>
+    <div className="standards-page" style={{ padding: 20, maxWidth: 1000 }}>
       <div
+        className="standards-page-header"
         style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -243,6 +242,7 @@ export default function Estandares() {
       )}
 
       <div
+        className="standards-filters"
         style={{
           marginBottom: 14,
           display: 'flex',
@@ -256,6 +256,7 @@ export default function Estandares() {
         </label>
         <select
           id="estandar-set"
+          className="standards-filter-select"
           value={setSel}
           onChange={(e) => setSetSel(e.target.value)}
           disabled={loading}
@@ -272,6 +273,7 @@ export default function Estandares() {
         </label>
         <select
           id="clase-riesgo"
+          className="standards-filter-select"
           value={claseRiesgo}
           onChange={(e) => setClaseRiesgo(e.target.value)}
           disabled={loading}
@@ -317,7 +319,7 @@ export default function Estandares() {
         </div>
       )}
 
-      <div style={{ overflowX: 'auto' }}>
+      <div className="standards-table-wrap">
         <table
           style={{
             width: '100%',

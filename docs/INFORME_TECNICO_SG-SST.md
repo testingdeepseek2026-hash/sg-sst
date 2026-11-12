@@ -205,11 +205,11 @@ VITE_API_BASE=/api
 ```typescript
 build: {
   outDir: '../server/dist/public',
-  emptyOutDir: false
+  emptyOutDir: true
 }
 ```
 
-**Estado:** ✅ La build del frontend se genera en `server/dist/public` para servir estáticamente.
+**Estado:** ✅ La build del frontend se genera en `server/dist/public` para servir estáticamente. Cada build limpia el directorio, que contiene solo artefactos generados, para evitar servir o precachear bundles obsoletos.
 
 ### 5.2 Configuración de TypeScript
 

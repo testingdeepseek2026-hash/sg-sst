@@ -86,11 +86,20 @@ const menuGroups: Array<{
   },
 ];
 
+const getMenuGroupsForRole = (rol: string) =>
+  menuGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.to !== '/usuarios' || rol === 'administrador'),
+    }))
+    .filter((group) => group.items.length > 0);
+
 export default function Layout({ user, onLogout, children }: LayoutProps) {
   const [expanded, setExpanded] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileMenuButton = useRef<HTMLButtonElement>(null);
   const sidebar = useRef<HTMLElement>(null);
+  const visibleMenuGroups = getMenuGroupsForRole(user.rol);
 
   const closeMobileMenu = () => {
     setMobileOpen(false);
@@ -190,7 +199,7 @@ export default function Layout({ user, onLogout, children }: LayoutProps) {
         </div>
 
         <nav aria-label="Navegación principal" className="app-navigation">
-          {menuGroups.map((group) => (
+          {visibleMenuGroups.map((group) => (
             <section aria-label={group.label} className="app-navigation-group" key={group.label}>
               <h2 className="app-navigation-heading">{group.label}</h2>
               <div className="app-navigation-items">

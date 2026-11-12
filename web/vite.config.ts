@@ -47,7 +47,7 @@ export default {
   },
   build: {
     outDir: '../server/dist/public',
-    emptyOutDir: false,
+    emptyOutDir: true,
   },
   server: {
     port: 5173,

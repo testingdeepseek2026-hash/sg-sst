@@ -22,6 +22,8 @@ describe('Autenticación - rutas públicas', () => {
     // Mismo orden que server/src/index.ts: hook global antes de las rutas.
     app.addHook('preHandler', requireAuth);
     app.get('/api/protegida', async () => ({ ok: true }));
+    app.get('/dashboard', async () => ({ page: 'dashboard' }));
+    app.get('/uploads/privado.pdf', async () => ({ file: 'privado' }));
 
     await app.register(usersRoutes, { prefix: '/api' });
     await app.ready();
@@ -58,6 +60,86 @@ describe('Autenticación - rutas públicas', () => {
     expect(cookieHeader).toContain('sg_sst_user=user-admin');
   });
 
+  it('mantiene la sesión y aplica el rol en las rutas de usuario', async () => {
+    const passwordHash = createHash('sha256').update('Admin1234!').digest('hex');
+    const insertUser = db.prepare(
+      'INSERT INTO users (id, email, nombre, rol, password_hash) VALUES (?, ?, ?, ?, ?)'
+    );
+    insertUser.run(
+      'user-admin',
+      'admin@sg-sst.local',
+      'Responsable SG-SST',
+      'administrador',
+      passwordHash
+    );
+    insertUser.run(
+      'user-worker',
+      'trabajador@sg-sst.local',
+      'Trabajador',
+      'trabajador',
+      passwordHash
+    );
+
+    const adminLogin = await app.inject({
+      method: 'POST',
+      url: '/api/users/login',
+      payload: { email: 'admin@sg-sst.local', password: 'Admin1234!' },
+    });
+    const adminSetCookie = adminLogin.headers['set-cookie'];
+    const adminCookie = (Array.isArray(adminSetCookie) ? adminSetCookie : [adminSetCookie])
+      .map((cookieHeader) => String(cookieHeader).split(';')[0])
+      .join('; ');
+
+    const me = await app.inject({
+      method: 'GET',
+      url: '/api/users/me',
+      headers: { cookie: adminCookie },
+    });
+    expect(me.statusCode).toBe(200);
+    expect(me.json()).toMatchObject({
+      id: 'user-admin',
+      email: 'admin@sg-sst.local',
+      rol: 'administrador',
+    });
+
+    const adminUsers = await app.inject({
+      method: 'GET',
+      url: '/api/users',
+      headers: { cookie: adminCookie },
+    });
+    expect(adminUsers.statusCode).toBe(200);
+    expect(adminUsers.json()).toHaveLength(2);
+    expect(adminUsers.json()[0]).not.toHaveProperty('password_hash');
+
+    const workerLogin = await app.inject({
+      method: 'POST',
+      url: '/api/users/login',
+      payload: { email: 'trabajador@sg-sst.local', password: 'Admin1234!' },
+    });
+    const workerSetCookie = workerLogin.headers['set-cookie'];
+    const workerCookie = (Array.isArray(workerSetCookie) ? workerSetCookie : [workerSetCookie])
+      .map((cookieHeader) => String(cookieHeader).split(';')[0])
+      .join('; ');
+    const forbiddenUsers = await app.inject({
+      method: 'GET',
+      url: '/api/users',
+      headers: { cookie: workerCookie },
+    });
+    expect(forbiddenUsers.statusCode).toBe(403);
+
+    const logout = await app.inject({
+      method: 'POST',
+      url: '/api/users/logout',
+      headers: { cookie: adminCookie },
+    });
+    expect(logout.statusCode).toBe(200);
+    expect(
+      db
+        .prepare("SELECT COUNT(*) AS count FROM audit_logs WHERE accion = 'logout'")
+        .get()
+    ).toMatchObject({ count: 1 });
+  });
+
   it('permite el registro inicial sin sesión', async () => {
     const response = await app.inject({
       method: 'POST',
@@ -79,6 +161,16 @@ describe('Autenticación - rutas públicas', () => {
 
     expect(response.statusCode).toBe(401);
     expect(response.json()).toEqual({ error: 'No autenticado' });
+  });
+
+  it('permite servir la SPA sin sesión y mantiene privados los archivos subidos', async () => {
+    const page = await app.inject({ method: 'GET', url: '/dashboard' });
+    const upload = await app.inject({ method: 'GET', url: '/uploads/privado.pdf' });
+
+    expect(page.statusCode).toBe(200);
+    expect(page.json()).toEqual({ page: 'dashboard' });
+    expect(upload.statusCode).toBe(401);
+    expect(upload.json()).toEqual({ error: 'No autenticado' });
   });
 
   it('reconoce la ruta exacta y tolera query string', () => {

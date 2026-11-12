@@ -72,15 +72,14 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   fastify.post('/users/logout', async (request, reply) => {
-    const uid = (request as any).userId;
-    const email = (request as any).userEmail;
-    if (uid)
+    const user = request.user;
+    if (user)
       UsersService.auditLog(fastify.db, {
-        usuario_id: uid,
-        usuario_email: email,
+        usuario_id: user.id,
+        usuario_email: user.email,
         accion: 'logout',
         entidad: 'users',
-        entidad_id: uid,
+        entidad_id: user.id,
       });
     reply.clearCookie('sg_sst_user', { path: '/' });
     reply.clearCookie('sg_sst_email', { path: '/' });
@@ -88,26 +87,22 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   fastify.get('/users/me', async (request, reply) => {
-    const uid = (request as any).userId;
-    if (!uid) return reply.code(401).send({ error: 'No autenticado' });
-    const user = UsersService.getUserById(fastify.db, uid);
-    if (!user) return reply.code(404).send({ error: 'Usuario no encontrado' });
-    return { id: user.id, email: user.email, nombre: user.nombre, rol: user.rol };
+    const user = request.user;
+    if (!user) return reply.code(401).send({ error: 'No autenticado' });
+    return user;
   });
 
   // CRUD usuarios (solo administrador)
   fastify.get('/users', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
+    const user = request.user;
+    if (!user || user.rol !== 'administrador')
       return reply.code(403).send({ error: 'Solo administrador' });
     return UsersService.getAllUsers(fastify.db).map(({ password_hash: _password_hash, ...u }) => u);
   });
 
   fastify.put('/users/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
+    const user = request.user;
+    if (!user || user.rol !== 'administrador')
       return reply.code(403).send({ error: 'Solo administrador' });
     const { id } = request.params as { id: string };
     const patch = z
@@ -122,8 +117,8 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
     if (!prev) return reply.code(404).send({ error: 'Usuario no encontrado' });
     const updated = UsersService.updateUser(fastify.db, id, patch.data)!;
     UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'editar',
       entidad: 'users',
       entidad_id: id,
@@ -133,18 +128,16 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
     const { password_hash: _password_hash, ...u } = updated;
     return u;
   });
-
   fastify.delete('/users/:id', async (request, reply) => {
-    const uid = (request as any).userId;
-    const me = UsersService.getUserById(fastify.db, uid!);
-    if (!me || me.rol !== 'administrador')
+    const user = request.user;
+    if (!user || user.rol !== 'administrador')
       return reply.code(403).send({ error: 'Solo administrador' });
     const { id } = request.params as { id: string };
-    if (id === uid) return reply.code(400).send({ error: 'No puede eliminarse a sí mismo' });
+    if (id === user.id) return reply.code(400).send({ error: 'No puede eliminarse a sí mismo' });
     UsersService.deleteUser(fastify.db, id);
     UsersService.auditLog(fastify.db, {
-      usuario_id: uid,
-      usuario_email: me.email,
+      usuario_id: user.id,
+      usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'users',
       entidad_id: id,

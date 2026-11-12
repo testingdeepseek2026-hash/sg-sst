@@ -65,6 +65,17 @@ describe('Navegación de la aplicación', () => {
     );
   });
 
+  it('oculta la administración de usuarios del menú para el rol trabajador', () => {
+    render(
+      <Layout user={{ nombre: 'Trabajador', rol: 'trabajador' }} onLogout={vi.fn()}>
+        Contenido de prueba
+      </Layout>,
+    );
+
+    expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Roles SST' })).toBeInTheDocument();
+  });
+
   it('abre el menú móvil y lo cierra con Escape', () => {
     const { container } = render(
       <Layout user={{ nombre: 'Responsable SST', rol: 'administrador' }} onLogout={vi.fn()}>

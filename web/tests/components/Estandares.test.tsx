@@ -31,12 +31,14 @@ describe('Autoevaluación de estándares mínimos', () => {
   });
 
   it('muestra los estándares y el porcentaje devueltos por la API', async () => {
-    render(<Estandares />);
+    const { container } = render(<Estandares />);
 
     expect(await screen.findByText('Asignación de responsable')).toBeInTheDocument();
     expect(screen.getByText('Afiliación al sistema')).toBeInTheDocument();
     expect(screen.getByText('50%')).toBeInTheDocument();
     expect(screen.getByText(/1\s*\/\s*2/)).toBeInTheDocument();
+    expect(container.querySelector('.standards-page-header')).toBeInTheDocument();
+    expect(container.querySelector('.standards-table-wrap table')).toBeInTheDocument();
   });
 
   it('recarga los estándares al cambiar el conjunto aplicable', async () => {

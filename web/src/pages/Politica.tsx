@@ -310,8 +310,9 @@ export default function Politica() {
     return <div style={{ padding: 20, textAlign: 'center' }}>Cargando Política SST…</div>;
 
   return (
-    <div style={{ padding: 20, maxWidth: 1100 }}>
+    <div className="policy-page" style={{ padding: 20, maxWidth: 1100 }}>
       <div
+        className="policy-page-header"
         style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -320,7 +321,7 @@ export default function Politica() {
         }}
       >
         <h1 style={{ margin: 0, color: '#0f766e' }}>Política SST y Objetivos</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="policy-page-header-actions" style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={handleNewDraft}
             style={{
@@ -377,9 +378,10 @@ export default function Politica() {
       )}
 
       {/* Lista de versiones */}
-      <section style={{ marginBottom: 24 }}>
+      <section className="policy-table-section" style={{ marginBottom: 24 }}>
         <h2 style={{ color: '#0f766e', marginBottom: 12 }}>Histórico de Versiones</h2>
         <table
+          className="policy-table"
           style={{
             width: '100%',
             borderCollapse: 'collapse',
@@ -678,7 +680,7 @@ export default function Politica() {
       )}
 
       {/* Objetivos de la Política Vigente */}
-      <section>
+      <section className="policy-table-section">
         <div
           style={{
             display: 'flex',
@@ -712,6 +714,7 @@ export default function Politica() {
 
         {activePolicy && activePolicy.estado === 'vigente' && (
           <table
+            className="policy-table"
             style={{
               width: '100%',
               borderCollapse: 'collapse',

@@ -84,11 +84,14 @@ describe('Política SST Page', () => {
   });
 
   it('debe listar histórico de políticas', async () => {
-    render(<Politica />);
+    const { container } = render(<Politica />);
     
     await screen.findByText('Histórico de Versiones');
     expect(await screen.findByText('Política SST 2025')).toBeInTheDocument();
     expect(await screen.findByText('Archivada')).toBeInTheDocument();
+    expect(
+      container.querySelector('.policy-table-section table.policy-table')
+    ).toBeInTheDocument();
   });
 
   it('debe abrir modal para crear nueva política (borrador)', async () => {
