@@ -1,6 +1,8 @@
 import { decryptSensitiveFields, encrypt, isEncrypted, SENSITIVE_FIELDS } from '../lib/crypto.js';
 import { genId } from '../lib/utils.js';
 
+import { WorkerValidationError } from './worker_validation_error.js';
+
 export interface WorkerExam {
   id: string;
   worker_id: string;
@@ -79,7 +81,7 @@ export function createExam(
     .prepare('SELECT * FROM consents WHERE worker_id = ? AND tipo = ? AND autorizado = 1')
     .get(input.worker_id, 'medico');
   if (!consent) {
-    throw new Error(
+    throw new WorkerValidationError(
       'El trabajador no ha autorizado el tratamiento de datos médicos (Ley 1581/2012). Registre consentimiento primero.'
     );
   }
@@ -90,7 +92,7 @@ export function createExam(
       .prepare('SELECT * FROM worker_exams WHERE worker_id = ? AND tipo = ?')
       .get(input.worker_id, 'ingreso');
     if (existing) {
-      throw new Error(
+      throw new WorkerValidationError(
         'Ya existe un examen de ingreso para este trabajador. Use tipo "periodico" o "control".'
       );
     }

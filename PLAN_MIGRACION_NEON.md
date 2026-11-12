@@ -91,8 +91,8 @@ Las estimaciones son días-persona de ingeniería.
 
 Orden por dominios, cada uno con su lote de pruebas convertido y verde antes de avanzar:
 
-- [ ] 1. Empresa, usuarios, roles, auth/bitácora (`audit_logs`).
-- [ ] 2. Trabajadores + exámenes + certificados + EPP (incluye cifrado AES-256-GCM de campos sensibles; verificar que el descifrado siga funcionando con la misma clave).
+- [x] 1. Empresa, usuarios, roles, auth/bitácora (`audit_logs`).
+- [x] 2. Trabajadores + exámenes + certificados + EPP (incluye el ciclo mínimo de consentimientos requerido para exámenes; cifrado AES-256-GCM validado). El resto de privacidad continúa en N3.8.
 - [ ] 3. Peligros, estándares y autoevaluación (cálculos de puntaje probados).
 - [ ] 4. Plan anual, capacitaciones, asistencia y firmas.
 - [ ] 5. Inspecciones, alturas/ATS, emergencias, contratistas.
@@ -102,6 +102,20 @@ Orden por dominios, cada uno con su lote de pruebas convertido y verde antes de 
 - [ ] 9. Scheduler de alertas contra el pool.
 
 **Aceptación por lote:** las pruebas de ese dominio pasan contra Postgres; la suite completa nunca queda más atrás de un dominio; `typecheck` y `build` siguen en verde en cada lote.
+
+**Estado (12 de noviembre de 2026): Dominio N3.1 completado.** Usuarios, roles y bitácora cuentan con servicios asíncronos PostgreSQL; el middleware global autentica contra el backend activo. El registro inicial usa un bloqueo transaccional para impedir dos altas concurrentes y guarda su evento de auditoría en la misma transacción. Se migraron también la consulta y las estadísticas de `/api/audit-logs`; los datos de contraseña se excluyen/sanitizan en auditoría. SQLite continúa como backend predeterminado.
+
+- Neon `dev`: `tests/integration/companies.pg.test.ts` **14/14** (incluye persistencia, login, RBAC, altas concurrentes, roles y bitácora).
+- `corepack pnpm --dir server run test`: **249 aprobadas, 14 omitidas**; las omitidas son las pruebas Neon al no configurar `TEST_DATABASE_URL` en la ejecución general.
+- `corepack pnpm --dir server run typecheck` y `corepack pnpm --dir server run build`: pasan.
+- Siguiente lote: N3.2 (trabajadores, exámenes, certificados y EPP). No se cargaron datos reales ni se ejecutaron cambios en producción.
+
+**Estado (12 de noviembre de 2026): Dominio N3.2 completado.** Se conectaron los servicios PostgreSQL y las rutas de trabajadores, exámenes, certificados y EPP; el ciclo mínimo de consentimientos (consulta, alta, retiro y verificación) quedó incluido para autorizar el tratamiento médico. Se conservaron las restricciones de acceso a exámenes, la firma propia de EPP, la regla de vigencia de alturas y la auditoría sin valores médicos ni firmas en claro. SQLite sigue como backend predeterminado; ARCO y el resto del módulo de privacidad permanecen para N3.8.
+
+- Neon `dev`: `pnpm --dir server exec vitest run tests/integration/companies.pg.test.ts` **17/17** (incluye persistencia, RBAC, consentimiento vigente/retirado, cifrado/descifrado de exámenes y firma, certificado de alturas y vencimientos EPP).
+- `pnpm --dir server run test`: **249 aprobadas, 17 omitidas**; las omitidas son las pruebas Neon cuando no se configura `TEST_DATABASE_URL`.
+- `npm run typecheck`, `pnpm --dir server run build` y `pnpm --dir server exec eslint src/routes/workers.ts src/routes/workers_items.ts src/routes/privacy.ts src/services/workers.pg.ts src/services/workers_exams.pg.ts src/services/workers_certs.pg.ts src/services/workers_epp.pg.ts src/services/privacy_consents.pg.ts src/services/worker_validation_error.ts src/services/workers_exams.ts src/services/workers_certs.ts src/services/privacy.ts tests/integration/companies.pg.test.ts --max-warnings 0`: pasan.
+- No se cargaron datos reales ni se ejecutaron cambios en producción. Siguiente lote: N3.3 (peligros, estándares y autoevaluación).
 
 ### Fase N4 — Migración de datos SQLite → Neon (ETL) (1–2 días)
 

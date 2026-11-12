@@ -11,6 +11,9 @@
  */
 
 import * as UsersService from '../services/users.js';
+import * as PgUsersService from '../services/users.pg.js';
+
+import { isPgBackend } from './db-pg.js';
 
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
@@ -72,7 +75,9 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply) 
   }
 
   const db = request.server.db;
-  const user = UsersService.getUserById(db, uid);
+  const user = isPgBackend()
+    ? await PgUsersService.getUserByIdPg(uid)
+    : UsersService.getUserById(db, uid);
   if (!user) {
     return reply.code(401).send({ error: 'Sesión inválida' });
   }

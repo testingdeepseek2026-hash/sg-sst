@@ -1,6 +1,8 @@
 import { decryptSensitiveFields, encrypt, isEncrypted, SENSITIVE_FIELDS } from '../lib/crypto.js';
 import { genId } from '../lib/utils.js';
 
+import { WorkerValidationError } from './worker_validation_error.js';
+
 export interface WorkerCert {
   id: string;
   worker_id: string;
@@ -22,7 +24,8 @@ export function getCertsByWorker(db: any, workerId: string): WorkerCert[] {
 }
 
 export function getCertById(db: any, id: string): WorkerCert | undefined {
-  const row = db.prepare('SELECT * FROM worker_certs WHERE id = ?').get(id) as WorkerCert | undefined;
+  const row = db.prepare('SELECT * FROM worker_certs WHERE id = ?').get(id) as
+    WorkerCert | undefined;
   if (!row) return undefined;
   return decryptSensitiveFields(row) as WorkerCert;
 }
@@ -45,7 +48,7 @@ export function crearCertificado(
     const vencimientoEsperadoStr = calcularVencimientoAlturas(input.fecha_emision);
 
     if (input.fecha_vencimiento !== vencimientoEsperadoStr) {
-      throw new Error(
+      throw new WorkerValidationError(
         `Certificado de alturas debe tener vigencia exacta de 3 años (Res. 4272/2021 Art. 12). Emisión: ${input.fecha_emision} → Vencimiento esperado: ${vencimientoEsperadoStr}, recibido: ${input.fecha_vencimiento}`
       );
     }
@@ -94,7 +97,7 @@ export function updateCert(db: any, id: string, patch: Partial<WorkerCert>): Wor
     const vencimientoEsperadoStr = calcularVencimientoAlturas(nuevaEmision);
 
     if (nuevoVencimiento !== vencimientoEsperadoStr) {
-      throw new Error(
+      throw new WorkerValidationError(
         `Certificado de alturas debe tener vigencia exacta de 3 años (Res. 4272/2021 Art. 12). Emisión: ${nuevaEmision} → Vencimiento esperado: ${vencimientoEsperadoStr}, recibido: ${nuevoVencimiento}`
       );
     }

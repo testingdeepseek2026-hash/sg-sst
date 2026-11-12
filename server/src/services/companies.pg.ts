@@ -2,6 +2,7 @@ import { exec, one } from '../lib/db-pg.js';
 import { genId, nowISO } from '../lib/utils.js';
 
 import { estandarSetPorRiesgo } from './companies.js';
+export { auditLogPg } from './users.pg.js';
 
 /**
  * Servicio de empresa para PostgreSQL (Neon) — Fase N2, piloto del patrón
@@ -111,35 +112,4 @@ export async function upsertCompanyPg(input: Record<string, unknown>): Promise<C
     creado_en: now,
     actualizado_en: now,
   };
-}
-
-export interface AuditEntryPg {
-  usuario_id: string;
-  usuario_email: string;
-  accion: string;
-  entidad: string;
-  entidad_id?: string | null;
-  valores_nuevos?: unknown;
-}
-
-/**
- * Bitácora de auditoría en Postgres para las rutas migradas (Fase N2).
- * En N3 se unifica con el auditLog del servicio de usuarios.
- */
-export async function auditLogPg(entry: AuditEntryPg): Promise<void> {
-  await exec(
-    `INSERT INTO audit_logs (id, usuario_id, usuario_email, accion, entidad, entidad_id,
-      valores_anteriores, valores_nuevos, ip, creado_en)
-     VALUES (?,?,?,?,?,?,NULL,?,NULL,?)`,
-    [
-      genId(),
-      entry.usuario_id,
-      entry.usuario_email,
-      entry.accion,
-      entry.entidad,
-      entry.entidad_id ?? null,
-      entry.valores_nuevos === undefined ? null : JSON.stringify(entry.valores_nuevos),
-      nowISO(),
-    ]
-  );
 }

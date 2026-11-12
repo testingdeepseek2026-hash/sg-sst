@@ -4,7 +4,6 @@
  */
 
 import { genId, nowISO } from '../lib/utils.js';
-import { decryptSensitiveFields, encrypt, isEncrypted, SENSITIVE_FIELDS } from '../lib/crypto.js';
 
 export interface PrivacyNotice {
   id: string;
@@ -88,15 +87,20 @@ export function createPrivacyNotice(
 }
 
 export function getPrivacyNoticeById(db: any, id: string): PrivacyNotice | undefined {
-  return db.prepare('SELECT * FROM privacy_notices WHERE id = ?').get(id) as PrivacyNotice | undefined;
+  return db.prepare('SELECT * FROM privacy_notices WHERE id = ?').get(id) as
+    PrivacyNotice | undefined;
 }
 
 export function getActivePrivacyNotice(db: any): PrivacyNotice | undefined {
-  return db.prepare("SELECT * FROM privacy_notices WHERE estado = 'vigente' ORDER BY version DESC LIMIT 1").get() as PrivacyNotice | undefined;
+  return db
+    .prepare("SELECT * FROM privacy_notices WHERE estado = 'vigente' ORDER BY version DESC LIMIT 1")
+    .get() as PrivacyNotice | undefined;
 }
 
 export function getPrivacyNotices(db: any): PrivacyNotice[] {
-  return db.prepare('SELECT * FROM privacy_notices ORDER BY version DESC, creado_en DESC').all() as PrivacyNotice[];
+  return db
+    .prepare('SELECT * FROM privacy_notices ORDER BY version DESC, creado_en DESC')
+    .all() as PrivacyNotice[];
 }
 
 export function updatePrivacyNotice(
@@ -144,9 +148,9 @@ export function createConsent(
   }
 ): ConsentRecord {
   // Verificar si ya existe consentimiento del mismo tipo para este trabajador
-  const existing = db.prepare(
-    'SELECT * FROM consents WHERE worker_id = ? AND tipo = ? AND version_aviso = ?'
-  ).get(input.worker_id, input.tipo, input.version_aviso);
+  const existing = db
+    .prepare('SELECT * FROM consents WHERE worker_id = ? AND tipo = ? AND version_aviso = ?')
+    .get(input.worker_id, input.tipo, input.version_aviso);
 
   const id = genId();
   const now = nowISO();
@@ -155,7 +159,16 @@ export function createConsent(
     // Actualizar existente
     db.prepare(
       `UPDATE consents SET autorizado = ?, finalidad = ?, medio = ?, fecha = ?, ip = ?, user_agent = ?, retirado_en = NULL, actualizado_en = ? WHERE id = ?`
-    ).run(input.autorizado, input.finalidad, input.medio, now, input.ip ?? null, input.user_agent ?? null, now, existing.id);
+    ).run(
+      input.autorizado,
+      input.finalidad,
+      input.medio,
+      now,
+      input.ip ?? null,
+      input.user_agent ?? null,
+      now,
+      existing.id
+    );
     return getConsentById(db, existing.id)!;
   }
 
@@ -185,19 +198,32 @@ export function getConsentById(db: any, id: string): ConsentRecord | undefined {
 }
 
 export function getConsentsByWorker(db: any, workerId: string): ConsentRecord[] {
-  return db.prepare('SELECT * FROM consents WHERE worker_id = ? ORDER BY fecha DESC').all(workerId) as ConsentRecord[];
+  return db
+    .prepare('SELECT * FROM consents WHERE worker_id = ? ORDER BY fecha DESC')
+    .all(workerId) as ConsentRecord[];
 }
 
-export function getActiveConsent(db: any, workerId: string, tipo: ConsentRecord['tipo']): ConsentRecord | undefined {
-  return db.prepare(
-    'SELECT * FROM consents WHERE worker_id = ? AND tipo = ? AND autorizado = 1 AND retirado_en IS NULL ORDER BY fecha DESC LIMIT 1'
-  ).get(workerId, tipo) as ConsentRecord | undefined;
+export function getAllConsents(db: any): ConsentRecord[] {
+  return db.prepare('SELECT * FROM consents ORDER BY fecha DESC').all() as ConsentRecord[];
+}
+
+export function getActiveConsent(
+  db: any,
+  workerId: string,
+  tipo: ConsentRecord['tipo']
+): ConsentRecord | undefined {
+  return db
+    .prepare(
+      'SELECT * FROM consents WHERE worker_id = ? AND tipo = ? AND autorizado = 1 AND retirado_en IS NULL ORDER BY fecha DESC LIMIT 1'
+    )
+    .get(workerId, tipo) as ConsentRecord | undefined;
 }
 
 export function withdrawConsent(db: any, consentId: string): ConsentRecord | undefined {
   const now = nowISO();
-  db.prepare('UPDATE consents SET autorizado = 0, retirado_en = ?, actualizado_en = ? WHERE id = ?')
-    .run(now, now, consentId);
+  db.prepare(
+    'UPDATE consents SET autorizado = 0, retirado_en = ?, actualizado_en = ? WHERE id = ?'
+  ).run(now, now, consentId);
   return getConsentById(db, consentId);
 }
 
@@ -236,9 +262,13 @@ export function getArcoRequestById(db: any, id: string): ArcoRequest | undefined
 
 export function getArcoRequests(db: any, workerId?: string): ArcoRequest[] {
   if (workerId) {
-    return db.prepare('SELECT * FROM arco_requests WHERE worker_id = ? ORDER BY fecha_solicitud DESC').all(workerId) as ArcoRequest[];
+    return db
+      .prepare('SELECT * FROM arco_requests WHERE worker_id = ? ORDER BY fecha_solicitud DESC')
+      .all(workerId) as ArcoRequest[];
   }
-  return db.prepare('SELECT * FROM arco_requests ORDER BY fecha_solicitud DESC').all() as ArcoRequest[];
+  return db
+    .prepare('SELECT * FROM arco_requests ORDER BY fecha_solicitud DESC')
+    .all() as ArcoRequest[];
 }
 
 export function updateArcoRequest(
@@ -282,14 +312,22 @@ export function getArcoStats(db: any): {
   por_tipo: Record<string, number>;
 } {
   const total = db.prepare('SELECT COUNT(*) as c FROM arco_requests').get() as { c: number };
-  const pendientes = db.prepare("SELECT COUNT(*) as c FROM arco_requests WHERE estado = 'pendiente'").get() as { c: number };
-  const en_proceso = db.prepare("SELECT COUNT(*) as c FROM arco_requests WHERE estado = 'en_proceso'").get() as { c: number };
-  const resueltos = db.prepare("SELECT COUNT(*) as c FROM arco_requests WHERE estado = 'resuelto'").get() as { c: number };
-  const rechazados = db.prepare("SELECT COUNT(*) as c FROM arco_requests WHERE estado = 'rechazado'").get() as { c: number };
+  const pendientes = db
+    .prepare("SELECT COUNT(*) as c FROM arco_requests WHERE estado = 'pendiente'")
+    .get() as { c: number };
+  const en_proceso = db
+    .prepare("SELECT COUNT(*) as c FROM arco_requests WHERE estado = 'en_proceso'")
+    .get() as { c: number };
+  const resueltos = db
+    .prepare("SELECT COUNT(*) as c FROM arco_requests WHERE estado = 'resuelto'")
+    .get() as { c: number };
+  const rechazados = db
+    .prepare("SELECT COUNT(*) as c FROM arco_requests WHERE estado = 'rechazado'")
+    .get() as { c: number };
 
-  const por_tipo_rows = db.prepare(
-    "SELECT tipo, COUNT(*) as c FROM arco_requests GROUP BY tipo"
-  ).all() as Array<{ tipo: string; c: number }>;
+  const por_tipo_rows = db
+    .prepare('SELECT tipo, COUNT(*) as c FROM arco_requests GROUP BY tipo')
+    .all() as Array<{ tipo: string; c: number }>;
 
   const por_tipo: Record<string, number> = {};
   for (const row of por_tipo_rows) {
@@ -359,8 +397,10 @@ export function getDataProcessingRecordById(db: any, id: string): DataProcessing
 }
 
 export function getDataProcessingRecords(db: any): DataProcessingRecord[] {
-  const rows = db.prepare('SELECT * FROM data_processing_records ORDER BY creado_en DESC').all() as any[];
-  return rows.map(row => ({
+  const rows = db
+    .prepare('SELECT * FROM data_processing_records ORDER BY creado_en DESC')
+    .all() as any[];
+  return rows.map((row) => ({
     ...row,
     categorias_datos: JSON.parse(row.categorias_datos),
     destinatarios: JSON.parse(row.destinatarios || '[]'),
@@ -410,7 +450,10 @@ export function deleteDataProcessingRecord(db: any, id: string): void {
 /**
  * Verificaciones de cumplimiento
  */
-export function checkConsentForMedicalData(db: any, workerId: string): { valid: boolean; missing: string[] } {
+export function checkConsentForMedicalData(
+  db: any,
+  workerId: string
+): { valid: boolean; missing: string[] } {
   const missing: string[] = [];
 
   if (!hasValidConsent(db, workerId, 'medico')) {
@@ -434,25 +477,41 @@ export function getPrivacyComplianceReport(db: any): {
   notices_count: number;
   processing_records_count: number;
 } {
-  const total_workers = db.prepare("SELECT COUNT(*) as c FROM workers WHERE estado = 'activo'").get() as { c: number };
+  const total_workers = db
+    .prepare("SELECT COUNT(*) as c FROM workers WHERE estado = 'activo'")
+    .get() as { c: number };
 
-  const workers_with_medical = db.prepare(`
+  const workers_with_medical = db
+    .prepare(
+      `
     SELECT COUNT(DISTINCT c.worker_id) as c
     FROM consents c
     WHERE c.tipo = 'medico' AND c.autorizado = 1 AND c.retirado_en IS NULL
-  `).get() as { c: number };
+  `
+    )
+    .get() as { c: number };
 
-  const workers_with_biometric = db.prepare(`
+  const workers_with_biometric = db
+    .prepare(
+      `
     SELECT COUNT(DISTINCT c.worker_id) as c
     FROM consents c
     WHERE c.tipo = 'biometrico' AND c.autorizado = 1 AND c.retirado_en IS NULL
-  `).get() as { c: number };
+  `
+    )
+    .get() as { c: number };
 
-  const arco_pending = db.prepare("SELECT COUNT(*) as c FROM arco_requests WHERE estado IN ('pendiente', 'en_proceso')").get() as { c: number };
+  const arco_pending = db
+    .prepare("SELECT COUNT(*) as c FROM arco_requests WHERE estado IN ('pendiente', 'en_proceso')")
+    .get() as { c: number };
 
-  const notices_count = db.prepare("SELECT COUNT(*) as c FROM privacy_notices").get() as { c: number };
+  const notices_count = db.prepare('SELECT COUNT(*) as c FROM privacy_notices').get() as {
+    c: number;
+  };
 
-  const processing_records_count = db.prepare("SELECT COUNT(*) as c FROM data_processing_records").get() as { c: number };
+  const processing_records_count = db
+    .prepare('SELECT COUNT(*) as c FROM data_processing_records')
+    .get() as { c: number };
 
   return {
     workers_without_medical_consent: total_workers.c - workers_with_medical.c,

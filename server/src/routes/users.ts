@@ -3,7 +3,11 @@ import { createHash } from 'node:crypto';
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 
+import { isPgBackend, one } from '../lib/db-pg.js';
 import * as UsersService from '../services/users.js';
+import * as PgUsersService from '../services/users.pg.js';
+
+import type { User } from '../services/users.js';
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -18,25 +22,45 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
   // Registro inicial (solo si no hay usuarios)
   fastify.post('/users/register', async (request, reply) => {
     const db = fastify.db;
-    const existing = db.prepare('SELECT COUNT(*) AS c FROM users').get() as { c: number };
-    if (existing.c > 0) {
+    const existing = isPgBackend()
+      ? await one<{ c: number }>('SELECT COUNT(*)::int AS c FROM users')
+      : (db.prepare('SELECT COUNT(*) AS c FROM users').get() as { c: number });
+    if ((existing?.c ?? 0) > 0) {
       return reply.code(403).send({ error: 'Ya existe al menos un usuario. Use login.' });
     }
     const parsed = bodySchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const { email, password, nombre, rol } = parsed.data;
-    const exists = UsersService.getUserByEmail(db, email);
-    if (exists) return reply.code(409).send({ error: 'El correo ya está registrado' });
     const password_hash = createHash('sha256').update(password).digest('hex');
-    const user = UsersService.createUser(db, { email, password_hash, nombre, rol });
-    UsersService.auditLog(db, {
-      usuario_id: user.id,
-      usuario_email: email,
-      accion: 'crear',
-      entidad: 'users',
-      entidad_id: user.id,
-      valores_nuevos: { email, nombre, rol },
-    });
+    let user: User;
+    if (isPgBackend()) {
+      const registration = await PgUsersService.registerFirstUserPg({
+        email,
+        password_hash,
+        nombre,
+        rol,
+      });
+      if (registration.status === 'already_registered') {
+        return reply.code(403).send({ error: 'Ya existe al menos un usuario. Use login.' });
+      }
+      if (registration.status === 'duplicate_email') {
+        return reply.code(409).send({ error: 'El correo ya está registrado' });
+      }
+      user = registration.user;
+    } else {
+      if (UsersService.getUserByEmail(db, email)) {
+        return reply.code(409).send({ error: 'El correo ya está registrado' });
+      }
+      user = UsersService.createUser(db, { email, password_hash, nombre, rol });
+      UsersService.auditLog(db, {
+        usuario_id: user.id,
+        usuario_email: email,
+        accion: 'crear',
+        entidad: 'users',
+        entidad_id: user.id,
+        valores_nuevos: { email, nombre, rol },
+      });
+    }
     return { id: user.id, email: user.email, nombre: user.nombre, rol: user.rol };
   });
 
@@ -44,7 +68,9 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
     const parsed = loginSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const { email, password } = parsed.data;
-    const user = UsersService.getUserByEmail(fastify.db, email);
+    const user = isPgBackend()
+      ? await PgUsersService.getUserByEmailPg(email)
+      : UsersService.getUserByEmail(fastify.db, email);
     if (!user) return reply.code(401).send({ error: 'Credenciales invalidas' });
     const hash = createHash('sha256').update(password).digest('hex');
     if (hash !== (user as any).password_hash)
@@ -61,26 +87,31 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60,
     });
-    UsersService.auditLog(fastify.db, {
+    const logEntry = {
       usuario_id: user.id,
       usuario_email: email,
       accion: 'login',
       entidad: 'users',
       entidad_id: user.id,
-    });
+    };
+    if (isPgBackend()) await PgUsersService.auditLogPg(logEntry);
+    else UsersService.auditLog(fastify.db, logEntry);
     return { id: user.id, email: user.email, nombre: user.nombre, rol: user.rol };
   });
 
   fastify.post('/users/logout', async (request, reply) => {
     const user = request.user;
-    if (user)
-      UsersService.auditLog(fastify.db, {
+    if (user) {
+      const logEntry = {
         usuario_id: user.id,
         usuario_email: user.email,
         accion: 'logout',
         entidad: 'users',
         entidad_id: user.id,
-      });
+      };
+      if (isPgBackend()) await PgUsersService.auditLogPg(logEntry);
+      else UsersService.auditLog(fastify.db, logEntry);
+    }
     reply.clearCookie('sg_sst_user', { path: '/' });
     reply.clearCookie('sg_sst_email', { path: '/' });
     return { ok: true };
@@ -97,7 +128,10 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
     const user = request.user;
     if (!user || user.rol !== 'administrador')
       return reply.code(403).send({ error: 'Solo administrador' });
-    return UsersService.getAllUsers(fastify.db).map(({ password_hash: _password_hash, ...u }) => u);
+    const users = isPgBackend()
+      ? await PgUsersService.getAllUsersPg()
+      : UsersService.getAllUsers(fastify.db);
+    return users.map(({ password_hash: _password_hash, ...u }) => u);
   });
 
   fastify.put('/users/:id', async (request, reply) => {
@@ -113,18 +147,26 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
       })
       .safeParse(request.body);
     if (!patch.success) return reply.code(400).send({ error: patch.error.flatten() });
-    const prev = UsersService.getUserById(fastify.db, id);
+    const prev = isPgBackend()
+      ? await PgUsersService.getUserByIdPg(id)
+      : UsersService.getUserById(fastify.db, id);
     if (!prev) return reply.code(404).send({ error: 'Usuario no encontrado' });
-    const updated = UsersService.updateUser(fastify.db, id, patch.data)!;
-    UsersService.auditLog(fastify.db, {
+    const updated = isPgBackend()
+      ? await PgUsersService.updateUserPg(id, patch.data)
+      : UsersService.updateUser(fastify.db, id, patch.data);
+    if (!updated) return reply.code(404).send({ error: 'Usuario no encontrado' });
+    const { password_hash: _previous_password_hash, ...previousUser } = prev;
+    const logEntry = {
       usuario_id: user.id,
       usuario_email: user.email,
       accion: 'editar',
       entidad: 'users',
       entidad_id: id,
-      valores_anteriores: prev,
+      valores_anteriores: previousUser,
       valores_nuevos: patch.data,
-    });
+    };
+    if (isPgBackend()) await PgUsersService.auditLogPg(logEntry);
+    else UsersService.auditLog(fastify.db, logEntry);
     const { password_hash: _password_hash, ...u } = updated;
     return u;
   });
@@ -134,14 +176,17 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.code(403).send({ error: 'Solo administrador' });
     const { id } = request.params as { id: string };
     if (id === user.id) return reply.code(400).send({ error: 'No puede eliminarse a sí mismo' });
-    UsersService.deleteUser(fastify.db, id);
-    UsersService.auditLog(fastify.db, {
+    if (isPgBackend()) await PgUsersService.deleteUserPg(id);
+    else UsersService.deleteUser(fastify.db, id);
+    const logEntry = {
       usuario_id: user.id,
       usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'users',
       entidad_id: id,
-    });
+    };
+    if (isPgBackend()) await PgUsersService.auditLogPg(logEntry);
+    else UsersService.auditLog(fastify.db, logEntry);
     return { ok: true };
   });
 };

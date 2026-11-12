@@ -81,12 +81,13 @@ const AUDIT_SENSITIVE_FIELDS = [
   'firma_url',
   'firma_solicitante_url',
   'firma_responsable_url',
+  'password_hash',
 ];
 
 /**
  * Sanitiza un objeto removiendo o enmascarando campos sensibles antes de log/bitácora
  */
-function sanitizeForAudit(obj: any): any {
+export function sanitizeForAudit(obj: any): any {
   if (!obj || typeof obj !== 'object') return obj;
 
   if (Array.isArray(obj)) {
