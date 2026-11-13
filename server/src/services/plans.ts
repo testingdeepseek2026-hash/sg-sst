@@ -73,8 +73,8 @@ export function updateTrainingSchedule(db: any, id: string, patch: any) {
     sets.push(`${k} = ?`);
     vals.push(v);
   }
-  sets.push('creado_en = ?'); // placeholder no-op
-  db.prepare(`UPDATE training_schedule SET ${sets.join(', ')} WHERE id = ?`).run(...vals, id);
+  vals.push(id);
+  db.prepare(`UPDATE training_schedule SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
   return db.prepare('SELECT * FROM training_schedule WHERE id = ?').get(id);
 }
 export function deleteTrainingSchedule(db: any, id: string) {

@@ -9,11 +9,15 @@
 └─────────────────┘     └─────────────────┘     └────────┬────────┘
                                                           │
                                                           ▼
-                                                 ┌─────────────────┐
-                                                 │   SQLite DB     │
-                                                 │   (Archivo)     │
-                                                 └─────────────────┘
+                                          ┌──────────────────────────────┐
+                                          │ SQLite (DB_BACKEND=sqlite)   │
+                                          │ o Neon PostgreSQL (pg)       │
+                                          └──────────────────────────────┘
 ```
+
+El backend se elige con `DB_BACKEND`: `sqlite` (predeterminado) usa el archivo
+local; `pg` usa `DATABASE_URL` (Neon). No cambie de backend sin ejecutar
+`migrate:pg` y, si aplica, el ETL de datos.
 
 ## Opciones de Despliegue
 
@@ -25,15 +29,21 @@
 - **Reverse Proxy**: Nginx
 - **SSL**: Let's Encrypt (Certbot)
 
-### 2. Docker Compose (Producción)
+### 2. Neon PostgreSQL + backend gestionado (Recomendado al migrar)
+
+- Base gestionada con TLS, branch `production` y branch `dev`
+- El backend puede vivir en VPS, contenedor o servicio administrado
+- Respaldo lógico diario desde la app + branches/point-in-time de Neon
+
+### 3. Docker Compose (Producción)
 
 - Multi-stage builds para frontend + backend
-- Volúmenes persistentes para SQLite + backups
+- Volúmenes persistentes para SQLite + backups (solo con `DB_BACKEND=sqlite`)
 - Health checks automáticos
 
-### 3. Kubernetes (Escalabilidad futura)
+### 4. Kubernetes (Escalabilidad futura)
 
-- StatefulSet para SQLite (o migrar a PostgreSQL)
+- Sin volúmenes de base de datos cuando `DB_BACKEND=pg`
 - Ingress + cert-manager
 
 ---
@@ -97,11 +107,31 @@ SMTP_HOST=smtp.sendgrid.net
 SMTP_PORT=587
 SMTP_USER=apikey
 SMTP_PASS=tu-api-key-sendgrid
-ALERT_FROM=SG-SST <alertas@tudominio.com>
+SMTP_FROM=SG-SST Alertas <alertas@tudominio.com>
+ALERTS_ENABLED=true
 
 # Frontend (build time)
 VITE_API_BASE=https://tudominio.com/api
+
+# Backend de datos: sqlite (default) | pg
+DB_BACKEND=pg
+DATABASE_URL=postgresql://usuario:clave@host-pooler.neon.tech/neondb?sslmode=require
+PGPOOL_MAX=5
+# true exige verificación completa del certificado TLS
+PGSSL_STRICT=true
+
+# Cifrado de datos sensibles (Ley 1581/2012); misma clave entre entornos que compartan datos
+ENCRYPTION_SECRET=generar-con-openssl-rand-hex-32
+
+# Respaldo automático 02:00 America/Bogota
+BACKUP_ENABLED=true
+BACKUP_DIR=/home/deploy/sg-sst/backups
+BACKUP_RETENTION_DAYS=30
+BACKUP_TIMEZONE=America/Bogota
 ```
+
+En Neon use la cadena _pooled_ para la app (`-pooler`) y una cadena directa
+para migraciones/ETL/restore si el pooler limita transacciones largas.
 
 ### 4. Build de Producción
 
@@ -359,7 +389,15 @@ services:
       - SMTP_PORT=${SMTP_PORT}
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASS=${SMTP_PASS}
-      - ALERT_FROM=${ALERT_FROM}
+      - SMTP_FROM=${SMTP_FROM}
+      - ALERTS_ENABLED=${ALERTS_ENABLED}
+      - DB_BACKEND=${DB_BACKEND:-sqlite}
+      - DATABASE_URL=${DATABASE_URL}
+      - ENCRYPTION_SECRET=${ENCRYPTION_SECRET}
+      - BACKUP_ENABLED=${BACKUP_ENABLED:-true}
+      - BACKUP_DIR=/backups
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
+      - BACKUP_TIMEZONE=${BACKUP_TIMEZONE:-America/Bogota}
     volumes:
       - sg-sst-data:/data
       - sg-sst-backups:/backups
@@ -493,7 +531,8 @@ SMTP_HOST=smtp.sendgrid.net
 SMTP_PORT=587
 SMTP_USER=apikey
 SMTP_PASS=tu-api-key
-ALERT_FROM=SG-SST <alertas@tudominio.com>
+SMTP_FROM=SG-SST Alertas <alertas@tudominio.com>
+ALERTS_ENABLED=true
 EOF
 
 # Build y deploy
@@ -506,6 +545,53 @@ docker compose logs -f web
 # Ver estado
 docker compose ps
 ```
+
+---
+
+## Despliegue con PostgreSQL (Neon)
+
+Orden sugerido para el primer despliegue con `DB_BACKEND=pg`:
+
+```bash
+# 1. Aplicar esquema al branch destino
+pnpm --dir server run migrate:pg
+
+# 2. (Solo si hay datos SQLite que conservar) copiar datos en una transacción
+pnpm --dir server run etl:pg -- --url-env DATABASE_URL --truncate --apply
+
+# 3. Verificar login, empresa, un examen con campos cifrados y una exportación
+# 4. Programar el respaldo (job interno 02:00 o cron externo)
+pnpm --dir server run backup:pg -- --url-env DATABASE_URL
+```
+
+Variables clave: `DB_BACKEND=pg`, `DATABASE_URL`, `ENCRYPTION_SECRET` (la misma
+del origen para leer datos cifrados migrados), `PGPOOL_MAX` bajo (5–10) y
+`PGSSL_STRICT=true`.
+
+### Respaldos y restauración
+
+El respaldo es lógico y portable (JSONL + gzip por tabla, manifiesto con
+conteos y SHA-256, copia de `uploads`). No requiere `pg_dump`.
+
+```bash
+# Crear
+pnpm --dir server run backup:pg -- --url-env DATABASE_URL
+
+# Validar sin escribir
+pnpm --dir server run restore:pg -- --url-env DATABASE_URL --dir <nombre-backup>
+
+# Restaurar (transaccional; exige esquema destino migrado)
+pnpm --dir server run restore:pg -- --url-env DATABASE_URL --dir <nombre-backup> --apply
+```
+
+En `NODE_ENV=production` el restore exige `--allow-production` y debe hacerse
+con el servidor detenido y aprobación de la empresa. Detalle completo en
+[`docs/DATABASE.md`](./DATABASE.md#backup-y-restore-postgresql-neon).
+
+Complementos: branches de Neon y point-in-time restore para desastres; el
+respaldo lógico sirve para auditoría y traslado entre entornos. Neon escala a
+cero: mida el cold start tras inactividad y ajuste el autosuspend o un
+keep-alive barato si afecta la operación.
 
 ---
 
@@ -594,8 +680,11 @@ curl -f http://localhost:4000/api/health
 # Frontend
 curl -f https://tudominio.com/
 
-# DB
+# DB (SQLite)
 sqlite3 data/sg-sst.db "PRAGMA integrity_check;"
+
+# DB (PostgreSQL/Neon), sin imprimir credenciales
+pnpm --dir server run backup:pg -- --url-env DATABASE_URL
 ```
 
 ### Métricas Básicas (Prometheus + Node Exporter - Opcional)
@@ -629,7 +718,10 @@ services:
 - [ ] `pnpm test` pasa
 - [ ] `pnpm lint` sin warnings
 - [ ] `pnpm typecheck` sin errores
-- [ ] Backup script configurado y probado
+- [ ] `DB_BACKEND` y `DATABASE_URL` acordes al entorno elegido
+- [ ] `migrate:pg` aplicado si `DB_BACKEND=pg` (sin migraciones pendientes)
+- [ ] Backup configurado y probado (script SQLite o `backup:pg` + retención)
+- [ ] Restore validado con `restore:pg --dir <backup>` en entorno separado
 - [ ] SSL certificado obtenido (Let's Encrypt)
 - [ ] Health check endpoint responde
 - [ ] Logs rotados (logrotate configurado)
@@ -659,12 +751,14 @@ sudo systemctl start sg-sst
 
 ---
 
-## Migración Futura a PostgreSQL
+## Estado de la migración a PostgreSQL
 
-Si la empresa crece >50 usuarios concurrentes:
+La migración a Neon ya está implementada en el backend (servicios `*.pg.ts`,
+`DB_BACKEND=pg`, ETL y respaldo/restore). SQLite sigue como predeterminado
+hasta que la empresa apruebe el corte. El plan y el estado por fase están en
+[`PLAN_MIGRACION_NEON.md`](../PLAN_MIGRACION_NEON.md); no ejecute el ETL ni el
+corte sobre producción sin aprobación explícita.
 
-1. Cambiar `server/src/lib/db.ts` para usar `pg` (node-postgres)
-2. Mantener misma interfaz (funciones `openDb`, `runMigrations`)
-3. Ajustar migraciones a sintaxis PostgreSQL
-4. Deploy con managed DB (RDS, Cloud SQL, Neon)
-5. Connection pooling con PgBouncer
+Para volúmenes que superen el respaldo lógico (decenas de miles de filas o
+archivos muy grandes), complemente con `pg_dump`/`pg_restore` o branches de
+Neon.

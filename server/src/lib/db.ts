@@ -62,6 +62,20 @@ export function runMigrations(db: DatabaseSync) {
     db.exec('ALTER TABLE contractors ADD COLUMN actualizado_en TEXT');
   }
 
+  // Migración incremental: evidencias del permiso de alturas (fotos y firmas)
+  const permitColumns = db.prepare('PRAGMA table_info(altura_permits)').all() as {
+    name: string;
+  }[];
+  if (!permitColumns.some(({ name }) => name === 'archivo_fotos')) {
+    db.exec('ALTER TABLE altura_permits ADD COLUMN archivo_fotos TEXT');
+  }
+  if (!permitColumns.some(({ name }) => name === 'firma_solicitante_url')) {
+    db.exec('ALTER TABLE altura_permits ADD COLUMN firma_solicitante_url TEXT');
+  }
+  if (!permitColumns.some(({ name }) => name === 'firma_responsable_url')) {
+    db.exec('ALTER TABLE altura_permits ADD COLUMN firma_responsable_url TEXT');
+  }
+
   const alertColumns = db.prepare('PRAGMA table_info(alerts)').all() as { name: string }[];
   if (!alertColumns.some(({ name }) => name === 'prioridad')) {
     db.exec(
@@ -70,6 +84,15 @@ export function runMigrations(db: DatabaseSync) {
   }
   if (!alertColumns.some(({ name }) => name === 'enviado_en')) {
     db.exec('ALTER TABLE alerts ADD COLUMN enviado_en TEXT');
+  }
+
+  // Migración incremental: fórmula y frecuencia de indicadores
+  const indicatorColumns = db.prepare('PRAGMA table_info(indicators)').all() as { name: string }[];
+  if (!indicatorColumns.some(({ name }) => name === 'formula')) {
+    db.exec('ALTER TABLE indicators ADD COLUMN formula TEXT');
+  }
+  if (!indicatorColumns.some(({ name }) => name === 'frecuencia')) {
+    db.exec('ALTER TABLE indicators ADD COLUMN frecuencia TEXT');
   }
 }
 

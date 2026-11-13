@@ -1,0 +1,2 @@
+ALTER TABLE indicators ADD COLUMN IF NOT EXISTS formula TEXT;
+ALTER TABLE indicators ADD COLUMN IF NOT EXISTS frecuencia TEXT;

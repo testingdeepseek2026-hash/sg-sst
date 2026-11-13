@@ -3,6 +3,9 @@ import { genId, nowISO } from '../lib/utils.js';
 export function getAudits(db: any) {
   return db.prepare('SELECT * FROM audits ORDER BY fecha DESC').all() as any[];
 }
+export function getAuditById(db: any, id: string) {
+  return db.prepare('SELECT * FROM audits WHERE id = ?').get(id) as any | undefined;
+}
 export function createAudit(db: any, input: any) {
   const id = genId();
   db.prepare(

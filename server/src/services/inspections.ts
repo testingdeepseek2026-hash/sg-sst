@@ -56,8 +56,9 @@ export function createAlturaPermit(db: any, input: any) {
   const now = nowISO();
   db.prepare(
     `INSERT INTO altura_permits (id, obra, fecha, hora_inicio, hora_fin, solicitante, responsable_seguridad,
-      sistema_proteccion, equipo_verificado, apto_medico, certificado_alturas, estado, at_s_id, creado_en, actualizado_en)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      sistema_proteccion, equipo_verificado, apto_medico, certificado_alturas, estado, at_s_id,
+      archivo_fotos, firma_solicitante_url, firma_responsable_url, creado_en, actualizado_en)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).run(
     id,
     input.obra,
@@ -72,6 +73,9 @@ export function createAlturaPermit(db: any, input: any) {
     input.certificado_alturas ? 1 : 0,
     input.estado ?? 'pendiente',
     input.at_s_id ?? null,
+    input.archivo_fotos ?? null,
+    input.firma_solicitante_url ?? null,
+    input.firma_responsable_url ?? null,
     now,
     now
   );
@@ -113,6 +117,19 @@ export function createATS(db: any, input: any) {
     input.fecha ?? nowISO(),
     input.estado ?? 'vigente'
   );
+  return db.prepare('SELECT * FROM ats WHERE id = ?').get(id);
+}
+export function updateATS(db: any, id: string, patch: any) {
+  const sets: string[] = [];
+  const vals: any[] = [];
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === undefined) continue;
+    sets.push(`${k} = ?`);
+    vals.push(v);
+  }
+  if (sets.length === 0) return db.prepare('SELECT * FROM ats WHERE id = ?').get(id);
+  vals.push(id);
+  db.prepare(`UPDATE ats SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
   return db.prepare('SELECT * FROM ats WHERE id = ?').get(id);
 }
 export function deleteATS(db: any, id: string) {

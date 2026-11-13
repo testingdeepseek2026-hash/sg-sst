@@ -2,10 +2,15 @@ import ExcelJS from 'exceljs';
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 
+import { auditLog, getAuthUser, requireRole } from '../lib/auth.js';
+import { isPgBackend } from '../lib/db-pg.js';
 import { createHazardAssessment } from '../services/hazards.js';
+import * as PgHazards from '../services/hazards.pg.js';
 import { createIncident } from '../services/incidents.js';
+import * as PgIncidents from '../services/incidents.pg.js';
+import { auditLogPg } from '../services/users.pg.js';
 import { createWorker } from '../services/workers.js';
-import { requireRole, getAuthUser, auditLog } from '../lib/auth.js';
+import * as PgWorkers from '../services/workers.pg.js';
 
 const { Workbook } = ExcelJS;
 
@@ -21,9 +26,13 @@ async function readFileBuffer(file: any): Promise<Buffer> {
   return Buffer.concat(chunks as any);
 }
 
-function excelToJson(buf: Buffer): { headers: string[]; rows: any[][]; preview: any[] } {
+async function excelToJson(buf: Buffer): Promise<{
+  headers: string[];
+  rows: any[][];
+  preview: any[];
+}> {
   const wb = new Workbook();
-  wb.xlsx.load(buf as any);
+  await wb.xlsx.load(buf as any);
   const ws = wb.worksheets[0];
 
   const headers: string[] = [];
@@ -55,25 +64,27 @@ function excelToJson(buf: Buffer): { headers: string[]; rows: any[][]; preview: 
 
 const importRoutes: FastifyPluginAsync = async (fastify) => {
   // Preview endpoint - returns headers and first 5 rows for validation
-  fastify.post('/import/preview', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const parts = await request.files();
-    const files = Array.isArray(parts) ? parts : [parts];
-    if (!files.length) return reply.code(400).send({ error: 'No se envió archivo' });
-    const file = files[0];
-    const buf = await readFileBuffer(file);
+  fastify.post(
+    '/import/preview',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const file = await request.file();
+      if (!file) return reply.code(400).send({ error: 'No se envió archivo' });
+      const buf = await readFileBuffer(file);
 
-    try {
-      const { headers, rows, preview } = excelToJson(buf);
-      return {
-        headers,
-        totalRows: rows.length,
-        preview,
-        message: `Archivo válido: ${headers.length} columnas, ${rows.length} filas de datos`,
-      };
-    } catch (e: any) {
-      return reply.code(400).send({ error: `Error leyendo Excel: ${e.message}` });
+      try {
+        const { headers, rows, preview } = await excelToJson(buf);
+        return {
+          headers,
+          totalRows: rows.length,
+          preview,
+          message: `Archivo válido: ${headers.length} columnas, ${rows.length} filas de datos`,
+        };
+      } catch (e: any) {
+        return reply.code(400).send({ error: `Error leyendo Excel: ${e.message}` });
+      }
     }
-  });
+  );
 
   async function handleImport(
     request: any,
@@ -82,21 +93,19 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
       db: any,
       row: any[],
       headers: string[]
-    ) => { success: boolean; error?: string; data?: any }
+    ) => Promise<{ success: boolean; error?: string; data?: any }>
   ) {
     const user = getAuthUser(request);
 
-    const parts = await request.files();
-    const files = Array.isArray(parts) ? parts : [parts];
-    if (!files.length) return reply.code(400).send({ error: 'No se envió archivo' });
-    const file = files[0];
+    const file = await request.file();
+    if (!file) return reply.code(400).send({ error: 'No se envió archivo' });
     const buf = await readFileBuffer(file);
 
     let headers: string[] = [];
     let rows: any[][] = [];
 
     try {
-      const parsed = excelToJson(buf);
+      const parsed = await excelToJson(buf);
       headers = parsed.headers;
       rows = parsed.rows;
     } catch (e: any) {
@@ -110,7 +119,7 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
     for (let i = 0; i < rows.length; i++) {
       const rowNumber = i + 2; // +2 because row 1 is header, 0-indexed
       try {
-        const result = factory(fastify.db, rows[i], headers);
+        const result = await factory(fastify.db, rows[i], headers);
         if (result.success) {
           importados++;
         } else {
@@ -124,13 +133,15 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
       }
     }
 
-    auditLog(fastify.db, {
+    const entry = {
       usuario_id: user.id,
       usuario_email: user.email,
       accion: 'importar',
       entidad: 'importaciones',
       valores_nuevos: { importados, errores: errores.length, advertencias: advertencias.length },
-    });
+    };
+    if (isPgBackend()) await auditLogPg(entry);
+    else auditLog(fastify.db, entry);
 
     return {
       importados,
@@ -146,200 +157,232 @@ const importRoutes: FastifyPluginAsync = async (fastify) => {
   }
 
   // Import workers with validation
-  fastify.post('/import/trabajadores', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const workerSchema = z.object({
-      tipo_documento: z.string().optional().default('CC'),
-      numero_documento: z.string().min(3),
-      nombres: z.string().min(1),
-      apellidos: z.string().min(1),
-      cargo: z.string().min(1),
-      fecha_ingreso: z.string().optional(),
-      estado: z.enum(['activo', 'inactivo', 'retirado']).optional().default('activo'),
-      eps: z.string().optional(),
-      afp: z.string().optional(),
-      arl: z.string().optional(),
-      caja_compensacion: z.string().optional(),
-      telefono: z.string().optional(),
-      email: z.string().email().optional(),
-      fecha_egreso: z.string().optional().nullable(),
-    });
-
-    return handleImport(request, reply, (db, row, headers) => {
-      const obj: Record<string, any> = {};
-      headers.forEach((h, i) => {
-        obj[h] = row[i];
+  fastify.post(
+    '/import/trabajadores',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const workerSchema = z.object({
+        tipo_documento: z.string().optional().default('CC'),
+        numero_documento: z.string().min(3),
+        nombres: z.string().min(1),
+        apellidos: z.string().min(1),
+        cargo: z.string().min(1),
+        fecha_ingreso: z.string().optional(),
+        estado: z.enum(['activo', 'inactivo', 'retirado']).optional().default('activo'),
+        eps: z.string().optional(),
+        afp: z.string().optional(),
+        arl: z.string().optional(),
+        caja_compensacion: z.string().optional(),
+        telefono: z.string().optional(),
+        email: z.string().email().optional(),
+        fecha_egreso: z.string().optional().nullable(),
       });
 
-      // Normalize field names (case-insensitive match)
-      const getVal = (keys: string[]) => {
-        for (const k of keys) {
-          const found = Object.keys(obj).find((o) => o.toLowerCase() === k.toLowerCase());
-          if (found) return obj[found];
-        }
-        return undefined;
-      };
+      return handleImport(request, reply, async (db, row, headers) => {
+        const obj: Record<string, any> = {};
+        headers.forEach((h, i) => {
+          obj[h] = row[i];
+        });
 
-      const parsed = workerSchema.safeParse({
-        tipo_documento: getVal(['tipo_documento', 'tipo_doc', 'documento_tipo']) ?? 'CC',
-        numero_documento: getVal(['numero_documento', 'num_documento', 'documento', 'id']),
-        nombres: getVal(['nombres', 'nombre']),
-        apellidos: getVal(['apellidos', 'apellido']),
-        cargo: getVal(['cargo', 'puesto']),
-        fecha_ingreso: getVal(['fecha_ingreso', 'fecha_ing', 'ingreso', 'fecha_ingreso']),
-        estado: getVal(['estado']),
-        eps: getVal(['eps']),
-        afp: getVal(['afp']),
-        arl: getVal(['arl']),
-        caja_compensacion: getVal(['caja_compensacion', 'caja']),
-        telefono: getVal(['telefono', 'tel']),
-        email: getVal(['email', 'correo']),
-        fecha_egreso: getVal(['fecha_egreso', 'egreso']),
-      });
-
-      if (!parsed.success) {
-        return {
-          success: false,
-          error: parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; '),
+        // Normalize field names (case-insensitive match)
+        const getVal = (keys: string[]) => {
+          for (const k of keys) {
+            const found = Object.keys(obj).find((o) => o.toLowerCase() === k.toLowerCase());
+            if (found) return obj[found];
+          }
+          return undefined;
         };
-      }
 
-      if (!parsed.data.numero_documento) {
-        return { success: false, error: 'Número de documento requerido' };
-      }
+        const parsed = workerSchema.safeParse({
+          tipo_documento: getVal(['tipo_documento', 'tipo_doc', 'documento_tipo']) ?? 'CC',
+          numero_documento: getVal(['numero_documento', 'num_documento', 'documento', 'id']),
+          nombres: getVal(['nombres', 'nombre']),
+          apellidos: getVal(['apellidos', 'apellido']),
+          cargo: getVal(['cargo', 'puesto']),
+          fecha_ingreso: getVal(['fecha_ingreso', 'fecha_ing', 'ingreso', 'fecha_ingreso']),
+          estado: getVal(['estado']),
+          eps: getVal(['eps']),
+          afp: getVal(['afp']),
+          arl: getVal(['arl']),
+          caja_compensacion: getVal(['caja_compensacion', 'caja']),
+          telefono: getVal(['telefono', 'tel']),
+          email: getVal(['email', 'correo']),
+          fecha_egreso: getVal(['fecha_egreso', 'egreso']),
+        });
 
-      // Check duplicate
-      const existing = db
-        .prepare('SELECT id FROM workers WHERE numero_documento = ?')
-        .get(parsed.data.numero_documento);
-      if (existing) {
-        return { success: false, error: `Documento ${parsed.data.numero_documento} ya existe` };
-      }
+        if (!parsed.success) {
+          return {
+            success: false,
+            error: parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; '),
+          };
+        }
 
-      createWorker(db, parsed.data);
-      return { success: true };
-    });
-  });
+        if (!parsed.data.numero_documento) {
+          return { success: false, error: 'Número de documento requerido' };
+        }
+
+        const workerInput = {
+          ...parsed.data,
+          fecha_ingreso: parsed.data.fecha_ingreso ?? new Date().toISOString().slice(0, 10),
+        };
+
+        // Check duplicate
+        if (isPgBackend()) {
+          const existing = await PgWorkers.getWorkerByDocumentoPg(parsed.data.numero_documento);
+          if (existing) {
+            return {
+              success: false,
+              error: `Documento ${parsed.data.numero_documento} ya existe`,
+            };
+          }
+          await PgWorkers.createWorkerPg(workerInput);
+        } else {
+          const existing = db
+            .prepare('SELECT id FROM workers WHERE numero_documento = ?')
+            .get(parsed.data.numero_documento);
+          if (existing) {
+            return {
+              success: false,
+              error: `Documento ${parsed.data.numero_documento} ya existe`,
+            };
+          }
+          createWorker(db, workerInput);
+        }
+        return { success: true };
+      });
+    }
+  );
 
   // Import risks with validation
-  fastify.post('/import/riesgos', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const riskSchema = z.object({
-      cargo_oficio: z.string().optional().default(''),
-      area: z.string().optional().nullable(),
-      peligro_texto: z.string().min(1),
-      tarea: z.string().optional().nullable(),
-      valoracion_riesgo: z.enum(['bajo', 'medio', 'alto', 'critico']).optional().default('medio'),
-      responsable: z.string().optional().nullable(),
-    });
-
-    return handleImport(request, reply, (db, row, headers) => {
-      const obj: Record<string, any> = {};
-      headers.forEach((h, i) => {
-        obj[h] = row[i];
+  fastify.post(
+    '/import/riesgos',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const riskSchema = z.object({
+        cargo_oficio: z.string().optional().default(''),
+        area: z.string().optional().nullable(),
+        peligro_texto: z.string().min(1),
+        tarea: z.string().optional().nullable(),
+        valoracion_riesgo: z.enum(['bajo', 'medio', 'alto', 'critico']).optional().default('medio'),
+        responsable: z.string().optional().nullable(),
       });
 
-      const getVal = (keys: string[]) => {
-        for (const k of keys) {
-          const found = Object.keys(obj).find((o) => o.toLowerCase() === k.toLowerCase());
-          if (found) return obj[found];
-        }
-        return undefined;
-      };
+      return handleImport(request, reply, async (db, row, headers) => {
+        const obj: Record<string, any> = {};
+        headers.forEach((h, i) => {
+          obj[h] = row[i];
+        });
 
-      const parsed = riskSchema.safeParse({
-        cargo_oficio: getVal(['cargo_oficio', 'cargo', 'oficio']),
-        area: getVal(['area', 'área']),
-        peligro_texto: getVal(['peligro_texto', 'peligro', 'riesgo', 'peligro_nombre']),
-        tarea: getVal(['tarea', 'actividad']),
-        valoracion_riesgo: getVal(['valoracion_riesgo', 'valoracion', 'riesgo_nivel']),
-        responsable: getVal(['responsable', 'resp']),
-      });
-
-      if (!parsed.success) {
-        return {
-          success: false,
-          error: parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; '),
+        const getVal = (keys: string[]) => {
+          for (const k of keys) {
+            const found = Object.keys(obj).find((o) => o.toLowerCase() === k.toLowerCase());
+            if (found) return obj[found];
+          }
+          return undefined;
         };
-      }
 
-      if (!parsed.data.peligro_texto) {
-        return { success: false, error: 'Peligro requerido' };
-      }
+        const parsed = riskSchema.safeParse({
+          cargo_oficio: getVal(['cargo_oficio', 'cargo', 'oficio']),
+          area: getVal(['area', 'área']),
+          peligro_texto: getVal(['peligro_texto', 'peligro', 'riesgo', 'peligro_nombre']),
+          tarea: getVal(['tarea', 'actividad']),
+          valoracion_riesgo: getVal(['valoracion_riesgo', 'valoracion', 'riesgo_nivel']),
+          responsable: getVal(['responsable', 'resp']),
+        });
 
-      createHazardAssessment(db, parsed.data);
-      return { success: true };
-    });
-  });
+        if (!parsed.success) {
+          return {
+            success: false,
+            error: parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; '),
+          };
+        }
+
+        if (!parsed.data.peligro_texto) {
+          return { success: false, error: 'Peligro requerido' };
+        }
+
+        if (isPgBackend()) await PgHazards.createHazardAssessmentPg(parsed.data);
+        else createHazardAssessment(db, parsed.data);
+        return { success: true };
+      });
+    }
+  );
 
   // Import incidents with validation
-  fastify.post('/import/incidentes', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const incidentSchema = z.object({
-      tipo: z
-        .enum(['incidente', 'accidente', 'enfermedad_laboral'])
-        .optional()
-        .default('incidente'),
-      fecha_ocurrencia: z.string(),
-      descripcion: z.string().optional().default(''),
-      estado: z.enum(['abierto', 'investigando', 'cerrado']).optional().default('abierto'),
-      trabajador_id: z.string().optional().nullable(),
-      lugar: z.string().optional().nullable(),
-      lesiones: z.string().optional().nullable(),
-      causa_raiz: z.string().optional().nullable(),
-      acciones_correctivas: z.string().optional().nullable(),
-      reporte_arl: z.boolean().optional().default(false),
-      reporte_eps: z.boolean().optional().default(false),
-      reporte_mintrabajo: z.boolean().optional().default(false),
-      dias_perdidos: z.number().int().min(0).optional().default(0),
-      investigador: z.string().optional().nullable(),
-      fecha_cierre: z.string().optional().nullable(),
-    });
-
-    return handleImport(request, reply, (db, row, headers) => {
-      const obj: Record<string, any> = {};
-      headers.forEach((h, i) => {
-        obj[h] = row[i];
+  fastify.post(
+    '/import/incidentes',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const incidentSchema = z.object({
+        tipo: z
+          .enum(['incidente', 'accidente', 'enfermedad_laboral'])
+          .optional()
+          .default('incidente'),
+        fecha_ocurrencia: z.string(),
+        descripcion: z.string().optional().default(''),
+        estado: z.enum(['abierto', 'investigando', 'cerrado']).optional().default('abierto'),
+        trabajador_id: z.string().optional().nullable(),
+        lugar: z.string().optional().nullable(),
+        lesiones: z.string().optional().nullable(),
+        causa_raiz: z.string().optional().nullable(),
+        acciones_correctivas: z.string().optional().nullable(),
+        reporte_arl: z.boolean().optional().default(false),
+        reporte_eps: z.boolean().optional().default(false),
+        reporte_mintrabajo: z.boolean().optional().default(false),
+        dias_perdidos: z.number().int().min(0).optional().default(0),
+        investigador: z.string().optional().nullable(),
+        fecha_cierre: z.string().optional().nullable(),
       });
 
-      const getVal = (keys: string[]) => {
-        for (const k of keys) {
-          const found = Object.keys(obj).find((o) => o.toLowerCase() === k.toLowerCase());
-          if (found) return obj[found];
-        }
-        return undefined;
-      };
+      return handleImport(request, reply, async (db, row, headers) => {
+        const obj: Record<string, any> = {};
+        headers.forEach((h, i) => {
+          obj[h] = row[i];
+        });
 
-      const parsed = incidentSchema.safeParse({
-        tipo: getVal(['tipo', 'tipo_incidente']),
-        fecha_ocurrencia: getVal(['fecha_ocurrencia', 'fecha', 'fecha_ocu']),
-        descripcion: getVal(['descripcion', 'descripción', 'detalle']),
-        estado: getVal(['estado']),
-        trabajador_id: getVal(['trabajador_id', 'trabajador', 'worker_id']),
-        lugar: getVal(['lugar', 'ubicacion']),
-        lesiones: getVal(['lesiones', 'lesion']),
-        causa_raiz: getVal(['causa_raiz', 'causa', 'causa_raíz']),
-        acciones_correctivas: getVal(['acciones_correctivas', 'acciones', 'correctivas']),
-        reporte_arl: getVal(['reporte_arl', 'arl']),
-        reporte_eps: getVal(['reporte_eps', 'eps']),
-        reporte_mintrabajo: getVal(['reporte_mintrabajo', 'mintrabajo', 'min_trabajo']),
-        dias_perdidos: getVal(['dias_perdidos', 'dias', 'dias_perd']),
-        investigador: getVal(['investigador', 'investigador_nombre']),
-        fecha_cierre: getVal(['fecha_cierre', 'cierre']),
-      });
-
-      if (!parsed.success) {
-        return {
-          success: false,
-          error: parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; '),
+        const getVal = (keys: string[]) => {
+          for (const k of keys) {
+            const found = Object.keys(obj).find((o) => o.toLowerCase() === k.toLowerCase());
+            if (found) return obj[found];
+          }
+          return undefined;
         };
-      }
 
-      if (!parsed.data.fecha_ocurrencia) {
-        return { success: false, error: 'Fecha de ocurrencia requerida' };
-      }
+        const parsed = incidentSchema.safeParse({
+          tipo: getVal(['tipo', 'tipo_incidente']),
+          fecha_ocurrencia: getVal(['fecha_ocurrencia', 'fecha', 'fecha_ocu']),
+          descripcion: getVal(['descripcion', 'descripción', 'detalle']),
+          estado: getVal(['estado']),
+          trabajador_id: getVal(['trabajador_id', 'trabajador', 'worker_id']),
+          lugar: getVal(['lugar', 'ubicacion']),
+          lesiones: getVal(['lesiones', 'lesion']),
+          causa_raiz: getVal(['causa_raiz', 'causa', 'causa_raíz']),
+          acciones_correctivas: getVal(['acciones_correctivas', 'acciones', 'correctivas']),
+          reporte_arl: getVal(['reporte_arl', 'arl']),
+          reporte_eps: getVal(['reporte_eps', 'eps']),
+          reporte_mintrabajo: getVal(['reporte_mintrabajo', 'mintrabajo', 'min_trabajo']),
+          dias_perdidos: getVal(['dias_perdidos', 'dias', 'dias_perd']),
+          investigador: getVal(['investigador', 'investigador_nombre']),
+          fecha_cierre: getVal(['fecha_cierre', 'cierre']),
+        });
 
-      createIncident(db, parsed.data);
-      return { success: true };
-    });
-  });
+        if (!parsed.success) {
+          return {
+            success: false,
+            error: parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; '),
+          };
+        }
+
+        if (!parsed.data.fecha_ocurrencia) {
+          return { success: false, error: 'Fecha de ocurrencia requerida' };
+        }
+
+        if (isPgBackend()) await PgIncidents.createIncidentPg(parsed.data);
+        else createIncident(db, parsed.data);
+        return { success: true };
+      });
+    }
+  );
 
   // Download template endpoint
   fastify.get('/import/template/:type', async (request, reply) => {

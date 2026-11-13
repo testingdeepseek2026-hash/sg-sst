@@ -93,13 +93,13 @@ Orden por dominios, cada uno con su lote de pruebas convertido y verde antes de 
 
 - [x] 1. Empresa, usuarios, roles, auth/bitácora (`audit_logs`).
 - [x] 2. Trabajadores + exámenes + certificados + EPP (incluye el ciclo mínimo de consentimientos requerido para exámenes; cifrado AES-256-GCM validado). El resto de privacidad continúa en N3.8.
-- [ ] 3. Peligros, estándares y autoevaluación (cálculos de puntaje probados).
-- [ ] 4. Plan anual, capacitaciones, asistencia y firmas.
-- [ ] 5. Inspecciones, alturas/ATS, emergencias, contratistas.
-- [ ] 6. Incidentes, acciones, auditorías y hallazgos.
-- [ ] 7. Alertas, indicadores, documentos, importación/exportación.
-- [ ] 8. Privacidad (consentimientos, ARCO, registro de tratamiento).
-- [ ] 9. Scheduler de alertas contra el pool.
+- [x] 3. Peligros, estándares y autoevaluación (cálculos de puntaje probados).
+- [x] 4. Plan anual, capacitaciones, asistencia y firmas.
+- [x] 5. Inspecciones, alturas/ATS, emergencias, contratistas.
+- [x] 6. Incidentes, acciones, auditorías y hallazgos.
+- [x] 7. Alertas, indicadores, documentos, importación/exportación.
+- [x] 8. Privacidad (consentimientos, ARCO, registro de tratamiento).
+- [x] 9. Scheduler de alertas contra el pool.
 
 **Aceptación por lote:** las pruebas de ese dominio pasan contra Postgres; la suite completa nunca queda más atrás de un dominio; `typecheck` y `build` siguen en verde en cada lote.
 
@@ -117,32 +117,47 @@ Orden por dominios, cada uno con su lote de pruebas convertido y verde antes de 
 - `npm run typecheck`, `pnpm --dir server run build` y `pnpm --dir server exec eslint src/routes/workers.ts src/routes/workers_items.ts src/routes/privacy.ts src/services/workers.pg.ts src/services/workers_exams.pg.ts src/services/workers_certs.pg.ts src/services/workers_epp.pg.ts src/services/privacy_consents.pg.ts src/services/worker_validation_error.ts src/services/workers_exams.ts src/services/workers_certs.ts src/services/privacy.ts tests/integration/companies.pg.test.ts --max-warnings 0`: pasan.
 - No se cargaron datos reales ni se ejecutaron cambios en producción. Siguiente lote: N3.3 (peligros, estándares y autoevaluación).
 
+**Estado (13 de noviembre de 2026): Dominios N3.3 a N3.7 completados.** Se migraron a PostgreSQL los servicios y rutas de peligros/estándares, plan anual y capacitaciones, inspecciones/alturas/ATS/emergencias/contratistas, incidentes/acciones/auditorías/hallazgos, y alertas/indicadores/documentos/políticas. También quedaron con doble backend la exportación (PDF/Excel de estándares, plan, matriz, indicadores, incidentes, evidencias, acciones, hallazgos y política) y la importación Excel de trabajadores, riesgos e incidentes. Se añadieron las migraciones `003_altura_permits_evidence.sql` (fotos y firmas del permiso de alturas) y `004_indicators_formula_frequency.sql` (fórmula y frecuencia de indicadores), con equivalencia incremental en SQLite. Se corrigieron defectos preexistentes: esquemas propios para `/altura/permits` y `/altura/ats` (antes reutilizaban el esquema de inspecciones y respondían 400), falta de `PUT /altura/ats/:id` y lectura multipart/Excel de importación (`request.files()` se trataba como arreglo y `xlsx.load` no se esperaba).
+
+**Estado (13 de noviembre de 2026): Fase N3 completa (N3.8 y N3.9 incluidas).** Privacidad quedó con servicios PostgreSQL (`privacy.pg.ts`) para avisos, consentimientos, ARCO y registro de tratamiento; las rutas conservan RBAC propio del trabajador y auditoría en el backend activo. El scheduler de alertas ahora genera, envía y marca alertas contra PostgreSQL (`generateAlertsPg`, `getPendingAlertsForSendingPg`, `getWorkerEmailByAlertEntityPg`, `markAsSentPg`) y calcula el resumen semanal con `COUNT(*) FILTER`; el job de respaldo SQLite se omite cuando el backend es PostgreSQL y queda pendiente en N5. La verificación del scheduler es por typecheck y servicios PG ya cubiertos; no se ejecutó el cron en pruebas (requiere SMTP y `ALERTS_ENABLED=true`). Validación Neon dev: `companies.pg.test.ts` 38/38; suite backend 249 aprobadas / 38 omitidas; lint, typecheck y Prettier en verde. Siguiente: N4 (ETL SQLite→PostgreSQL).
+
+- Neon `dev`: `tests/integration/companies.pg.test.ts` **34/34** (incluye alertas con dedupe y visibilidad del trabajador, indicadores con RBAC y filtro por periodo, documentos por rol, flujo completo de política con firma/divulgación/archivo/versión y export PDF, export PDF/Excel e importación Excel de los tres tipos).
+- `pnpm --dir server run test`: **249 aprobadas, 34 omitidas**; las omitidas son las pruebas Neon cuando no se configura `TEST_DATABASE_URL`.
+- `pnpm lint`, `pnpm --dir server run typecheck` y Prettier: sin errores.
+- No se cargaron datos reales ni se ejecutaron cambios en producción. Siguiente lote: N3.8 (privacidad: ARCO y registro de tratamiento).
+
 ### Fase N4 — Migración de datos SQLite → Neon (ETL) (1–2 días)
 
-- [ ] Script `scripts/migrate-sqlite-to-pg.ts`: lee `data/sg-sst.db` y copia tabla por tabla al branch de desarrollo primero.
-- [ ] Descifrar/cifrar campos sensibles con la misma `ENCRYPTION_SECRET` o regenerar en destino de forma controlada.
-- [ ] Verificación de conteos por tabla, muestreo de registros y prueba de escritura/lectura desde la app.
+- [x] Script `scripts/migrate-sqlite-to-pg.ts`: lee `data/sg-sst.db` y copia tabla por tabla al branch de desarrollo primero.
+- [x] Descifrar/cifrar campos sensibles con la misma `ENCRYPTION_SECRET` o regenerar en destino de forma controlada.
+- [x] Verificación de conteos por tabla, muestreo de registros y prueba de escritura/lectura desde la app.
 - [ ] Ejecución final a producción de Neon solo con aprobación de la empresa.
 
 **Aceptación:** el conteo de filas coincide en las 36 tablas, una muestra de registros coincide campo a campo y un flujo completo (login → crear → exportar) funciona con los datos migrados.
 
+**Estado (13 de noviembre de 2026): ETL validado en el branch dev; producción pendiente de aprobación.** `pnpm --dir server run etl:pg -- --url-env DATABASE_URL_DEV` simula sin escribir; con `--apply` copia en una transacción única y con `--truncate` reemplaza el destino. El script ordena las tablas por claves foráneas, cifra en destino los campos sensibles de exámenes, certificados y EPP, aborta si detecta un cifrado ilegible (clave distinta) y verifica conteos y muestras campo a campo antes de confirmar. Resultado en dev: 36/36 tablas y 103/103 filas, con 27 campos sensibles cifrados. Flujo manual contra dev verificado: login, lectura de empresa, exámenes con datos sensibles descifrados, EPP con firma descifrada, alta de indicador y exportación PDF. Se aplicó la migración 004 al branch dev (estaba pendiente). Se corrigió un defecto preexistente de cifrado: `SENSITIVE_FIELDS` duplicaba `notas` y `isEncrypted` clasificaba texto plano largo como cifrado, causando doble descifrado y el texto `[DATOS CIFRADOS - ERROR AL DESCIFRAR]`; ahora hay deduplicación, detección estricta de base64 y 4 pruebas unitarias nuevas. La ejecución final a producción sigue bloqueada hasta confirmación de la empresa.
+
 ### Fase N5 — Respaldos y restauración en Postgres (1.5–2.5 días)
 
-- [ ] Reescribir `services/backup.ts` y `restore.ts` sobre `pg_dump`/`pg_restore` (o snapshots de Neon), conservando manifiesto, verificación de integridad, retención (`BACKUP_RETENTION_DAYS`) y job de las 02:00.
-- [ ] Considerar branch diario de Neon como respaldo complementario; documentar limitaciones.
-- [ ] Probar restauración real en un entorno separado.
+- [x] Reescribir `services/backup.ts` y `restore.ts` sobre `pg_dump`/`pg_restore` (o snapshots de Neon), conservando manifiesto, verificación de integridad, retención (`BACKUP_RETENTION_DAYS`) y job de las 02:00. Implementado como respaldo lógico portable en Node (este equipo no tiene `pg_dump`/`psql`).
+- [x] Considerar branch diario de Neon como respaldo complementario; documentar limitaciones.
+- [x] Probar restauración real en un entorno separado.
 
 **Aceptación:** un respaldo se restaura en un entorno limpio con verificación de integridad; el procedimiento queda documentado paso a paso para el responsable.
+
+**Estado (13 de noviembre de 2026): N5 completada; pendiente decisión operativa sobre branch diario.** `services/backup.pg.ts` crea un backup lógico por tabla (JSONL + gzip) con manifiesto (conteos, SHA-256, migraciones, orden de FK) y copia de `uploads`; `restore.pg.ts` valida antes de escribir, exige migraciones destino, restaura en una transacción con `TRUNCATE ... CASCADE`, verifica conteos y hace rollback ante cualquier fallo. Los scripts `backup:pg` y `restore:pg` aceptan `--url-env`, `--dir` y `--apply`; en producción exigen `--allow-production`. El scheduler conserva el job de las 02:00 y usa `BACKUP_RETENTION_DAYS` (default 30) sobre `sg-sst-pg-backup-*`. Validación: prueba de integración de backup/tamper/restauración y `companies.pg.test.ts` **39/39**; suite backend **253 aprobadas / 39 omitidas**; lint, typecheck, build y Prettier en verde. Restauración real en base separada `sg_sst_restore_check`: 36 tablas y 108 filas, comparación de las 37 tablas contra dev con 0 diferencias, muestras y campos cifrados legibles. Documentado en `docs/DATABASE.md`; limitación: es solo datos, no esquema, y no reemplaza `pg_dump` ni branches de Neon para volúmenes grandes. La creación del branch diario de Neon queda como decisión operativa de la empresa.
 
 ### Fase N6 — Corte a producción, despliegue y cierre (2–4 días)
 
 - [ ] E2E completo contra Neon (login → flujos → alertas → exportación).
 - [ ] Configurar el hosting elegido con `DATABASE_URL`, `ENCRYPTION_SECRET`, SMTP y HTTPS.
-- [ ] Actualizar documentación: guía de despliegue, respaldo/restauración y variables de entorno.
+- [x] Actualizar documentación: guía de despliegue, respaldo/restauración y variables de entorno.
 - [ ] Actualizar [`PLAN_TRABAJO_SG_SST.md`](./PLAN_TRABAJO_SG_SST.md) (Fase 4: respaldos automáticos; Fase 6: ambiente productivo).
-- [ ] Prueba de recuperación y de latencia (Neon escala a cero: medir cold start y decidir si se fija `autosuspend` más largo o se agrega keep-alive barato).
+- [x] Prueba de recuperación y de latencia (Neon escala a cero: medir cold start y decidir si se fija `autosuspend` más largo o se agrega keep-alive barato).
 
 **Aceptación:** la app productiva sirve los datos desde Neon, los respaldos automáticos corren, la restauración fue probada y la documentación coincide con el sistema real.
+
+**Estado (13 de noviembre de 2026): N6 parcial; falta hospedaje y corte productivo.** Documentación actualizada en [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) (backend dual, variables de entorno, preparación de Neon, respaldo/restore y checklist) y en [`docs/DATABASE.md`](./docs/DATABASE.md). E2E contra el branch `dev` con `DB_BACKEND=pg`: login de administrador, tablero, trabajadores, ficha con exámenes y campos médicos descifrados, lectura de estándares/indicadores/alertas/documentos e incidentes y exportación PDF de estándares (200). Latencia observada: login en frío 0,82 s; lecturas posteriores ~0,17 s; exportación PDF 0,36 s; Health 200. La recuperación ya se probó en base separada (N5). El job `test` de CI ahora levanta `postgres:17` y define `TEST_DATABASE_URL`, de modo que las pruebas PostgreSQL dejan de omitirse en cada build. Queda pendiente: envío real de alertas por SMTP, decisión de hosting (VPS, contenedor o servicio administrado), HTTPS, variables productivas y el corte final, todo sujeto a aprobación de la empresa. No se modificaron datos de producción.
 
 ## Estimación global
 

@@ -1,6 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 
+import { auditLog, getAuthUser, requireRole } from '../lib/auth.js';
+import { isPgBackend } from '../lib/db-pg.js';
 import {
   createDrill,
   createEmergencyPlan,
@@ -14,7 +16,8 @@ import {
   updateDrill,
   updateEmergencyPlan,
 } from '../services/emergencies.js';
-import { requireRole, getAuthUser, auditLog } from '../lib/auth.js';
+import * as PgEmergencies from '../services/emergencies.pg.js';
+import { auditLogPg } from '../services/users.pg.js';
 
 const emergencyPlanSchema = z.object({
   nombre: z.string().min(2),
@@ -34,139 +37,183 @@ const drillSchema = z.object({
 
 const emergenciesRoutes: FastifyPluginAsync = async (fastify) => {
   // ===== EMERGENCY PLANS =====
-  fastify.get('/emergency-plans', async (request, reply) => {
-    return getEmergencyPlans(fastify.db);
+  fastify.get('/emergency-plans', async (_request, _reply) => {
+    return isPgBackend() ? PgEmergencies.getEmergencyPlansPg() : getEmergencyPlans(fastify.db);
   });
 
   fastify.get('/emergency-plans/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const plan = getEmergencyPlanById(fastify.db, id);
+    const plan = isPgBackend()
+      ? await PgEmergencies.getEmergencyPlanByIdPg(id)
+      : getEmergencyPlanById(fastify.db, id);
     if (!plan) return reply.code(404).send({ error: 'Plan de emergencias no encontrado' });
     return plan;
   });
 
-  fastify.post('/emergency-plans', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const parsed = emergencyPlanSchema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const p = createEmergencyPlan(fastify.db, parsed.data);
+  fastify.post(
+    '/emergency-plans',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const parsed = emergencyPlanSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      const p = isPgBackend()
+        ? await PgEmergencies.createEmergencyPlanPg(parsed.data)
+        : createEmergencyPlan(fastify.db, parsed.data);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'crear',
-      entidad: 'emergency_plans',
-      entidad_id: p.id,
-      valores_nuevos: parsed.data,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'crear',
+        entidad: 'emergency_plans',
+        entidad_id: p.id,
+        valores_nuevos: parsed.data,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return p;
-  });
+      return p;
+    }
+  );
 
-  fastify.put('/emergency-plans/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const parsed = emergencyPlanSchema.partial().safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const updated = updateEmergencyPlan(fastify.db, id, parsed.data);
+  fastify.put(
+    '/emergency-plans/:id',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const parsed = emergencyPlanSchema.partial().safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      const updated = isPgBackend()
+        ? await PgEmergencies.updateEmergencyPlanPg(id, parsed.data)
+        : updateEmergencyPlan(fastify.db, id, parsed.data);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'editar',
-      entidad: 'emergency_plans',
-      entidad_id: id,
-      valores_nuevos: parsed.data,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'editar',
+        entidad: 'emergency_plans',
+        entidad_id: id,
+        valores_nuevos: parsed.data,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return updated;
-  });
+      return updated;
+    }
+  );
 
-  fastify.delete('/emergency-plans/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    deleteEmergencyPlan(fastify.db, id);
+  fastify.delete(
+    '/emergency-plans/:id',
+    { preHandler: requireRole('administrador') },
+    async (request, _reply) => {
+      const { id } = request.params as { id: string };
+      if (isPgBackend()) await PgEmergencies.deleteEmergencyPlanPg(id);
+      else deleteEmergencyPlan(fastify.db, id);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'eliminar',
-      entidad: 'emergency_plans',
-      entidad_id: id,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'eliminar',
+        entidad: 'emergency_plans',
+        entidad_id: id,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return { ok: true };
-  });
+      return { ok: true };
+    }
+  );
 
   // ===== DRILLS (Simulacros) =====
-  fastify.get('/drills', async (request, reply) => {
-    return getDrills(fastify.db);
+  fastify.get('/drills', async (_request, _reply) => {
+    return isPgBackend() ? PgEmergencies.getDrillsPg() : getDrills(fastify.db);
   });
 
   fastify.get('/drills/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const d = getDrillById(fastify.db, id);
+    const d = isPgBackend() ? await PgEmergencies.getDrillByIdPg(id) : getDrillById(fastify.db, id);
     if (!d) return reply.code(404).send({ error: 'Simulacro no encontrado' });
     return d;
   });
 
-  fastify.get('/emergency-plans/:id/drills', async (request, reply) => {
+  fastify.get('/emergency-plans/:id/drills', async (request, _reply) => {
     const { id } = request.params as { id: string };
-    return getDrillsByPlan(fastify.db, id);
+    return isPgBackend() ? PgEmergencies.getDrillsByPlanPg(id) : getDrillsByPlan(fastify.db, id);
   });
 
   fastify.post('/drills', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parsed = drillSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const d = createDrill(fastify.db, parsed.data);
+    const d = isPgBackend()
+      ? await PgEmergencies.createDrillPg(parsed.data)
+      : createDrill(fastify.db, parsed.data);
 
     const user = getAuthUser(request);
-    auditLog(fastify.db, {
+    const entry = {
       usuario_id: user.id,
       usuario_email: user.email,
       accion: 'crear',
       entidad: 'drills',
       entidad_id: d.id,
       valores_nuevos: parsed.data,
-    });
+    };
+    if (isPgBackend()) await auditLogPg(entry);
+    else auditLog(fastify.db, entry);
 
     return d;
   });
 
-  fastify.put('/drills/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const parsed = drillSchema.partial().safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const updated = updateDrill(fastify.db, id, parsed.data);
+  fastify.put(
+    '/drills/:id',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const parsed = drillSchema.partial().safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      const updated = isPgBackend()
+        ? await PgEmergencies.updateDrillPg(id, parsed.data)
+        : updateDrill(fastify.db, id, parsed.data);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'editar',
-      entidad: 'drills',
-      entidad_id: id,
-      valores_nuevos: parsed.data,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'editar',
+        entidad: 'drills',
+        entidad_id: id,
+        valores_nuevos: parsed.data,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return updated;
-  });
+      return updated;
+    }
+  );
 
-  fastify.delete('/drills/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    deleteDrill(fastify.db, id);
+  fastify.delete(
+    '/drills/:id',
+    { preHandler: requireRole('administrador') },
+    async (request, _reply) => {
+      const { id } = request.params as { id: string };
+      if (isPgBackend()) await PgEmergencies.deleteDrillPg(id);
+      else deleteDrill(fastify.db, id);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'eliminar',
-      entidad: 'drills',
-      entidad_id: id,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'eliminar',
+        entidad: 'drills',
+        entidad_id: id,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return { ok: true };
-  });
+      return { ok: true };
+    }
+  );
 };
 
 export default emergenciesRoutes;

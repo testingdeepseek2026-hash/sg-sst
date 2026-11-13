@@ -286,7 +286,9 @@ CREATE TABLE IF NOT EXISTS indicators (
   meta DOUBLE PRECISION,
   periodo TEXT NOT NULL,              -- ej. '2026-11'
   fecha_calculo TEXT NOT NULL DEFAULT (to_char((now() AT TIME ZONE 'UTC'), 'YYYY-MM-DD"T"HH24:MI:SS"Z"')),
-  notas TEXT
+  notas TEXT,
+  formula TEXT,
+  frecuencia TEXT
 );
 
 -- ------------------------------------------------------------------
@@ -350,6 +352,9 @@ CREATE TABLE IF NOT EXISTS altura_permits (
   certificado_alturas INTEGER NOT NULL DEFAULT 0,
   estado TEXT NOT NULL DEFAULT 'pendiente', -- pendiente | autorizado | rechazado | cerrado
   at_s_id TEXT,
+  archivo_fotos TEXT,                 -- JSON lista de urls
+  firma_solicitante_url TEXT,
+  firma_responsable_url TEXT,
   creado_en TEXT NOT NULL DEFAULT (to_char((now() AT TIME ZONE 'UTC'), 'YYYY-MM-DD"T"HH24:MI:SS"Z"')),
   actualizado_en TEXT NOT NULL DEFAULT (to_char((now() AT TIME ZONE 'UTC'), 'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
 );

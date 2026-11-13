@@ -61,8 +61,8 @@ export function getActionsByIncident(db: any, incidentId: string) {
 export function createIncidentAction(db: any, incidentId: string, input: any) {
   const id = genId();
   db.prepare(
-    `INSERT INTO incident_actions (id, incident_id, descripcion, responsable, fecha_limite, estado, evidencia_url, creado_en)
-     VALUES (?,?,?,?,?,?,?,?)`
+    `INSERT INTO incident_actions (id, incident_id, descripcion, responsable, fecha_limite, estado, evidencia_url, creado_en, completada_en)
+     VALUES (?,?,?,?,?,?,?,?,?)`
   ).run(
     id,
     incidentId,
@@ -71,7 +71,8 @@ export function createIncidentAction(db: any, incidentId: string, input: any) {
     input.fecha_limite ?? null,
     input.estado ?? 'pendiente',
     input.evidencia_url ?? null,
-    new Date().toISOString()
+    new Date().toISOString(),
+    input.completada_en ?? null
   );
   return db.prepare('SELECT * FROM incident_actions WHERE id = ?').get(id);
 }

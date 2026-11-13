@@ -830,6 +830,69 @@ Ver `server/src/lib/scheduler.ts` - incluye backup diario compresado.
 
 ---
 
+## Backup y Restore PostgreSQL (Neon)
+
+El respaldo lógico portable vive en `server/src/services/backup.pg.ts` y no
+requiere `pg_dump` ni `psql`. Genera un directorio por corrida con un
+`MANIFEST.json` y un `.jsonl.gz` por tabla.
+
+### Crear backup
+
+```bash
+# Valida la conexión y escribe en BACKUP_DIR (default: ./backups)
+pnpm --dir server run backup:pg -- --url-env DATABASE_URL_DEV
+
+# Directorio alterno
+pnpm --dir server run backup:pg -- --url-env DATABASE_URL_DEV --backup-dir /ruta/backups
+```
+
+Cada corrida produce `sg-sst-pg-backup-<timestamp>/` con: manifiesto
+(`backend`, `format`, migraciones aplicadas, orden de dependencias, conteos y
+SHA-256 por tabla), datos JSONL comprimidos y, si existe, copia de `uploads`.
+El nombre `sg-sst-pg-backup-*` es el que usa la retención
+(`BACKUP_RETENTION_DAYS`, default 30).
+
+### Validar sin escribir
+
+```bash
+pnpm --dir server run restore:pg -- --url-env DATABASE_URL_DEV \
+  --dir sg-sst-pg-backup-2026-11-13T21-20-32
+```
+
+Verifica nombre seguro, manifiesto, checksum y conteo de filas de cada tabla.
+No toca el destino; es el paso recomendado antes de un `--apply`.
+
+### Restaurar
+
+```bash
+pnpm --dir server run restore:pg -- --url-env DATABASE_URL_DEV \
+  --dir sg-sst-pg-backup-2026-11-13T21-20-32 --apply
+```
+
+La restauración valida el backup, exige que el destino tenga las mismas
+migraciones o superiores (`pnpm --dir server run migrate:pg`), abre una
+transacción, hace `TRUNCATE ... CASCADE` de las tablas del manifiesto, inserta
+por lotes, compara conteos y recién entonces confirma. Si algo falla, hace
+rollback y no deja el destino a medias. Con `--dir` se restaura un backup
+puntual; sin `--dir` se usa el más reciente.
+
+En `NODE_ENV=production` el script se niega a escribir salvo `--allow-production`.
+No se debe restaurar sobre producción sin aprobación explícita de la empresa y
+con el servidor detenido.
+
+### Limitaciones y complementos
+
+- Es **solo datos**: no recrea el esquema. Un destino vacío debe migrarse antes.
+- No reemplaza un respaldo físico para volúmenes grandes; para eso use
+  `pg_dump`/`pg_restore` o las ramas de Neon.
+- En Neon, una rama (branch) o el point-in-time restore son el complemento
+  recomendado para recuperación ante desastres. El backup lógico sirve para
+  auditoría, traslado entre entornos y restauración selectiva.
+- Tras restaurar, verifique login, una empresa, un examen con campos cifrados y
+  la descarga de un archivo de `uploads`.
+
+---
+
 ## Performance Tips
 
 1. **WAL Mode**: Habilitado por defecto (`PRAGMA journal_mode=WAL`)

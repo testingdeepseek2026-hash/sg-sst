@@ -1,6 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 
+import { auditLog, getAuthUser, requireRole } from '../lib/auth.js';
+import { isPgBackend } from '../lib/db-pg.js';
 import {
   createHazardAssessment,
   createHazardCatalogItem,
@@ -10,7 +12,8 @@ import {
   getHazardCatalogByCategory,
   updateHazardAssessment,
 } from '../services/hazards.js';
-import { requireRole, getAuthUser, auditLog } from '../lib/auth.js';
+import * as PgHazards from '../services/hazards.pg.js';
+import { auditLogPg } from '../services/users.pg.js';
 
 const catSchema = z.object({
   codigo: z.string().min(2),
@@ -62,93 +65,133 @@ const categoryParamSchema = z.enum([
 
 const hazardsRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /hazards/catalog - Cualquier autenticado
-  fastify.get('/hazards/catalog', async (request, reply) => {
+  fastify.get('/hazards/catalog', async (request, _reply) => {
     const { categoria } = request.query as { categoria?: string };
-    if (categoria && categoryParamSchema.safeParse(categoria).success) {
-      return getHazardCatalogByCategory(fastify.db, categoria as any);
+    const validCategory =
+      categoria && categoryParamSchema.safeParse(categoria).success
+        ? (categoria as z.infer<typeof categoryParamSchema>)
+        : undefined;
+
+    if (isPgBackend()) {
+      return validCategory
+        ? PgHazards.getHazardCatalogByCategoryPg(validCategory)
+        : PgHazards.getHazardCatalogPg();
     }
-    return getHazardCatalog(fastify.db);
+    return validCategory
+      ? getHazardCatalogByCategory(fastify.db, validCategory)
+      : getHazardCatalog(fastify.db);
   });
 
   // GET /hazards/assessments - Cualquier autenticado
-  fastify.get('/hazards/assessments', async (request, reply) => {
-    return getHazardAssessments(fastify.db);
+  fastify.get('/hazards/assessments', async (_request, _reply) => {
+    return isPgBackend() ? PgHazards.getHazardAssessmentsPg() : getHazardAssessments(fastify.db);
   });
 
   // POST /hazards/catalog - Solo administrador
-  fastify.post('/hazards/catalog', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const parsed = catSchema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const item = createHazardCatalogItem(fastify.db, parsed.data);
+  fastify.post(
+    '/hazards/catalog',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const parsed = catSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      const item = isPgBackend()
+        ? await PgHazards.createHazardCatalogItemPg(parsed.data)
+        : createHazardCatalogItem(fastify.db, parsed.data);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'crear',
-      entidad: 'hazard_catalog',
-      entidad_id: item.id,
-      valores_nuevos: parsed.data,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'crear',
+        entidad: 'hazard_catalog',
+        entidad_id: item.id,
+        valores_nuevos: parsed.data,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return item;
-  });
+      return item;
+    }
+  );
 
   // POST /hazards/assessments - Solo administrador
-  fastify.post('/hazards/assessments', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const parsed = assessSchema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const a = createHazardAssessment(fastify.db, parsed.data);
+  fastify.post(
+    '/hazards/assessments',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const parsed = assessSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      const assessment = isPgBackend()
+        ? await PgHazards.createHazardAssessmentPg(parsed.data)
+        : createHazardAssessment(fastify.db, parsed.data);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'crear',
-      entidad: 'hazard_assessments',
-      entidad_id: a.id,
-      valores_nuevos: parsed.data,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'crear',
+        entidad: 'hazard_assessments',
+        entidad_id: assessment.id,
+        valores_nuevos: parsed.data,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return a;
-  });
+      return assessment;
+    }
+  );
 
   // PUT /hazards/assessments/:id - Solo administrador
-  fastify.put('/hazards/assessments/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const parsed = assessSchema.partial().safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const updated = updateHazardAssessment(fastify.db, id, parsed.data);
+  fastify.put(
+    '/hazards/assessments/:id',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const parsed = assessSchema.partial().safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      const updated = isPgBackend()
+        ? await PgHazards.updateHazardAssessmentPg(id, parsed.data)
+        : updateHazardAssessment(fastify.db, id, parsed.data);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'editar',
-      entidad: 'hazard_assessments',
-      entidad_id: id,
-      valores_nuevos: parsed.data,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'editar',
+        entidad: 'hazard_assessments',
+        entidad_id: id,
+        valores_nuevos: parsed.data,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return updated;
-  });
+      return updated;
+    }
+  );
 
   // DELETE /hazards/assessments/:id - Solo administrador
-  fastify.delete('/hazards/assessments/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    deleteHazardAssessment(fastify.db, id);
+  fastify.delete(
+    '/hazards/assessments/:id',
+    { preHandler: requireRole('administrador') },
+    async (request, _reply) => {
+      const { id } = request.params as { id: string };
+      if (isPgBackend()) await PgHazards.deleteHazardAssessmentPg(id);
+      else deleteHazardAssessment(fastify.db, id);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'eliminar',
-      entidad: 'hazard_assessments',
-      entidad_id: id,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'eliminar',
+        entidad: 'hazard_assessments',
+        entidad_id: id,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return { ok: true };
-  });
+      return { ok: true };
+    }
+  );
 };
 
 export default hazardsRoutes;

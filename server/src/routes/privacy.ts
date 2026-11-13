@@ -28,6 +28,7 @@ import {
   updatePrivacyNotice,
   withdrawConsent,
 } from '../services/privacy.js';
+import * as PgPrivacy from '../services/privacy.pg.js';
 import {
   createConsentPg,
   getAllConsentsPg,
@@ -103,16 +104,20 @@ const privacyRoutes: FastifyPluginAsync = async (fastify) => {
     if (!user) return reply.code(401).send({ error: 'No autenticado' });
     // Admin ve todos; trabajador ve solo vigente
     if (user.rol !== 'administrador') {
-      const active = getActivePrivacyNotice(fastify.db);
+      const active = isPgBackend()
+        ? await PgPrivacy.getActivePrivacyNoticePg()
+        : getActivePrivacyNotice(fastify.db);
       return active ? [active] : [];
     }
-    return getPrivacyNotices(fastify.db);
+    return isPgBackend() ? PgPrivacy.getPrivacyNoticesPg() : getPrivacyNotices(fastify.db);
   });
 
   fastify.get('/privacy/notices/active', async (request, reply) => {
     const user = request.user;
     if (!user) return reply.code(401).send({ error: 'No autenticado' });
-    const active = getActivePrivacyNotice(fastify.db);
+    const active = isPgBackend()
+      ? await PgPrivacy.getActivePrivacyNoticePg()
+      : getActivePrivacyNotice(fastify.db);
     if (!active) return reply.code(404).send({ error: 'No hay aviso de privacidad vigente' });
     return active;
   });
@@ -122,7 +127,9 @@ const privacyRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: requireRole('administrador') },
     async (request, reply) => {
       const { id } = request.params as { id: string };
-      const notice = getPrivacyNoticeById(fastify.db, id);
+      const notice = isPgBackend()
+        ? await PgPrivacy.getPrivacyNoticeByIdPg(id)
+        : getPrivacyNoticeById(fastify.db, id);
       if (!notice) return reply.code(404).send({ error: 'Aviso no encontrado' });
       return notice;
     }
@@ -134,10 +141,12 @@ const privacyRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const parsed = noticeSchema.safeParse(request.body);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-      const notice = createPrivacyNotice(fastify.db, parsed.data);
+      const notice = isPgBackend()
+        ? await PgPrivacy.createPrivacyNoticePg(parsed.data)
+        : createPrivacyNotice(fastify.db, parsed.data);
 
       const user = getAuthUser(request);
-      auditLog(fastify.db, {
+      await recordPrivacyAudit(fastify, {
         usuario_id: user.id,
         usuario_email: user.email,
         accion: 'crear',
@@ -157,11 +166,13 @@ const privacyRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string };
       const parsed = noticeSchema.partial().safeParse(request.body);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-      const updated = updatePrivacyNotice(fastify.db, id, parsed.data);
+      const updated = isPgBackend()
+        ? await PgPrivacy.updatePrivacyNoticePg(id, parsed.data)
+        : updatePrivacyNotice(fastify.db, id, parsed.data);
       if (!updated) return reply.code(404).send({ error: 'Aviso no encontrado' });
 
       const user = getAuthUser(request);
-      auditLog(fastify.db, {
+      await recordPrivacyAudit(fastify, {
         usuario_id: user.id,
         usuario_email: user.email,
         accion: 'editar',
@@ -280,18 +291,22 @@ const privacyRoutes: FastifyPluginAsync = async (fastify) => {
     if (!user) return reply.code(401).send({ error: 'No autenticado' });
     // Admin ve todas; trabajador ve solo las suyas
     const workerId = user.rol === 'administrador' ? undefined : user.id;
-    return getArcoRequests(fastify.db, workerId);
+    return isPgBackend()
+      ? PgPrivacy.getArcoRequestsPg(workerId)
+      : getArcoRequests(fastify.db, workerId);
   });
 
   fastify.get('/privacy/arco/stats', { preHandler: requireRole('administrador') }, async () => {
-    return getArcoStats(fastify.db);
+    return isPgBackend() ? PgPrivacy.getArcoStatsPg() : getArcoStats(fastify.db);
   });
 
   fastify.get('/privacy/arco/:id', async (request, reply) => {
     const user = request.user;
     if (!user) return reply.code(401).send({ error: 'No autenticado' });
     const { id } = request.params as { id: string };
-    const arco = getArcoRequestById(fastify.db, id);
+    const arco = isPgBackend()
+      ? await PgPrivacy.getArcoRequestByIdPg(id)
+      : getArcoRequestById(fastify.db, id);
     if (!arco) return reply.code(404).send({ error: 'Solicitud ARCO no encontrada' });
     if (user.rol !== 'administrador' && arco.worker_id !== user.id) {
       return reply.code(403).send({ error: 'No autorizado' });
@@ -311,9 +326,11 @@ const privacyRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.code(403).send({ error: 'Solo puede crear solicitudes para sí mismo' });
     }
 
-    const arco = createArcoRequest(fastify.db, parsed.data);
+    const arco = isPgBackend()
+      ? await PgPrivacy.createArcoRequestPg(parsed.data)
+      : createArcoRequest(fastify.db, parsed.data);
 
-    auditLog(fastify.db, {
+    await recordPrivacyAudit(fastify, {
       usuario_id: user.id,
       usuario_email: user.email,
       accion: 'crear',
@@ -332,11 +349,13 @@ const privacyRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string };
       const parsed = arcoUpdateSchema.safeParse(request.body);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-      const updated = updateArcoRequest(fastify.db, id, parsed.data);
+      const updated = isPgBackend()
+        ? await PgPrivacy.updateArcoRequestPg(id, parsed.data)
+        : updateArcoRequest(fastify.db, id, parsed.data);
       if (!updated) return reply.code(404).send({ error: 'Solicitud ARCO no encontrada' });
 
       const user = getAuthUser(request);
-      auditLog(fastify.db, {
+      await recordPrivacyAudit(fastify, {
         usuario_id: user.id,
         usuario_email: user.email,
         accion: 'editar',
@@ -351,7 +370,9 @@ const privacyRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ===== REGISTRO DE TRATAMIENTO =====
   fastify.get('/privacy/processing', { preHandler: requireRole('administrador') }, async () => {
-    return getDataProcessingRecords(fastify.db);
+    return isPgBackend()
+      ? PgPrivacy.getDataProcessingRecordsPg()
+      : getDataProcessingRecords(fastify.db);
   });
 
   fastify.get(
@@ -359,7 +380,9 @@ const privacyRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: requireRole('administrador') },
     async (request, reply) => {
       const { id } = request.params as { id: string };
-      const record = getDataProcessingRecordById(fastify.db, id);
+      const record = isPgBackend()
+        ? await PgPrivacy.getDataProcessingRecordByIdPg(id)
+        : getDataProcessingRecordById(fastify.db, id);
       if (!record) return reply.code(404).send({ error: 'Registro no encontrado' });
       return record;
     }
@@ -371,10 +394,12 @@ const privacyRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const parsed = processingRecordSchema.safeParse(request.body);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-      const record = createDataProcessingRecord(fastify.db, parsed.data);
+      const record = isPgBackend()
+        ? await PgPrivacy.createDataProcessingRecordPg(parsed.data)
+        : createDataProcessingRecord(fastify.db, parsed.data);
 
       const user = getAuthUser(request);
-      auditLog(fastify.db, {
+      await recordPrivacyAudit(fastify, {
         usuario_id: user.id,
         usuario_email: user.email,
         accion: 'crear',
@@ -394,11 +419,13 @@ const privacyRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string };
       const parsed = processingRecordSchema.partial().safeParse(request.body);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-      const updated = updateDataProcessingRecord(fastify.db, id, parsed.data);
+      const updated = isPgBackend()
+        ? await PgPrivacy.updateDataProcessingRecordPg(id, parsed.data)
+        : updateDataProcessingRecord(fastify.db, id, parsed.data);
       if (!updated) return reply.code(404).send({ error: 'Registro no encontrado' });
 
       const user = getAuthUser(request);
-      auditLog(fastify.db, {
+      await recordPrivacyAudit(fastify, {
         usuario_id: user.id,
         usuario_email: user.email,
         accion: 'editar',
@@ -416,10 +443,11 @@ const privacyRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: requireRole('administrador') },
     async (request) => {
       const { id } = request.params as { id: string };
-      deleteDataProcessingRecord(fastify.db, id);
+      if (isPgBackend()) await PgPrivacy.deleteDataProcessingRecordPg(id);
+      else deleteDataProcessingRecord(fastify.db, id);
 
       const user = getAuthUser(request);
-      auditLog(fastify.db, {
+      await recordPrivacyAudit(fastify, {
         usuario_id: user.id,
         usuario_email: user.email,
         accion: 'eliminar',
@@ -433,7 +461,9 @@ const privacyRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ===== REPORTES DE CUMPLIMIENTO =====
   fastify.get('/privacy/compliance', { preHandler: requireRole('administrador') }, async () => {
-    return getPrivacyComplianceReport(fastify.db);
+    return isPgBackend()
+      ? PgPrivacy.getPrivacyComplianceReportPg()
+      : getPrivacyComplianceReport(fastify.db);
   });
 
   fastify.get(
@@ -441,7 +471,9 @@ const privacyRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: requireRole('administrador') },
     async (request) => {
       const { workerId } = request.params as { workerId: string };
-      return checkConsentForMedicalData(fastify.db, workerId);
+      return isPgBackend()
+        ? PgPrivacy.checkConsentForMedicalDataPg(workerId)
+        : checkConsentForMedicalData(fastify.db, workerId);
     }
   );
 };

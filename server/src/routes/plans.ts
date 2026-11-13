@@ -1,6 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 
+import { auditLog, getAuthUser, requireRole } from '../lib/auth.js';
+import { isPgBackend } from '../lib/db-pg.js';
 import {
   bulkCreateTrainingAttendance,
   createAnnualPlan,
@@ -21,7 +23,8 @@ import {
   updateTrainingAttendance,
   updateTrainingSchedule,
 } from '../services/plans.js';
-import { requireRole, getAuthUser, auditLog } from '../lib/auth.js';
+import * as PgPlans from '../services/plans.pg.js';
+import { auditLogPg } from '../services/users.pg.js';
 
 const planSchema = z.object({
   anio: z.number().int(),
@@ -66,283 +69,392 @@ const bulkAttendanceSchema = z.object({
 
 const plansRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /plans/annual - Cualquier autenticado
-  fastify.get('/plans/annual', async (request, reply) => {
+  fastify.get('/plans/annual', async (request, _reply) => {
     const { anio } = request.query as { anio?: string };
-    return getAnnualPlan(fastify.db, anio ? Number(anio) : undefined);
+    return isPgBackend()
+      ? PgPlans.getAnnualPlanPg(anio ? Number(anio) : undefined)
+      : getAnnualPlan(fastify.db, anio ? Number(anio) : undefined);
   });
 
   // POST /plans/annual - Solo administrador
-  fastify.post('/plans/annual', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const parsed = planSchema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const p = createAnnualPlan(fastify.db, parsed.data);
+  fastify.post(
+    '/plans/annual',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const parsed = planSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      const plan = isPgBackend()
+        ? await PgPlans.createAnnualPlanPg(parsed.data)
+        : createAnnualPlan(fastify.db, parsed.data);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'crear',
-      entidad: 'annual_plan',
-      entidad_id: p.id,
-      valores_nuevos: parsed.data,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'crear',
+        entidad: 'annual_plan',
+        entidad_id: plan.id,
+        valores_nuevos: parsed.data,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return p;
-  });
+      return plan;
+    }
+  );
 
   // PUT /plans/annual/:id - Solo administrador
-  fastify.put('/plans/annual/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const parsed = planSchema.partial().safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const updated = updateAnnualPlan(fastify.db, id, parsed.data);
+  fastify.put(
+    '/plans/annual/:id',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const parsed = planSchema.partial().safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      const updated = isPgBackend()
+        ? await PgPlans.updateAnnualPlanPg(id, parsed.data)
+        : updateAnnualPlan(fastify.db, id, parsed.data);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'editar',
-      entidad: 'annual_plan',
-      entidad_id: id,
-      valores_nuevos: parsed.data,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'editar',
+        entidad: 'annual_plan',
+        entidad_id: id,
+        valores_nuevos: parsed.data,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return updated;
-  });
+      return updated;
+    }
+  );
 
   // DELETE /plans/annual/:id - Solo administrador
-  fastify.delete('/plans/annual/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    deleteAnnualPlan(fastify.db, id);
+  fastify.delete(
+    '/plans/annual/:id',
+    { preHandler: requireRole('administrador') },
+    async (request, _reply) => {
+      const { id } = request.params as { id: string };
+      if (isPgBackend()) await PgPlans.deleteAnnualPlanPg(id);
+      else deleteAnnualPlan(fastify.db, id);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'eliminar',
-      entidad: 'annual_plan',
-      entidad_id: id,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'eliminar',
+        entidad: 'annual_plan',
+        entidad_id: id,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return { ok: true };
-  });
+      return { ok: true };
+    }
+  );
 
   // GET /plans/training - Cualquier autenticado
-  fastify.get('/plans/training', async (request, reply) => {
-    return getTrainingSchedule(fastify.db);
+  fastify.get('/plans/training', async (_request, _reply) => {
+    return isPgBackend() ? PgPlans.getTrainingSchedulePg() : getTrainingSchedule(fastify.db);
   });
 
   // POST /plans/training - Solo administrador
-  fastify.post('/plans/training', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const parsed = trainSchema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const t = createTrainingSchedule(fastify.db, parsed.data);
+  fastify.post(
+    '/plans/training',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const parsed = trainSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      const schedule = isPgBackend()
+        ? await PgPlans.createTrainingSchedulePg(parsed.data)
+        : createTrainingSchedule(fastify.db, parsed.data);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'crear',
-      entidad: 'training_schedule',
-      entidad_id: t.id,
-      valores_nuevos: parsed.data,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'crear',
+        entidad: 'training_schedule',
+        entidad_id: schedule.id,
+        valores_nuevos: parsed.data,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return t;
-  });
+      return schedule;
+    }
+  );
 
   // PUT /plans/training/:id - Solo administrador
-  fastify.put('/plans/training/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const parsed = trainSchema.partial().safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const updated = updateTrainingSchedule(fastify.db, id, parsed.data);
+  fastify.put(
+    '/plans/training/:id',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const parsed = trainSchema.partial().safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      const updated = isPgBackend()
+        ? await PgPlans.updateTrainingSchedulePg(id, parsed.data)
+        : updateTrainingSchedule(fastify.db, id, parsed.data);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'editar',
-      entidad: 'training_schedule',
-      entidad_id: id,
-      valores_nuevos: parsed.data,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'editar',
+        entidad: 'training_schedule',
+        entidad_id: id,
+        valores_nuevos: parsed.data,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return updated;
-  });
+      return updated;
+    }
+  );
 
   // DELETE /plans/training/:id - Solo administrador
-  fastify.delete('/plans/training/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    deleteTrainingSchedule(fastify.db, id);
+  fastify.delete(
+    '/plans/training/:id',
+    { preHandler: requireRole('administrador') },
+    async (request, _reply) => {
+      const { id } = request.params as { id: string };
+      if (isPgBackend()) await PgPlans.deleteTrainingSchedulePg(id);
+      else deleteTrainingSchedule(fastify.db, id);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'eliminar',
-      entidad: 'training_schedule',
-      entidad_id: id,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'eliminar',
+        entidad: 'training_schedule',
+        entidad_id: id,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return { ok: true };
-  });
+      return { ok: true };
+    }
+  );
 
   // ===== TRAININGS (Ejecución de capacitaciones con evidencias) =====
   // GET /plans/trainings - Cualquier autenticado
-  fastify.get('/plans/trainings', async (request, reply) => {
-    return getTrainings(fastify.db);
+  fastify.get('/plans/trainings', async (_request, _reply) => {
+    return isPgBackend() ? PgPlans.getTrainingsPg() : getTrainings(fastify.db);
   });
 
   // GET /plans/trainings/:id - Cualquier autenticado
   fastify.get('/plans/trainings/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const t = getTrainingById(fastify.db, id);
-    if (!t) return reply.code(404).send({ error: 'Capacitación no encontrada' });
-    return t;
+    const training = isPgBackend()
+      ? await PgPlans.getTrainingByIdPg(id)
+      : getTrainingById(fastify.db, id);
+    if (!training) return reply.code(404).send({ error: 'Capacitación no encontrada' });
+    return training;
   });
 
   // POST /plans/trainings - Solo administrador
-  fastify.post('/plans/trainings', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const parsed = trainingSchema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const t = createTraining(fastify.db, parsed.data);
+  fastify.post(
+    '/plans/trainings',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const parsed = trainingSchema.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      const training = isPgBackend()
+        ? await PgPlans.createTrainingPg(parsed.data)
+        : createTraining(fastify.db, parsed.data);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'crear',
-      entidad: 'trainings',
-      entidad_id: t.id,
-      valores_nuevos: parsed.data,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'crear',
+        entidad: 'trainings',
+        entidad_id: training.id,
+        valores_nuevos: parsed.data,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return t;
-  });
+      return training;
+    }
+  );
 
   // PUT /plans/trainings/:id - Solo administrador
-  fastify.put('/plans/trainings/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const parsed = trainingSchema.partial().safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const updated = updateTraining(fastify.db, id, parsed.data);
+  fastify.put(
+    '/plans/trainings/:id',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const parsed = trainingSchema.partial().safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      const updated = isPgBackend()
+        ? await PgPlans.updateTrainingPg(id, parsed.data)
+        : updateTraining(fastify.db, id, parsed.data);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'editar',
-      entidad: 'trainings',
-      entidad_id: id,
-      valores_nuevos: parsed.data,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'editar',
+        entidad: 'trainings',
+        entidad_id: id,
+        valores_nuevos: parsed.data,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return updated;
-  });
+      return updated;
+    }
+  );
 
   // DELETE /plans/trainings/:id - Solo administrador
-  fastify.delete('/plans/trainings/:id', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    deleteTraining(fastify.db, id);
+  fastify.delete(
+    '/plans/trainings/:id',
+    { preHandler: requireRole('administrador') },
+    async (request, _reply) => {
+      const { id } = request.params as { id: string };
+      if (isPgBackend()) await PgPlans.deleteTrainingPg(id);
+      else deleteTraining(fastify.db, id);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'eliminar',
-      entidad: 'trainings',
-      entidad_id: id,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'eliminar',
+        entidad: 'trainings',
+        entidad_id: id,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return { ok: true };
-  });
+      return { ok: true };
+    }
+  );
 
   // ===== TRAINING ATTENDANCE (Asistencia con firma) =====
   // GET /plans/trainings/:id/attendance - Cualquier autenticado
-  fastify.get('/plans/trainings/:id/attendance', async (request, reply) => {
+  fastify.get('/plans/trainings/:id/attendance', async (request, _reply) => {
     const { id } = request.params as { id: string };
-    return getTrainingAttendance(fastify.db, id);
+    return isPgBackend()
+      ? PgPlans.getTrainingAttendancePg(id)
+      : getTrainingAttendance(fastify.db, id);
   });
 
   // POST /plans/trainings/:id/attendance - Solo administrador
-  fastify.post('/plans/trainings/:id/attendance', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const body = request.body as Record<string, any>;
-    const parsed = trainingAttendanceSchema.safeParse({ ...body, training_id: id });
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const a = createTrainingAttendance(fastify.db, parsed.data);
+  fastify.post(
+    '/plans/trainings/:id/attendance',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const body = request.body as Record<string, unknown>;
+      const parsed = trainingAttendanceSchema.safeParse({ ...body, training_id: id });
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      const attendance = isPgBackend()
+        ? await PgPlans.createTrainingAttendancePg(parsed.data)
+        : createTrainingAttendance(fastify.db, parsed.data);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'crear',
-      entidad: 'training_attendance',
-      entidad_id: a.id,
-      valores_nuevos: parsed.data,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'crear',
+        entidad: 'training_attendance',
+        entidad_id: attendance.id,
+        valores_nuevos: parsed.data,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return a;
-  });
+      return attendance;
+    }
+  );
 
   // POST /plans/trainings/:id/attendance/bulk - Solo administrador
-  fastify.post('/plans/trainings/:id/attendance/bulk', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const body = request.body as Record<string, any>;
-    const parsed = bulkAttendanceSchema.safeParse({ ...body, training_id: id });
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const list = bulkCreateTrainingAttendance(fastify.db, id, parsed.data.worker_ids);
+  fastify.post(
+    '/plans/trainings/:id/attendance/bulk',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const body = request.body as Record<string, unknown>;
+      const parsed = bulkAttendanceSchema.safeParse({ ...body, training_id: id });
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      const list = isPgBackend()
+        ? await PgPlans.bulkCreateTrainingAttendancePg(id, parsed.data.worker_ids)
+        : bulkCreateTrainingAttendance(fastify.db, id, parsed.data.worker_ids);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'crear',
-      entidad: 'training_attendance',
-      entidad_id: id,
-      valores_nuevos: { worker_ids: parsed.data.worker_ids, count: parsed.data.worker_ids.length },
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'crear',
+        entidad: 'training_attendance',
+        entidad_id: id,
+        valores_nuevos: {
+          worker_ids: parsed.data.worker_ids,
+          count: parsed.data.worker_ids.length,
+        },
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return list;
-  });
+      return list;
+    }
+  );
 
   // PUT /plans/trainings/attendance/:attId - Solo administrador
-  fastify.put('/plans/trainings/attendance/:attId', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { attId } = request.params as { attId: string };
-    const parsed = trainingAttendanceSchema.partial().safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const updated = updateTrainingAttendance(fastify.db, attId, parsed.data);
+  fastify.put(
+    '/plans/trainings/attendance/:attId',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const { attId } = request.params as { attId: string };
+      const parsed = trainingAttendanceSchema.partial().safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+      const updated = isPgBackend()
+        ? await PgPlans.updateTrainingAttendancePg(attId, parsed.data)
+        : updateTrainingAttendance(fastify.db, attId, parsed.data);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'editar',
-      entidad: 'training_attendance',
-      entidad_id: attId,
-      valores_nuevos: parsed.data,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'editar',
+        entidad: 'training_attendance',
+        entidad_id: attId,
+        valores_nuevos: parsed.data,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return updated;
-  });
+      return updated;
+    }
+  );
 
   // DELETE /plans/trainings/attendance/:attId - Solo administrador
-  fastify.delete('/plans/trainings/attendance/:attId', { preHandler: requireRole('administrador') }, async (request, reply) => {
-    const { attId } = request.params as { attId: string };
-    deleteTrainingAttendance(fastify.db, attId);
+  fastify.delete(
+    '/plans/trainings/attendance/:attId',
+    { preHandler: requireRole('administrador') },
+    async (request, _reply) => {
+      const { attId } = request.params as { attId: string };
+      if (isPgBackend()) await PgPlans.deleteTrainingAttendancePg(attId);
+      else deleteTrainingAttendance(fastify.db, attId);
 
-    const user = getAuthUser(request);
-    auditLog(fastify.db, {
-      usuario_id: user.id,
-      usuario_email: user.email,
-      accion: 'eliminar',
-      entidad: 'training_attendance',
-      entidad_id: attId,
-    });
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'eliminar',
+        entidad: 'training_attendance',
+        entidad_id: attId,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
-    return { ok: true };
-  });
+      return { ok: true };
+    }
+  );
 };
 
 export default plansRoutes;

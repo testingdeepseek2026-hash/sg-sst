@@ -1,10 +1,9 @@
 import { exec, getPgPool, one, query } from '../lib/db-pg.js';
 import { genId, nowISO } from '../lib/utils.js';
 
-import { sanitizeForAudit } from './users.js';
+import { sanitizeForAudit, type User } from './users.js';
 
 import type pg from 'pg';
-import type { User } from './users.js';
 
 export type AuditEntryPg = {
   usuario_id?: string | null;

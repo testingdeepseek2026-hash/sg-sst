@@ -70,7 +70,7 @@ describe('Restauración de Backups - Servicio', () => {
 
       // Nota: Con BD en memoria no podemos testear restore real de archivo
       // Este test valida que las funciones no fallen y la estructura sea correcta
-      const backupResult = backupService.createBackup(config);
+      backupService.createBackup(config);
       // Con :memory: fallará, pero la estructura del código se valida en typecheck
 
       // Validar que listBackups funciona (aunque esté vacío)

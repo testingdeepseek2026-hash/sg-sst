@@ -277,7 +277,9 @@ CREATE TABLE IF NOT EXISTS indicators (
   meta REAL,
   periodo TEXT NOT NULL,              -- ej. '2026-11'
   fecha_calculo TEXT NOT NULL DEFAULT (datetime('now')),
-  notas TEXT
+  notas TEXT,
+  formula TEXT,
+  frecuencia TEXT
 );
 
 -- ------------------------------------------------------------------
@@ -341,6 +343,9 @@ CREATE TABLE IF NOT EXISTS altura_permits (
   certificado_alturas INTEGER NOT NULL DEFAULT 0,
   estado TEXT NOT NULL DEFAULT 'pendiente', -- pendiente | autorizado | rechazado | cerrado
   at_s_id TEXT,
+  archivo_fotos TEXT,                 -- JSON lista de urls
+  firma_solicitante_url TEXT,
+  firma_responsable_url TEXT,
   creado_en TEXT NOT NULL DEFAULT (datetime('now')),
   actualizado_en TEXT NOT NULL DEFAULT (datetime('now'))
 );

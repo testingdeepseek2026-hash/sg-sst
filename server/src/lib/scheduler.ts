@@ -6,8 +6,16 @@ import {
   getPendingAlertsForSending,
   markAsSent,
 } from '../services/alerts.js';
-import { runBackup, getBackupConfigFromEnv } from '../services/backup.js';
+import {
+  generateAlertsPg,
+  getPendingAlertsForSendingPg,
+  getWorkerEmailByAlertEntityPg,
+  markAsSentPg,
+} from '../services/alerts.pg.js';
+import { getBackupConfigFromEnv, runBackup } from '../services/backup.js';
+import { getPgBackupConfigFromEnv, runPgBackup } from '../services/backup.pg.js';
 
+import { isPgBackend, one } from './db-pg.js';
 import { createTransporter } from './email.js';
 
 interface AlertWithEmail extends Alert {
@@ -34,7 +42,8 @@ export function startAlertScheduler(db: any): void {
     async () => {
       console.log('[SCHEDULER] Ejecutando generación diaria de alertas...');
       try {
-        generateAlerts(db);
+        if (isPgBackend()) await generateAlertsPg();
+        else generateAlerts(db);
         console.log('[SCHEDULER] Alertas generadas. Enviando pendientes...');
         await sendPendingAlerts(db, transporter);
       } catch (err: any) {
@@ -63,7 +72,37 @@ export function startAlertScheduler(db: any): void {
   );
 
   // Job backup diario: 02:00 America/Bogota (hora de bajo uso)
-  if (process.env.BACKUP_ENABLED === 'true') {
+  if (isPgBackend()) {
+    if (process.env.BACKUP_ENABLED === 'true') {
+      const backupConfig = getPgBackupConfigFromEnv();
+      backupJob = new CronJob(
+        '0 2 * * *',
+        async () => {
+          console.log('[SCHEDULER] Ejecutando respaldo PostgreSQL...');
+          try {
+            const result = await runPgBackup(backupConfig);
+            if (result.success) {
+              console.log(
+                `[SCHEDULER] Respaldo PostgreSQL completado: ${result.file} (${result.deleted} antiguos eliminados)`
+              );
+            } else {
+              console.error('[SCHEDULER] Error en respaldo PostgreSQL:', result.error);
+            }
+          } catch (err: any) {
+            console.error('[SCHEDULER] Error en job backup PostgreSQL:', err.message);
+          }
+        },
+        null,
+        true,
+        backupConfig.timezone
+      );
+      console.log(
+        `[SCHEDULER] Backup PostgreSQL programado: Diario 02:00 (${backupConfig.timezone}), retención ${backupConfig.retentionDays} días`
+      );
+    } else {
+      console.log('[SCHEDULER] Backup PostgreSQL deshabilitado (BACKUP_ENABLED!=true)');
+    }
+  } else if (process.env.BACKUP_ENABLED === 'true') {
     const backupConfig = getBackupConfigFromEnv();
     backupJob = new CronJob(
       '0 2 * * *',
@@ -72,7 +111,9 @@ export function startAlertScheduler(db: any): void {
         try {
           const result = runBackup(backupConfig);
           if (result.success) {
-            console.log(`[SCHEDULER] Respaldo completado: ${result.file} (${result.deleted} antiguos eliminados)`);
+            console.log(
+              `[SCHEDULER] Respaldo completado: ${result.file} (${result.deleted} antiguos eliminados)`
+            );
           } else {
             console.error('[SCHEDULER] Error en respaldo:', result.error);
           }
@@ -84,7 +125,9 @@ export function startAlertScheduler(db: any): void {
       true,
       backupConfig.timezone
     );
-    console.log(`[SCHEDULER] Backup programado: Diario 02:00 (${backupConfig.timezone}), retención ${backupConfig.retentionDays} días`);
+    console.log(
+      `[SCHEDULER] Backup programado: Diario 02:00 (${backupConfig.timezone}), retención ${backupConfig.retentionDays} días`
+    );
   } else {
     console.log('[SCHEDULER] Backup deshabilitado (BACKUP_ENABLED!=true)');
   }
@@ -111,7 +154,9 @@ export function stopAlertScheduler(): void {
 }
 
 async function sendPendingAlerts(db: any, transporter: any): Promise<void> {
-  const pending = getPendingAlertsForSending(db) as AlertWithEmail[];
+  const pending = isPgBackend()
+    ? ((await getPendingAlertsForSendingPg()) as AlertWithEmail[])
+    : (getPendingAlertsForSending(db) as AlertWithEmail[]);
   if (!pending.length) {
     console.log('[SCHEDULER] No hay alertas pendientes para enviar');
     return;
@@ -122,7 +167,10 @@ async function sendPendingAlerts(db: any, transporter: any): Promise<void> {
   for (const a of pending) {
     // Buscar email del trabajador asociado
     let email = a.company_email;
-    if (
+    if (isPgBackend()) {
+      const workerEmail = await getWorkerEmailByAlertEntityPg(a.entidad, a.entidad_id);
+      if (workerEmail) email = workerEmail;
+    } else if (
       a.entidad === 'worker_exams' ||
       a.entidad === 'worker_certs' ||
       a.entidad === 'worker_epp'
@@ -163,10 +211,12 @@ async function sendPendingAlerts(db: any, transporter: any): Promise<void> {
     );
     if (result.success) {
       enviadas++;
-      markAsSent(
-        db,
-        alertas.map((a) => a.id)
-      );
+      if (isPgBackend()) await markAsSentPg(alertas.map((a) => a.id));
+      else
+        markAsSent(
+          db,
+          alertas.map((a) => a.id)
+        );
     } else {
       errores++;
       console.error(`[SCHEDULER] Error enviando a ${email}:`, result.error);
@@ -180,9 +230,27 @@ async function sendWeeklySummary(db: any, transporter: any): Promise<void> {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (!adminEmail) return;
 
-  const stats = db
-    .prepare(
-      `
+  const stats = isPgBackend()
+    ? await one<{
+        total: string | number;
+        pendientes: string | number;
+        enviadas: string | number;
+        vencidas: string | number;
+      }>(
+        `SELECT COUNT(*) AS total,
+           COUNT(*) FILTER (WHERE enviado = 0) AS pendientes,
+           COUNT(*) FILTER (WHERE enviado = 1) AS enviadas,
+           COUNT(*) FILTER (WHERE fecha_vencimiento::date < CURRENT_DATE AND enviado = 0) AS vencidas
+         FROM alerts`
+      ).then((row) => ({
+        total: Number(row?.total ?? 0),
+        pendientes: Number(row?.pendientes ?? 0),
+        enviadas: Number(row?.enviadas ?? 0),
+        vencidas: Number(row?.vencidas ?? 0),
+      }))
+    : (db
+        .prepare(
+          `
     SELECT 
       COUNT(*) as total,
       SUM(CASE WHEN enviado = 0 THEN 1 ELSE 0 END) as pendientes,
@@ -190,8 +258,8 @@ async function sendWeeklySummary(db: any, transporter: any): Promise<void> {
       SUM(CASE WHEN date(fecha_vencimiento) < date('now') AND enviado = 0 THEN 1 ELSE 0 END) as vencidas
     FROM alerts
   `
-    )
-    .get() as any;
+        )
+        .get() as any);
 
   const html = `
 <!DOCTYPE html>

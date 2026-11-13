@@ -94,7 +94,11 @@ export async function exec(sql: string, params: unknown[] = []): Promise<PgQuery
   return { rows: result.rows as Record<string, unknown>[], rowCount: result.rowCount ?? 0 };
 }
 
-const PG_MIGRATIONS: { name: string }[] = [{ name: '002_postgres_initial.sql' }];
+const PG_MIGRATIONS: { name: string }[] = [
+  { name: '002_postgres_initial.sql' },
+  { name: '003_altura_permits_evidence.sql' },
+  { name: '004_indicators_formula_frequency.sql' },
+];
 
 function resolveMigrationPath(name: string): string {
   // Igual que runMigrations en lib/db.ts: soporta ejecución desde fuente

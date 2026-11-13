@@ -125,13 +125,13 @@ Register-ScheduledTask -TaskName "SG-SST-Backup" -Action $Action -Trigger $Trigg
 
 ### 5.4 Retención y conservación legal
 
-| Tipo          | Frecuencia       | Retención legal | Propósito                              |
-| ------------- | ---------------- | --------------- | -------------------------------------- |
-| Diario        | 02:00 AM         | 30 días         | Rotación de backups recientes          |
-| Semanal       | Domingo 03:00 AM | 12 semanas      | Historial corto plazo                  |
-| Mensual       | Día 1 04:00 AM   | 24 meses        | seguimiento operativo                  |
-| Anual         | Enero 1 05:00 AM | 10 años         | Datos generales de la empresa          |
-| **Médicos**   | **Anual / Según**| **20 años**     | **Cumplimiento Ley 1581/2012, Art. 17** |
+| Tipo        | Frecuencia        | Retención legal | Propósito                               |
+| ----------- | ----------------- | --------------- | --------------------------------------- |
+| Diario      | 02:00 AM          | 30 días         | Rotación de backups recientes           |
+| Semanal     | Domingo 03:00 AM  | 12 semanas      | Historial corto plazo                   |
+| Mensual     | Día 1 04:00 AM    | 24 meses        | seguimiento operativo                   |
+| Anual       | Enero 1 05:00 AM  | 10 años         | Datos generales de la empresa           |
+| **Médicos** | **Anual / Según** | **20 años**     | **Cumplimiento Ley 1581/2012, Art. 17** |
 
 ---
 
@@ -140,17 +140,20 @@ Register-ScheduledTask -TaskName "SG-SST-Backup" -Action $Action -Trigger $Trigg
 De conformidad con la **Ley 1581 de 2012** y el **Decreto 1377 de 2013**, los exámenes médicos ocupacionales, certificados de salud ocupacional y restricciones médicas deben conservarse por un período mínimo de **20 años** desde la fecha del examen o última actualización.
 
 **Base legal:**
+
 - **Art. 17 Ley 1581/2012**: Los titulares tienen derecho a conocer, actualizar y solicitar la supresión de sus datos, salvo en los casos en que la ley determine su conservación.
 - **Res. 0312/2019**: Los exámenes médicos hacen parte del SG-SST y hacen parte del histórico de seguridad y salud en el trabajo.
 - **Decreto 1072/2015**: Cap. 6, Libro 2, Tit. 4 - Establece los plazos de conservación de los registros del SG-SST.
 
 **Implementación en la aplicación:**
+
 - Los exámenes médicos se cifran con AES-256-GCM (`lib/crypto.ts`)
 - Los registros no se eliminan físicamente antes del plazo de 20 años
 - El scheduler de backups conserva los backups por el período correspondiente
 - Se documenta en `audit_logs` la fecha de creación y fecha de elegibilidad para supresión
 
 **Procedimiento de supresión segura:**
+
 1. Verificar que han transcurrido mínimo 20 años desde la fecha del examen
 2. Cifrar y mover a almacenamiento de respaldo a largo plazo
 3. Registrar en `audit_logs` la supresión con motivo de cumplimiento de plazo legal
@@ -160,14 +163,14 @@ De conformidad con la **Ley 1581 de 2012** y el **Decreto 1377 de 2013**, los ex
 
 ## 5.5 Política de retention 20 años - Detalle por tipo de documento
 
-| Documento                              | Plazo legal | Calculación a partir de | Observaciones                          |
-| -------------------------------------- | ----------- | --------------------- | -------------------------------------- |
-| Exámenes médicos ocupacionales         | 20 años     | Fecha del examen        | Incluye restricciones y diagnósticos   |
-| Certificados de ARL                    | 10 años     | Fecha expedición      | Según Res. 0312/2019                   |
-| Informes de inspecciones               | 5 años      | Fecha inspección      | Solo copia simple                      |
-| Registros de capacitación              | 5 años      | Última capacitación   | Evidencias y asistencias               |
-| Políticas y objetivos SST              | 10 años     | Última versión versión| Versionado en audit_logs               |
-| Formularios de consentimiento          | 10 años     | Fecha firma           | Tabla `consents`                       |
+| Documento                      | Plazo legal | Calculación a partir de | Observaciones                        |
+| ------------------------------ | ----------- | ----------------------- | ------------------------------------ |
+| Exámenes médicos ocupacionales | 20 años     | Fecha del examen        | Incluye restricciones y diagnósticos |
+| Certificados de ARL            | 10 años     | Fecha expedición        | Según Res. 0312/2019                 |
+| Informes de inspecciones       | 5 años      | Fecha inspección        | Solo copia simple                    |
+| Registros de capacitación      | 5 años      | Última capacitación     | Evidencias y asistencias             |
+| Políticas y objetivos SST      | 10 años     | Última versión versión  | Versionado en audit_logs             |
+| Formularios de consentimiento  | 10 años     | Fecha firma             | Tabla `consents`                     |
 
 ---
 

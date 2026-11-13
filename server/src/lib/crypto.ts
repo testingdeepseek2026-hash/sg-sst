@@ -35,18 +35,17 @@ export function encrypt(plaintext: string): string {
 }
 
 /**
- * Descifra un string base64(IV + ciphertext + authTag) y devuelve texto plano
+ * Intenta descifrar un string. Devuelve null si no es un cifrado válido
+ * (texto plano, formato ajeno o clave distinta), sin registrar errores.
  */
-export function decrypt(encryptedBase64: string): string {
-  if (!encryptedBase64) return '';
+export function tryDecrypt(encryptedBase64: string): string | null {
+  if (!encryptedBase64) return null;
 
   try {
     const key = getEncryptionKey();
     const data = Buffer.from(encryptedBase64, 'base64');
 
-    if (data.length < IV_LENGTH + AUTH_TAG_LENGTH) {
-      throw new Error('Datos cifrados inválidos');
-    }
+    if (data.length < IV_LENGTH + AUTH_TAG_LENGTH + 1) return null;
 
     const iv = data.subarray(0, IV_LENGTH);
     const authTag = data.subarray(data.length - AUTH_TAG_LENGTH);
@@ -56,12 +55,24 @@ export function decrypt(encryptedBase64: string): string {
     decipher.setAuthTag(authTag);
 
     const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
-
     return plaintext.toString('utf8');
-  } catch (err) {
-    console.error('[CRYPTO] Error descifrando:', err);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Descifra un string base64(IV + ciphertext + authTag) y devuelve texto plano
+ */
+export function decrypt(encryptedBase64: string): string {
+  if (!encryptedBase64) return '';
+
+  const plaintext = tryDecrypt(encryptedBase64);
+  if (plaintext === null) {
+    console.error('[CRYPTO] Error descifrando: datos cifrados inválidos o clave distinta');
     return '[DATOS CIFRADOS - ERROR AL DESCIFRAR]';
   }
+  return plaintext;
 }
 
 /**
@@ -86,12 +97,17 @@ export function decryptObject<T>(encryptedBase64: string): T | null {
 }
 
 /**
- * Verifica si un string parece estar cifrado (formato base64 con longitud mínima)
+ * Verifica si un string parece estar cifrado: base64 estricto con longitud
+ * suficiente para IV + autenticador + al menos un byte de contenido.
+ * No basta con que `Buffer.from(value, 'base64')` produzca bytes, porque
+ * ignora caracteres inválidos y clasificaría texto plano largo como cifrado.
  */
 export function isEncrypted(value: string): boolean {
   if (!value || typeof value !== 'string') return false;
+  const compact = value.replace(/\s+/g, '');
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(compact)) return false;
   try {
-    const buf = Buffer.from(value, 'base64');
+    const buf = Buffer.from(compact, 'base64');
     return buf.length >= IV_LENGTH + AUTH_TAG_LENGTH + 1;
   } catch {
     return false;
@@ -127,7 +143,7 @@ export function encryptSensitiveFields(
   fields: string[] = SENSITIVE_FIELDS
 ): Record<string, any> {
   const result = { ...obj };
-  for (const field of fields) {
+  for (const field of new Set(fields)) {
     if (result[field] && typeof result[field] === 'string' && !isEncrypted(result[field])) {
       result[field] = encrypt(result[field]);
     }
@@ -143,7 +159,7 @@ export function decryptSensitiveFields(
   fields: string[] = SENSITIVE_FIELDS
 ): Record<string, any> {
   const result = { ...obj };
-  for (const field of fields) {
+  for (const field of new Set(fields)) {
     if (result[field] && typeof result[field] === 'string' && isEncrypted(result[field])) {
       result[field] = decrypt(result[field]);
     }

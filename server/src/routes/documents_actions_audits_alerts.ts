@@ -9,11 +9,14 @@ import {
   getCorrectiveActions,
   updateCorrectiveAction,
 } from '../services/actions.js';
+import * as PgActions from '../services/actions.pg.js';
+import * as PgAudits from '../services/audits.pg.js';
 import {
   createAudit,
   createFinding,
   deleteAudit,
   deleteFinding,
+  getAuditById,
   getAudits,
   getFindingsByAudit,
   getFindingsSummary,
@@ -27,7 +30,8 @@ import {
   getDocuments,
   updateDocument,
 } from '../services/documents.js';
-import { getAuditLogStatsPg, getAuditLogsPg } from '../services/users.pg.js';
+import * as PgDocuments from '../services/documents.pg.js';
+import { auditLogPg, getAuditLogStatsPg, getAuditLogsPg } from '../services/users.pg.js';
 
 const docSchema = z.object({
   codigo: z.string().min(2),
@@ -48,16 +52,20 @@ const documentsRoutes: FastifyPluginAsync = async (fastify) => {
     if (!user) return reply.code(401).send({ error: 'No autenticado' });
     // Admin ve todo; trabajador ve solo vigentes
     if (user.rol !== 'administrador') {
-      return getDocuments(fastify.db, { estado: 'vigente' });
+      return isPgBackend()
+        ? PgDocuments.getDocumentsPg({ estado: 'vigente' })
+        : getDocuments(fastify.db, { estado: 'vigente' });
     }
-    return getDocuments(fastify.db);
+    return isPgBackend() ? PgDocuments.getDocumentsPg() : getDocuments(fastify.db);
   });
 
   fastify.get('/documents/:id', async (request, reply) => {
     const user = request.user;
     if (!user) return reply.code(401).send({ error: 'No autenticado' });
     const { id } = request.params as { id: string };
-    const d = getDocumentById(fastify.db, id);
+    const d = isPgBackend()
+      ? await PgDocuments.getDocumentByIdPg(id)
+      : getDocumentById(fastify.db, id);
     if (!d) return reply.code(404).send({ error: 'Documento no encontrado' });
     // Trabajador solo ve documentos vigentes
     if (user.rol !== 'administrador' && d.estado !== 'vigente') {
@@ -72,17 +80,21 @@ const documentsRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const parsed = docSchema.safeParse(request.body);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-      const d = createDocument(fastify.db, parsed.data);
+      const d = isPgBackend()
+        ? await PgDocuments.createDocumentPg(parsed.data)
+        : createDocument(fastify.db, parsed.data);
 
       const user = getAuthUser(request);
-      auditLog(fastify.db, {
+      const entry = {
         usuario_id: user.id,
         usuario_email: user.email,
         accion: 'crear',
         entidad: 'documents',
         entidad_id: d.id,
         valores_nuevos: parsed.data,
-      });
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
       return d;
     }
@@ -95,17 +107,21 @@ const documentsRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string };
       const parsed = docSchema.partial().safeParse(request.body);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-      const updated = updateDocument(fastify.db, id, parsed.data);
+      const updated = isPgBackend()
+        ? await PgDocuments.updateDocumentPg(id, parsed.data)
+        : updateDocument(fastify.db, id, parsed.data);
 
       const user = getAuthUser(request);
-      auditLog(fastify.db, {
+      const entry = {
         usuario_id: user.id,
         usuario_email: user.email,
         accion: 'editar',
         entidad: 'documents',
         entidad_id: id,
         valores_nuevos: parsed.data,
-      });
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
       return updated;
     }
@@ -116,16 +132,19 @@ const documentsRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: requireRole('administrador') },
     async (request) => {
       const { id } = request.params as { id: string };
-      deleteDocument(fastify.db, id);
+      if (isPgBackend()) await PgDocuments.deleteDocumentPg(id);
+      else deleteDocument(fastify.db, id);
 
       const user = getAuthUser(request);
-      auditLog(fastify.db, {
+      const entry = {
         usuario_id: user.id,
         usuario_email: user.email,
         accion: 'eliminar',
         entidad: 'documents',
         entidad_id: id,
-      });
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
       return { ok: true };
     }
@@ -145,23 +164,27 @@ const actionsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/actions', async (request, reply) => {
     const user = request.user;
     if (!user) return reply.code(401).send({ error: 'No autenticado' });
-    return getCorrectiveActions(fastify.db);
+    return isPgBackend() ? PgActions.getCorrectiveActionsPg() : getCorrectiveActions(fastify.db);
   });
 
   fastify.post('/actions', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parsed = actionSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const a = createCorrectiveAction(fastify.db, parsed.data);
+    const a = isPgBackend()
+      ? await PgActions.createCorrectiveActionPg(parsed.data)
+      : createCorrectiveAction(fastify.db, parsed.data);
 
     const user = getAuthUser(request);
-    auditLog(fastify.db, {
+    const entry = {
       usuario_id: user.id,
       usuario_email: user.email,
       accion: 'crear',
       entidad: 'corrective_actions',
       entidad_id: a.id,
       valores_nuevos: parsed.data,
-    });
+    };
+    if (isPgBackend()) await auditLogPg(entry);
+    else auditLog(fastify.db, entry);
 
     return a;
   });
@@ -173,17 +196,21 @@ const actionsRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string };
       const parsed = actionSchema.partial().safeParse(request.body);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-      const updated = updateCorrectiveAction(fastify.db, id, parsed.data);
+      const updated = isPgBackend()
+        ? await PgActions.updateCorrectiveActionPg(id, parsed.data)
+        : updateCorrectiveAction(fastify.db, id, parsed.data);
 
       const user = getAuthUser(request);
-      auditLog(fastify.db, {
+      const entry = {
         usuario_id: user.id,
         usuario_email: user.email,
         accion: 'editar',
         entidad: 'corrective_actions',
         entidad_id: id,
         valores_nuevos: parsed.data,
-      });
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
       return updated;
     }
@@ -191,16 +218,19 @@ const actionsRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.delete('/actions/:id', { preHandler: requireRole('administrador') }, async (request) => {
     const { id } = request.params as { id: string };
-    deleteCorrectiveAction(fastify.db, id);
+    if (isPgBackend()) await PgActions.deleteCorrectiveActionPg(id);
+    else deleteCorrectiveAction(fastify.db, id);
 
     const user = getAuthUser(request);
-    auditLog(fastify.db, {
+    const entry = {
       usuario_id: user.id,
       usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'corrective_actions',
       entidad_id: id,
-    });
+    };
+    if (isPgBackend()) await auditLogPg(entry);
+    else auditLog(fastify.db, entry);
 
     return { ok: true };
   });
@@ -234,23 +264,27 @@ const findingSchema = z.object({
 
 const auditsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/audits', { preHandler: requireRole('administrador') }, async () => {
-    return getAudits(fastify.db);
+    return isPgBackend() ? PgAudits.getAuditsPg() : getAudits(fastify.db);
   });
 
   fastify.post('/audits', { preHandler: requireRole('administrador') }, async (request, reply) => {
     const parsed = auditSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const a = createAudit(fastify.db, parsed.data);
+    const a = isPgBackend()
+      ? await PgAudits.createAuditPg(parsed.data)
+      : createAudit(fastify.db, parsed.data);
 
     const user = getAuthUser(request);
-    auditLog(fastify.db, {
+    const entry = {
       usuario_id: user.id,
       usuario_email: user.email,
       accion: 'crear',
       entidad: 'audits',
       entidad_id: a.id,
       valores_nuevos: parsed.data,
-    });
+    };
+    if (isPgBackend()) await auditLogPg(entry);
+    else auditLog(fastify.db, entry);
 
     return a;
   });
@@ -262,17 +296,21 @@ const auditsRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string };
       const parsed = auditSchema.partial().safeParse(request.body);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-      const updated = updateAudit(fastify.db, id, parsed.data);
+      const updated = isPgBackend()
+        ? await PgAudits.updateAuditPg(id, parsed.data)
+        : updateAudit(fastify.db, id, parsed.data);
 
       const user = getAuthUser(request);
-      auditLog(fastify.db, {
+      const entry = {
         usuario_id: user.id,
         usuario_email: user.email,
         accion: 'editar',
         entidad: 'audits',
         entidad_id: id,
         valores_nuevos: parsed.data,
-      });
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
       return updated;
     }
@@ -280,16 +318,19 @@ const auditsRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.delete('/audits/:id', { preHandler: requireRole('administrador') }, async (request) => {
     const { id } = request.params as { id: string };
-    deleteAudit(fastify.db, id);
+    if (isPgBackend()) await PgAudits.deleteAuditPg(id);
+    else deleteAudit(fastify.db, id);
 
     const user = getAuthUser(request);
-    auditLog(fastify.db, {
+    const entry = {
       usuario_id: user.id,
       usuario_email: user.email,
       accion: 'eliminar',
       entidad: 'audits',
       entidad_id: id,
-    });
+    };
+    if (isPgBackend()) await auditLogPg(entry);
+    else auditLog(fastify.db, entry);
 
     return { ok: true };
   });
@@ -300,7 +341,7 @@ const auditsRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: requireRole('administrador') },
     async (request) => {
       const { id } = request.params as { id: string };
-      return getFindingsByAudit(fastify.db, id);
+      return isPgBackend() ? PgAudits.getFindingsByAuditPg(id) : getFindingsByAudit(fastify.db, id);
     }
   );
 
@@ -308,7 +349,7 @@ const auditsRoutes: FastifyPluginAsync = async (fastify) => {
     '/audits/findings/summary',
     { preHandler: requireRole('administrador') },
     async () => {
-      return getFindingsSummary(fastify.db);
+      return isPgBackend() ? PgAudits.getFindingsSummaryPg() : getFindingsSummary(fastify.db);
     }
   );
 
@@ -320,17 +361,21 @@ const auditsRoutes: FastifyPluginAsync = async (fastify) => {
       const body = request.body as Record<string, any>;
       const parsed = findingSchema.safeParse({ ...body, audit_id: id });
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-      const f = createFinding(fastify.db, parsed.data);
+      const f = isPgBackend()
+        ? await PgAudits.createFindingPg(parsed.data)
+        : createFinding(fastify.db, parsed.data);
 
       const user = getAuthUser(request);
-      auditLog(fastify.db, {
+      const entry = {
         usuario_id: user.id,
         usuario_email: user.email,
         accion: 'crear',
         entidad: 'audit_findings',
         entidad_id: f.id,
         valores_nuevos: parsed.data,
-      });
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
       return f;
     }
@@ -343,17 +388,21 @@ const auditsRoutes: FastifyPluginAsync = async (fastify) => {
       const { fid } = request.params as { fid: string };
       const parsed = findingSchema.partial().safeParse(request.body);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-      const updated = updateFinding(fastify.db, fid, parsed.data);
+      const updated = isPgBackend()
+        ? await PgAudits.updateFindingPg(fid, parsed.data)
+        : updateFinding(fastify.db, fid, parsed.data);
 
       const user = getAuthUser(request);
-      auditLog(fastify.db, {
+      const entry = {
         usuario_id: user.id,
         usuario_email: user.email,
         accion: 'editar',
         entidad: 'audit_findings',
         entidad_id: fid,
         valores_nuevos: parsed.data,
-      });
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
       return updated;
     }
@@ -364,16 +413,19 @@ const auditsRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: requireRole('administrador') },
     async (request) => {
       const { fid } = request.params as { fid: string };
-      deleteFinding(fastify.db, fid);
+      if (isPgBackend()) await PgAudits.deleteFindingPg(fid);
+      else deleteFinding(fastify.db, fid);
 
       const user = getAuthUser(request);
-      auditLog(fastify.db, {
+      const entry = {
         usuario_id: user.id,
         usuario_email: user.email,
         accion: 'eliminar',
         entidad: 'audit_findings',
         entidad_id: fid,
-      });
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
 
       return { ok: true };
     }
@@ -385,8 +437,12 @@ const auditsRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: requireRole('administrador') },
     async (request, reply) => {
       const { id } = request.params as { id: string };
-      const findings = getFindingsByAudit(fastify.db, id);
-      const audit = fastify.db.prepare('SELECT * FROM audits WHERE id = ?').get(id);
+      const findings = isPgBackend()
+        ? await PgAudits.getFindingsByAuditPg(id)
+        : getFindingsByAudit(fastify.db, id);
+      const audit = isPgBackend()
+        ? await PgAudits.getAuditByIdPg(id)
+        : getAuditById(fastify.db, id);
 
       // Create Excel using ExcelJS
       const ExcelJS = (await import('exceljs')).default;
