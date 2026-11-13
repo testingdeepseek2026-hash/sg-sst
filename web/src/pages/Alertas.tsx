@@ -1,25 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { Bell, CheckCheck, Eye, FlaskConical, RefreshCw, Send, Settings } from 'lucide-react';
+import { Bell, CheckCheck, RefreshCw } from 'lucide-react';
 
 import { api } from '../lib/api';
 
 export default function Alertas() {
-  const [activeTab, setActiveTab] = useState<'pendientes' | 'historial' | 'config'>('pendientes');
+  const [activeTab, setActiveTab] = useState<'pendientes' | 'historial'>('pendientes');
   const [alerts, setAlerts] = useState<any[]>([]);
-  const [sentAlerts, setSentAlerts] = useState<any[]>([]);
+  const [attendedAlerts, setAttendedAlerts] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [smtpConfig, setSmtpConfig] = useState({
-    smtp_host: '',
-    smtp_port: '587',
-    smtp_user: '',
-    smtp_pass: '',
-    smtp_from: '',
-    alerts_enabled: false,
-  });
-  const [testEmail, setTestEmail] = useState('');
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -35,21 +25,9 @@ export default function Alertas() {
         ]);
         setAlerts(a);
         setStats(s);
-      } else if (activeTab === 'historial') {
+      } else {
         const a = await api.get('/alerts?enviado=1&limit=200');
-        setSentAlerts(a);
-      } else if (activeTab === 'config') {
-        const company = await api.get('/companies');
-        if (company) {
-          setSmtpConfig({
-            smtp_host: company.smtp_host || '',
-            smtp_port: String(company.smtp_port || 587),
-            smtp_user: company.smtp_user || '',
-            smtp_pass: company.smtp_pass || '',
-            smtp_from: company.smtp_from || '',
-            alerts_enabled: !!company.alerts_enabled,
-          });
-        }
+        setAttendedAlerts(a);
       }
     } catch (err: any) {
       setError(err.message || 'Error cargando datos');
@@ -80,12 +58,12 @@ export default function Alertas() {
     setSelectedIds((prev) => (checked ? [...prev, id] : prev.filter((i) => i !== id)));
   };
 
-  const handleSendSelected = async () => {
-    if (!selectedIds.length) return showToast('Seleccione al menos una alerta', true);
+  const markAsAttended = async (ids: string[]) => {
+    if (!ids.length) return showToast('Seleccione al menos una alerta', true);
     try {
       setSending(true);
-      await api.post('/alerts/mark-sent', { ids: selectedIds });
-      showToast(`${selectedIds.length} alerta(s) marcada(s) como enviada(s)`);
+      await api.post('/alerts/mark-sent', { ids });
+      showToast(`${ids.length} alerta(s) marcada(s) como atendida(s)`);
       setSelectedIds([]);
       loadData();
     } catch (err: any) {
@@ -95,18 +73,9 @@ export default function Alertas() {
     }
   };
 
-  const handleSendAll = async () => {
-    try {
-      setSending(true);
-      const res = await api.post('/alerts/send');
-      showToast(`Enviadas: ${res.enviadas}, Errores: ${res.errores}`);
-      loadData();
-    } catch (err: any) {
-      showToast(err.message || 'Error', true);
-    } finally {
-      setSending(false);
-    }
-  };
+  const handleMarkSelected = () => markAsAttended(selectedIds);
+
+  const handleMarkAll = () => markAsAttended(alerts.map((a) => a.id));
 
   const handleGenerate = async () => {
     try {
@@ -118,42 +87,6 @@ export default function Alertas() {
       showToast(err.message || 'Error', true);
     } finally {
       setSending(false);
-    }
-  };
-
-  const handleSaveSmtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await api.post('/companies', {
-        ...smtpConfig,
-        smtp_port: parseInt(smtpConfig.smtp_port, 10),
-      });
-      showToast('Configuración SMTP guardada');
-    } catch (err: any) {
-      showToast(err.message || 'Error guardando', true);
-    }
-  };
-
-  const handleTestEmail = async () => {
-    if (!testEmail) return showToast('Ingrese email destino', true);
-    try {
-      setSending(true);
-      const res = await api.get(`/alerts/test-email?to=${encodeURIComponent(testEmail)}`);
-      if (res.success) showToast('Email de prueba enviado (ver consola si modo simulación)');
-      else showToast(res.error || 'Error enviando', true);
-    } catch (err: any) {
-      showToast(err.message || 'Error', true);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handlePreview = async () => {
-    try {
-      const html = await api.get('/alerts/preview');
-      setPreviewHtml(html);
-    } catch (err: any) {
-      showToast(err.message || 'Error', true);
     }
   };
 
@@ -198,16 +131,15 @@ export default function Alertas() {
           },
           {
             id: 'historial',
-            label: `Enviadas ${sentAlerts.length ? `(${sentAlerts.length})` : ''}`,
+            label: `Atendidas ${attendedAlerts.length ? `(${attendedAlerts.length})` : ''}`,
             icon: CheckCheck,
           },
-          { id: 'config', label: 'Configuración', icon: Settings },
         ].map((tab) => (
           <button
             aria-selected={activeTab === tab.id}
             className="ui-tab"
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
+            onClick={() => setActiveTab(tab.id as 'pendientes' | 'historial')}
             role="tab"
             type="button"
           >
@@ -228,7 +160,7 @@ export default function Alertas() {
                 <div className="ui-kpi-value">{stats.pendientes}</div>
               </div>
               <div className="ui-kpi ui-kpi--ok">
-                <div className="ui-kpi-label">Enviadas</div>
+                <div className="ui-kpi-label">Atendidas</div>
                 <div className="ui-kpi-value">{stats.enviadas}</div>
               </div>
               <div className="ui-kpi ui-kpi--danger">
@@ -256,21 +188,21 @@ export default function Alertas() {
             <button
               className="ui-primary-button alerts-button--ok"
               disabled={!alerts.length || sending}
-              onClick={handleSendAll}
+              onClick={handleMarkAll}
               type="button"
             >
-              <Send aria-hidden="true" size={16} />
-              {sending ? 'Enviando...' : `Enviar todas (${alerts.length})`}
+              <CheckCheck aria-hidden="true" size={16} />
+              {sending ? 'Marcando...' : `Marcar todas como atendidas (${alerts.length})`}
             </button>
             {selectedIds.length > 0 && (
               <button
                 className="ui-primary-button alerts-button--info"
                 disabled={sending}
-                onClick={handleSendSelected}
+                onClick={handleMarkSelected}
                 type="button"
               >
                 <CheckCheck aria-hidden="true" size={16} />
-                Marcar {selectedIds.length} como enviada(s)
+                Marcar {selectedIds.length} como atendida(s)
               </button>
             )}
           </div>
@@ -366,7 +298,7 @@ export default function Alertas() {
         </div>
       )}
 
-      {/* TAB 2: HISTORIAL ENVIADAS */}
+      {/* TAB 2: HISTORIAL ATENDIDAS */}
       {activeTab === 'historial' && (
         <div className="ui-surface ui-table-wrap alerts-table-desktop">
           <table className="ui-table alerts-table">
@@ -376,11 +308,11 @@ export default function Alertas() {
                 <th>Trabajador / Ítem</th>
                 <th>Vencía</th>
                 <th>Prioridad</th>
-                <th>Enviada</th>
+                <th>Atendida</th>
               </tr>
             </thead>
             <tbody>
-              {sentAlerts.map((a) => (
+              {attendedAlerts.map((a) => (
                 <tr key={a.id}>
                   <td>{getTipoLabel(a.tipo)}</td>
                   <td>
@@ -393,10 +325,10 @@ export default function Alertas() {
                   <td>{a.enviado_en ? new Date(a.enviado_en).toLocaleString('es-CO') : '—'}</td>
                 </tr>
               ))}
-              {sentAlerts.length === 0 && (
+              {attendedAlerts.length === 0 && (
                 <tr>
                   <td className="alerts-empty-cell" colSpan={5}>
-                    No hay alertas enviadas aún
+                    No hay alertas atendidas aún
                   </td>
                 </tr>
               )}
@@ -405,8 +337,8 @@ export default function Alertas() {
         </div>
       )}
       {activeTab === 'historial' && (
-        <div aria-label="Alertas enviadas" className="alerts-mobile-list">
-          {sentAlerts.map((alert) => (
+        <div aria-label="Alertas atendidas" className="alerts-mobile-list">
+          {attendedAlerts.map((alert) => (
             <article className="alerts-mobile-card" key={alert.id}>
               <div className="alerts-mobile-card-header">
                 <span>{getTipoLabel(alert.tipo)}</span>
@@ -423,7 +355,7 @@ export default function Alertas() {
                   <dd>{alert.fecha_vencimiento}</dd>
                 </div>
                 <div>
-                  <dt>Enviada</dt>
+                  <dt>Atendida</dt>
                   <dd>
                     {alert.enviado_en
                       ? new Date(alert.enviado_en).toLocaleString('es-CO')
@@ -433,147 +365,9 @@ export default function Alertas() {
               </dl>
             </article>
           ))}
-          {sentAlerts.length === 0 && (
-            <p className="alerts-mobile-empty">No hay alertas enviadas aún</p>
+          {attendedAlerts.length === 0 && (
+            <p className="alerts-mobile-empty">No hay alertas atendidas aún</p>
           )}
-        </div>
-      )}
-
-      {/* TAB 3: CONFIGURACIÓN */}
-      {activeTab === 'config' && (
-        <div className="alerts-config">
-          <div className="ui-surface alerts-config-card">
-            <h2 className="alerts-config-title">Configuración SMTP para Alertas</h2>
-            <p className="alerts-config-help">
-              Configure el servidor de correo para envío automático de alertas. Si deja campos
-              vacíos, el sistema funcionará en <strong>modo simulación</strong> (logs en consola).
-            </p>
-
-            <form onSubmit={handleSaveSmtp}>
-              <div className="ui-form-grid">
-                <div>
-                  <label className="ui-field-label" htmlFor="alertas-host">
-                    Servidor SMTP (Host) *
-                  </label>
-                  <input
-                    id="alertas-host"
-                    value={smtpConfig.smtp_host}
-                    onChange={(e) => setSmtpConfig({ ...smtpConfig, smtp_host: e.target.value })}
-                    placeholder="smtp.gmail.com"
-                  />
-                </div>
-                <div>
-                  <label className="ui-field-label" htmlFor="alertas-puerto">
-                    Puerto *
-                  </label>
-                  <input
-                    id="alertas-puerto"
-                    type="number"
-                    value={smtpConfig.smtp_port}
-                    onChange={(e) => setSmtpConfig({ ...smtpConfig, smtp_port: e.target.value })}
-                    placeholder="587"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="ui-field-label" htmlFor="alertas-usuario">
-                  Usuario *
-                </label>
-                <input
-                  id="alertas-usuario"
-                  type="email"
-                  value={smtpConfig.smtp_user}
-                  onChange={(e) => setSmtpConfig({ ...smtpConfig, smtp_user: e.target.value })}
-                  placeholder="alertas@empresa.com"
-                />
-              </div>
-              <div>
-                <label className="ui-field-label" htmlFor="alertas-password">
-                  Contraseña / App Password *
-                </label>
-                <input
-                  id="alertas-password"
-                  type="password"
-                  value={smtpConfig.smtp_pass}
-                  onChange={(e) => setSmtpConfig({ ...smtpConfig, smtp_pass: e.target.value })}
-                  placeholder="••••••••"
-                />
-              </div>
-              <div>
-                <label className="ui-field-label" htmlFor="alertas-from">
-                  Remitente (From) *
-                </label>
-                <input
-                  id="alertas-from"
-                  value={smtpConfig.smtp_from}
-                  onChange={(e) => setSmtpConfig({ ...smtpConfig, smtp_from: e.target.value })}
-                  placeholder="SG-SST Alertas <alertas@empresa.com>"
-                />
-              </div>
-              <label className="alerts-config-switch" htmlFor="alertas-enabled">
-                <input
-                  id="alertas-enabled"
-                  type="checkbox"
-                  checked={smtpConfig.alerts_enabled}
-                  onChange={(e) =>
-                    setSmtpConfig({ ...smtpConfig, alerts_enabled: e.target.checked })
-                  }
-                />
-                <span>Activar scheduler automático (diario 07:00, semanal lunes 08:00)</span>
-              </label>
-              <div className="ui-form-actions">
-                <button className="ui-primary-button" type="submit">
-                  Guardar configuración
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <div className="ui-surface alerts-config-card">
-            <h2 className="alerts-config-title">Pruebas y Previsualización</h2>
-            <div className="alerts-config-row">
-              <div className="alerts-config-test">
-                <label className="ui-field-label" htmlFor="alertas-test-email">
-                  Email destino para prueba
-                </label>
-                <input
-                  id="alertas-test-email"
-                  type="email"
-                  value={testEmail}
-                  onChange={(e) => setTestEmail(e.target.value)}
-                  placeholder="admin@empresa.com"
-                />
-              </div>
-              <button
-                className="ui-primary-button alerts-button--info"
-                disabled={!testEmail || sending}
-                onClick={handleTestEmail}
-                type="button"
-              >
-                <FlaskConical aria-hidden="true" size={16} />
-                {sending ? 'Enviando...' : 'Enviar email de prueba'}
-              </button>
-              <button
-                className="ui-action-button"
-                disabled={sending}
-                onClick={handlePreview}
-                type="button"
-              >
-                <Eye aria-hidden="true" size={16} />
-                Previsualizar resumen diario
-              </button>
-            </div>
-            {previewHtml && (
-              <div className="alerts-preview">
-                <div className="alerts-preview-bar">Vista previa (HTML)</div>
-                <iframe
-                  className="alerts-preview-frame"
-                  srcDoc={previewHtml}
-                  title="Previsualización de alerta"
-                />
-              </div>
-            )}
-          </div>
         </div>
       )}
     </div>

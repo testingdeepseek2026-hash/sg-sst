@@ -79,12 +79,7 @@ SESSION_SECRET=clave-segura-32-caracteres-minimo
 # Cifrado datos sensibles (¡CAMBIAR EN PRODUCCIÓN!)
 ENCRYPTION_SECRET=clave-maestra-32-caracteres-minimo-para-aes-256
 
-# SMTP Alertas (opcional)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=alertas@empresa.com
-SMTP_PASS=app-password
-SMTP_FROM="SG-SST Alertas <alertas@empresa.com>"
+# Alertas locales (panel web; sin SMTP ni correo saliente)
 ALERTS_ENABLED=false
 
 # PWA

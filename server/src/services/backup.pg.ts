@@ -6,6 +6,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  statfsSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
@@ -60,6 +61,32 @@ const BACKUP_PREFIX = 'sg-sst-pg-backup-';
 const DATA_DIR = 'data';
 const MANIFEST_FILE = 'MANIFEST.json';
 const BATCH_PARAM_LIMIT = 30_000;
+const MIN_BACKUP_FREE_BYTES = 200 * 1024 * 1024;
+
+/**
+ * Verifica que el destino de respaldo exista o se pueda crear y que el disco
+ * tenga espacio libre suficiente antes de programar/ejecutar una copia.
+ */
+export function checkPgBackupTarget(config: PgBackupConfig): { ok: boolean; error?: string } {
+  try {
+    mkdirSync(config.backupDir, { recursive: true });
+    const stats = statfsSync(config.backupDir);
+    const freeBytes = Number(stats.bavail) * Number(stats.bsize);
+    if (freeBytes < MIN_BACKUP_FREE_BYTES) {
+      const freeMb = Math.floor(freeBytes / (1024 * 1024));
+      return {
+        ok: false,
+        error: `Espacio insuficiente en ${config.backupDir}: ${freeMb} MB libres (mínimo 200 MB).`,
+      };
+    }
+    return { ok: true };
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: `No se puede usar ${config.backupDir} como destino de respaldo: ${err?.message ?? err}`,
+    };
+  }
+}
 
 export function getPgBackupConfigFromEnv(): PgBackupConfig {
   return {
@@ -223,6 +250,11 @@ export async function runPgBackup(config: PgBackupConfig): Promise<{
   error?: string;
 }> {
   console.log('[BACKUP-PG] Iniciando respaldo programado...');
+  const target = checkPgBackupTarget(config);
+  if (!target.ok) {
+    console.error('[BACKUP-PG] Destino no válido:', target.error);
+    return { success: false, error: target.error };
+  }
   const result = await createPgBackup(config);
   if (!result.success) return { success: false, error: result.error };
 

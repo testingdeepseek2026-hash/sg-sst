@@ -1,6 +1,6 @@
 # Plan de despliegue local — SG-SST
 
-**Estado:** propuesta para revisión. No implica cambios de código ni carga de datos reales.
+**Estado:** cambios de código aplicados (13 de noviembre de 2026). El despliegue físico en el equipo dedicado sigue pendiente de las confirmaciones de la sección 12; no implica carga de datos reales.
 
 **Fecha:** 13 de noviembre de 2026.
 
@@ -198,20 +198,22 @@ Aceptación:
 - La aplicación y PostgreSQL inician solos después de reiniciar.
 - Un respaldo reciente se puede restaurar y verificar.
 
-## 6. Cambios de código previstos
+## 6. Cambios de código aplicados
 
-Son cambios pequeños y acotados; no incluyen reescritura ni migración a otro framework.
+Estado (13 de noviembre de 2026): todos los puntos siguientes se implementaron y validaron con typecheck, builds y suites de pruebas. Son cambios acotados; no incluyen reescritura ni migración a otro framework.
 
-1. **Arranque PostgreSQL-only.** Evitar que producción abra SQLite cuando `DB_BACKEND=pg`; conservar SQLite únicamente para desarrollo y pruebas.
-2. **Alertas locales.** En `server/src/lib/scheduler.ts`, retirar la creación del transporter y los envíos diario y semanal; el job de 07:00 solo debe generar alertas en la base. Eliminar `sendPendingAlerts` y `sendWeeklySummary`.
-3. **Rutas sin correo.** En `server/src/routes/alerts.ts`, retirar `/alerts/send`, `/alerts/test-email` y `/alerts/preview`; conservar listado, estadísticas, generación y marcado como atendida. Reutilizar el campo `enviado` como estado de atención local para no crear una migración innecesaria.
-4. **Panel de alertas.** En `web/src/pages/Alertas.tsx`, retirar la pestaña de configuración SMTP, el envío manual, el email de prueba y la previsualización de correo; renombrar “Enviadas” por “Atendidas” y “Marcar como enviada” por “Marcar como atendida”.
-5. **Limpieza de correo.** Retirar `server/src/lib/email.ts`, la dependencia `nodemailer` y las variables `SMTP_*`/`ADMIN_EMAIL` del ejemplo y la documentación. Las columnas SMTP existentes en la base quedan sin uso en esta etapa; su eliminación se evalúa en una limpieza posterior.
-6. **Cookies seguras.** Configurar `secure` en las cookies de sesión cuando la aplicación se publique por HTTPS.
-7. **Proxy inverso.** Activar la confianza en el proxy de Caddy para registrar correctamente IP y protocolo.
-8. **Variables de entorno.** Añadir ejemplos locales de PostgreSQL, respaldos, HTTPS y rutas de Windows, sin variables de correo.
-9. **Validación de respaldos.** Verificar que `BACKUP_DIR` exista o se pueda crear y que el disco tenga espacio suficiente.
-10. **Documentación.** Crear la guía de instalación, actualización, respaldo y restauración para el equipo dedicado.
+1. **Arranque PostgreSQL-only.** Con `DB_BACKEND=pg` la aplicación no abre SQLite ni ejecuta sus migraciones; SQLite queda únicamente para desarrollo y pruebas. La semilla SQLite se omite en modo PostgreSQL.
+2. **Alertas locales.** El scheduler ya no crea transporter ni envía correo; el job de 07:00 solo genera alertas en la base. Se retiraron `sendPendingAlerts` y `sendWeeklySummary`.
+3. **Rutas sin correo.** Se retiraron `/alerts/send`, `/alerts/test-email` y `/alerts/preview`; se conservan listado, estadísticas, generación y marcado como atendida. El campo `enviado` se reutiliza como estado de atención local.
+4. **Panel de alertas.** Se retiró la pestaña de configuración SMTP, el envío manual, el email de prueba y la previsualización; “Enviadas” pasó a “Atendidas” y “Marcar como enviada” a “Marcar como atendida”. La acción masiva queda como “Marcar todas como atendidas”.
+5. **Limpieza de correo.** Se retiraron `server/src/lib/email.ts`, la dependencia `nodemailer` y las variables `SMTP_*`/`ADMIN_EMAIL` del ejemplo y la documentación. Las columnas SMTP existentes en la base quedan sin uso; su eliminación se evalúa en una limpieza posterior.
+6. **Cookies seguras.** `COOKIE_SECURE=true` activa el atributo `secure` en las cookies de sesión cuando la aplicación se publica por HTTPS.
+7. **Proxy inverso.** `TRUST_PROXY=true` activa la confianza en el proxy de Caddy para registrar IP y protocolo reales.
+8. **Variables de entorno.** `.env.example` documenta PostgreSQL local, respaldos, HTTPS y rutas de Windows, sin variables de correo.
+9. **Validación de respaldos.** `checkPgBackupTarget` crea el destino si no existe y exige al menos 200 MB libres antes de programar o ejecutar una copia.
+10. **Documentación.** Guía de operación en [`docs/GUIA_OPERACION_LOCAL.md`](./docs/GUIA_OPERACION_LOCAL.md).
+
+Los ajustes de autorización y privilegios de PostgreSQL, HTTPS con Caddy, servicio NSSM y firewall pertenecen a las fases físicas L1–L3 y no se pueden ejecutar desde el repositorio.
 
 No se cambia el modelo de datos, los permisos ni los flujos funcionales. El único cambio de comportamiento es que las alertas dejan de enviarse por correo y pasan a atenderse dentro del panel.
 
@@ -278,4 +280,4 @@ No se cambia el modelo de datos, los permisos ni los flujos funcionales. El úni
 6. Ventana de actualizaciones y reinicios.
 7. Confirmar que “alerta local” significa panel web con contador e historial, sin notificación de escritorio, sonido ni correo.
 8. Confirmación de que no se requiere acceso remoto en esta etapa.
-9. Aprobación para reemplazar la opción de alojamiento en la nube por despliegue local.
+9. Aprobación para reemplazar la opción de alojamiento en la nube por despliegue local. _(Aprobado por la empresa el 13 de noviembre de 2026 por costos de operación.)_

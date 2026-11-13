@@ -102,20 +102,15 @@ HOST=127.0.0.1
 SESSION_SECRET=clave-super-segura-64-chars-minimo-generar-con-openssl-rand-base64-48
 SG_SST_DATA_DIR=/home/deploy/sg-sst/data
 
-# Email (usar servicio transaccional: SendGrid, Mailgun, AWS SES, Brevo)
-SMTP_HOST=smtp.sendgrid.net
-SMTP_PORT=587
-SMTP_USER=apikey
-SMTP_PASS=tu-api-key-sendgrid
-SMTP_FROM=SG-SST Alertas <alertas@tudominio.com>
+# Alertas locales (panel web; sin SMTP ni correo saliente)
 ALERTS_ENABLED=true
 
 # Frontend (build time)
 VITE_API_BASE=https://tudominio.com/api
 
-# Backend de datos: sqlite (default) | pg
+# Backend de datos: sqlite (default; solo desarrollo/pruebas) | pg (despliegue local)
 DB_BACKEND=pg
-DATABASE_URL=postgresql://usuario:clave@host-pooler.neon.tech/neondb?sslmode=require
+DATABASE_URL=postgresql://usuario:clave@127.0.0.1:5432/sg_sst
 PGPOOL_MAX=5
 # true exige verificación completa del certificado TLS
 PGSSL_STRICT=true

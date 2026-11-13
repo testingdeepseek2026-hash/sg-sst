@@ -4,8 +4,10 @@ import { join } from 'node:path';
 import { FastifyPluginAsync } from 'fastify';
 
 import { auditLog, getAuthUser, requireRole } from '../lib/auth.js';
+import { isPgBackend } from '../lib/db-pg.js';
 import { genId } from '../lib/utils.js';
 import { saveUploadedFile } from '../services/uploads.js';
+import { auditLogPg } from '../services/users.pg.js';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads');
 
@@ -23,14 +25,16 @@ const uploadsRoutes: FastifyPluginAsync = async (fastify) => {
         results.push(result);
 
         const user = getAuthUser(request);
-        auditLog(fastify.db, {
+        const entry = {
           usuario_id: user.id,
           usuario_email: user.email,
           accion: 'subir_archivo',
           entidad: 'uploads',
           entidad_id: result.filename,
           valores_nuevos: { url: result.url, original_name: result.filename, size: result.size },
-        });
+        };
+        if (isPgBackend()) await auditLogPg(entry);
+        else auditLog(fastify.db, entry);
       } catch (err: any) {
         results.push({ error: err.message, filename: file.filename });
       }
@@ -68,14 +72,16 @@ const uploadsRoutes: FastifyPluginAsync = async (fastify) => {
         const url = `/uploads/${subdir ? subdir + '/' : ''}${uniqueName}`;
 
         const user = getAuthUser(request);
-        auditLog(fastify.db, {
+        const entry = {
           usuario_id: user.id,
           usuario_email: user.email,
           accion: 'subir_archivo_base64',
           entidad: 'uploads',
           entidad_id: uniqueName,
           valores_nuevos: { url, original_name: filename || uniqueName, size: buffer.length },
-        });
+        };
+        if (isPgBackend()) await auditLogPg(entry);
+        else auditLog(fastify.db, entry);
 
         return { url, filename: uniqueName, size: buffer.length };
       } catch (err: any) {

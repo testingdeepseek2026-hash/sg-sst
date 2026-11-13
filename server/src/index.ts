@@ -8,6 +8,7 @@ import staticPlugin from '@fastify/static';
 import Fastify from 'fastify';
 
 import { requireAuth } from './lib/auth.js';
+import { getPgPool, isPgBackend } from './lib/db-pg.js';
 import { DB_PATH, openDb, runMigrations } from './lib/db.js';
 import { startAlertScheduler } from './lib/scheduler.js';
 import alertsRoutes from './routes/alerts.js';
@@ -39,7 +40,9 @@ import workersItemsRoutes from './routes/workers_items.js';
 import { seedAll } from './seed/index.js';
 import './types.js';
 
-const app = Fastify({ logger: true });
+// trustProxy: detrás de Caddy (HTTPS local) para registrar IP y protocolo reales.
+// Activar con TRUST_PROXY=true solo cuando exista un proxy inverso confiable.
+const app = Fastify({ logger: true, trustProxy: process.env.TRUST_PROXY === 'true' });
 
 const allowedOrigins = [
   'http://localhost:5173',
@@ -54,17 +57,22 @@ await app.register(cors, {
 await app.register(cookie, { secret: process.env.SESSION_SECRET });
 await app.register(multipart, { limits: { fields: 50, files: 20, fileSize: 10 * 1024 * 1024 } });
 
-const db = openDb();
-runMigrations(db);
+const usePg = isPgBackend();
+// Con PostgreSQL no se abre SQLite: la base activa es DATABASE_URL.
+// SQLite queda solo para desarrollo y pruebas.
+const db = usePg ? (null as unknown as ReturnType<typeof openDb>) : openDb();
+if (!usePg) runMigrations(db);
 app.decorate('db', db);
 
 // Health check disponible sin autenticación para monitoreo/load balancer
 app.get('/api/health', async () => {
+  const backend = isPgBackend() ? 'postgresql' : 'sqlite';
   try {
-    db.prepare('SELECT 1').all();
-    return { status: 'ok', db: 'connected', version: '1.0.0' };
+    if (isPgBackend()) await getPgPool().query('SELECT 1');
+    else db.prepare('SELECT 1').all();
+    return { status: 'ok', db: 'connected', backend, version: '1.0.0' };
   } catch (e) {
-    return { status: 'degraded', db: 'error', error: String(e) };
+    return { status: 'degraded', db: 'error', backend, error: String(e) };
   }
 });
 
@@ -123,9 +131,13 @@ app.listen({ port: PORT, host: HOST }, (err) => {
     process.exit(1);
   }
   console.log(`SG-SST servidor escuchando en http://${HOST}:${PORT}`);
-  console.log(`Base de datos: ${DB_PATH}`);
+  console.log(`Base de datos: ${usePg ? 'PostgreSQL (DATABASE_URL)' : DB_PATH}`);
   if (process.env.SEED === 'true') {
-    void seedAll(db).then(() => console.log('Semilla cargada.'));
+    if (!db) {
+      console.warn('[SEED] Omitido: la semilla SQLite no aplica con DB_BACKEND=pg.');
+    } else {
+      void seedAll(db).then(() => console.log('Semilla cargada.'));
+    }
   }
 
   // Iniciar scheduler de alertas (solo en producción, no en test)

@@ -75,18 +75,16 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
     const hash = createHash('sha256').update(password).digest('hex');
     if (hash !== (user as any).password_hash)
       return reply.code(401).send({ error: 'Credenciales invalidas' });
-    reply.setCookie('sg_sst_user', user.id, {
+    const cookieOptions = {
       path: '/',
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
+      // Solo bajo HTTPS (despliegue local con Caddy). Mantener false en desarrollo HTTP.
+      secure: process.env.COOKIE_SECURE === 'true',
       maxAge: 7 * 24 * 60 * 60,
-    });
-    reply.setCookie('sg_sst_email', user.email, {
-      path: '/',
-      httpOnly: true,
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60,
-    });
+    };
+    reply.setCookie('sg_sst_user', user.id, cookieOptions);
+    reply.setCookie('sg_sst_email', user.email, cookieOptions);
     const logEntry = {
       usuario_id: user.id,
       usuario_email: email,

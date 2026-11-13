@@ -53,12 +53,27 @@ describe('Alertas', () => {
     await waitFor(() => expect(mobileCheckbox).toBeChecked());
   });
 
-  it('muestra el historial enviado en el mismo formato móvil', async () => {
+  it('muestra el historial atendido en el mismo formato móvil', async () => {
     render(<Alertas />);
     await screen.findByRole('heading', { name: /alertas y recordatorios/i });
-    fireEvent.click(screen.getByRole('tab', { name: /enviadas/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /atendidas/i }));
 
     expect(await screen.findByRole('article')).toHaveTextContent('Ana Pérez');
-    expect(screen.getByRole('article')).toHaveTextContent('Enviada');
+    expect(screen.getByRole('article')).toHaveTextContent('Atendida');
+  });
+
+  it('no ofrece configuración SMTP y permite marcar todas como atendidas', async () => {
+    api.post.mockResolvedValue({ actualizadas: 1 });
+    render(<Alertas />);
+
+    await screen.findByRole('heading', { name: /alertas y recordatorios/i });
+    expect(screen.queryByRole('tab', { name: /configuración/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /marcar todas como atendidas/i }));
+
+    await waitFor(() =>
+      expect(api.post).toHaveBeenCalledWith('/alerts/mark-sent', { ids: ['alert-1'] })
+    );
+    expect(await screen.findByText(/1 alerta\(s\) marcada\(s\) como atendida\(s\)/i)).toBeInTheDocument();
   });
 });

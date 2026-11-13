@@ -47,7 +47,7 @@ Cambiar contraseñas en producción.
 
 ## 4. Alertas y vencimientos
 
-Página **Alertas**: lista exámenes médicos, certificados (alturas, eléctrico), licencia SST y curso 50 h (actualización 20 h cada 3 años). Canal configurable en **Empresa** (correo recomendado). En este despliegue local los recordatorios se muestran en la app; para envío de correo real configurar SMTP (ver .env).
+Página **Alertas**: lista exámenes médicos, certificados (alturas, eléctrico), licencia SST y curso 50 h (actualización 20 h cada 3 años). En el despliegue local las alertas se generan dentro de la aplicación, se consultan en la pestaña **Pendientes** y se marcan como **Atendidas**; no se envía correo ni se configura SMTP.
 
 ---
 
@@ -108,10 +108,12 @@ El archivo `.env` (en la raíz del proyecto) ahora es leído por el servidor gra
 - `PORT` (puerto, default `4000`; sobrescribe a `4001` si el `.env` tiene `PORT=4001`).
 - `HOST` (default `127.0.0.1`).
 - `SESSION_SECRET` (secreto de sesión; generarse con `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` (para alertas por correo real; sino funciona, el sistema usa modo simulación).
-- `ALERTS_ENABLED` (activar scheduler diario de alertas; requiere `NODE_ENV=production` y SMTP configurado).
+- `DB_BACKEND` (`sqlite` para desarrollo/pruebas o `pg` para el despliegue local con PostgreSQL).
+- `DATABASE_URL`, `PGPOOL_MAX` (conexión PostgreSQL local).
+- `ALERTS_ENABLED` (generación diaria de alertas a las 07:00; se consultan en el panel, sin correo).
+- `COOKIE_SECURE`, `TRUST_PROXY` (activar con HTTPS local detrás de Caddy).
 - `ENCRYPTION_SECRET` (clave AES-256-GCM para datos sensibles, Ley 1581/2012).
-- `BACKUP_ENABLED`, `BACKUP_TIMEZONE`, `BACKUP_RETENTION_DAYS` (respaldos automáticos).
+- `BACKUP_ENABLED`, `BACKUP_TIMEZONE`, `BACKUP_RETENTION_DAYS`, `BACKUP_DIR` (respaldos automáticos; el destino debe existir o poder crearse y tener al menos 200 MB libres).
 
 ---
 
@@ -156,7 +158,7 @@ Ejecuta las suites de pruebas unitarias y de integración (193 backend + 49 fron
 ## 9. Qué falta (próximas fases)
 
 - Firma digital real (actualmente firma en pantalla como imagen).
-- Envío de correo/SMTP para alertas (requiere configurar .env).
+- Envío de correo/SMTP para alertas (fuera del alcance del despliegue local; las alertas se atienden en el panel).
 - WhatsApp Business API (opcional, costo por conversación).
 - Sincronización offline completa en obra (PWA ya cachea estáticos; los datos se guardan al recuperar conexión).
 - Importación masiva de EPP y exámenes desde Excel.
