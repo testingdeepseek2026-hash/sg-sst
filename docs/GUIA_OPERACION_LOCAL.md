@@ -1,107 +1,68 @@
-# Guía de operación local — SG-SST
+# Guía de operación local — SG-SST (portátil)
 
 **Fecha:** 13 de noviembre de 2026  
-**Alcance:** operación diaria en el equipo dedicado de la empresa, con PostgreSQL local, HTTPS interno (Caddy) y alertas solo en el panel. No cubre instalación inicial (ver [`PLAN_DESPLIEGUE_LOCAL.md`](../PLAN_DESPLIEGUE_LOCAL.md), fases L0–L4).
+**Alcance:** uso diario en el portátil, con arranque por doble clic y seguimiento del plan de trabajo anual. Instalación y configuración en [`PLAN_DESPLIEGUE_LOCAL.md`](../PLAN_DESPLIEGUE_LOCAL.md).
 
 > Esta guía ayuda a operar la herramienta. No certifica cumplimiento normativo ni autoriza el uso de datos reales sin aprobación de la empresa y revisión de un profesional SST.
 
-## 1. Servicios y arranque
+## 1. Arranque diario
 
-En el equipo dedicado deben quedar como servicio de Windows, con inicio automático:
+1. Doble clic en `iniciar-proyecto.bat` (raíz del repositorio).
+2. El script verifica PostgreSQL, hace un respaldo previo, aplica migraciones y arranca **un solo servidor** en `http://127.0.0.1:4000`; se abre el navegador automáticamente.
+3. Iniciar sesión en la aplicación.
+4. Para detener: cerrar la ventana "SG-SST Servidor".
 
-| Servicio      | Función                            | Verificación                              |
-| ------------- | ---------------------------------- | ----------------------------------------- |
-| PostgreSQL 17 | Base de datos `sg_sst`             | Servicio activo en `services.msc`         |
-| `SG-SST`      | API y frontend (Node.js, NSSM)     | `https://sg-sst.local/api/health`         |
-| Caddy         | HTTPS y proxy hacia el puerto 4000 | Certificado local vigente en los clientes |
+Si el servidor no responde, revisar la ventana "SG-SST Servidor" y el estado de PostgreSQL.
 
-El equipo no expone puertos a Internet. La aplicación y PostgreSQL solo escuchan en `127.0.0.1`; Caddy es el único punto de entrada de la red interna.
+## 2. Rutina con el plan de trabajo anual
 
-## 2. Verificación diaria (2 minutos)
+- Revisar el módulo **Planes**: actividades del año, estado (pendiente/en ejecución/cumplida) y vencimientos.
+- Al ejecutar una actividad: registrar la evidencia (archivo, foto o documento) y la fecha real.
+- Cerrar el mes verificando el porcentaje de cumplimiento y las actividades rezagadas.
+- Usar **Alertas → Pendientes** para los vencimientos próximos; atender y marcar como **Atendida**.
 
-1. Abrir `https://sg-sst.local` y confirmar que carga el tablero.
-2. Revisar **Alertas → Pendientes** y atender los vencimientos críticos.
-3. Confirmar en el tablero que no hay acciones vencidas sin responsable.
+## 3. Alertas
 
-El endpoint `/api/health` responde con `status: ok`, `db: connected` y `backend: postgresql` cuando todo está normal.
-
-## 3. Alertas locales
-
-- El scheduler genera alertas todos los días a las **07:00 (America/Bogota)** si `ALERTS_ENABLED=true`.
-- No se envía correo ni existe configuración SMTP.
-- Las alertas se consultan en **Pendientes**, se atienden en la operación real y se marcan con **Marcar como atendida** (o **Marcar todas como atendidas**).
-- La pestaña **Atendidas** conserva el historial con la fecha de atención.
-- La generación manual con **Generar alertas** es útil después de actualizar exámenes, certificados o EPP.
+- Generación diaria a las **07:00 (America/Bogota)** si `ALERTS_ENABLED=true`; no se envía correo.
+- **Generar alertas** es útil tras registrar exámenes, certificados o EPP nuevos.
 
 ## 4. Respaldos
 
-- Se ejecutan a diario a las **02:00 (America/Bogota)** si `BACKUP_ENABLED=true`.
-- Destino: `BACKUP_DIR` (disco externo o NAS), nunca el SSD del sistema.
-- Antes de cada copia se verifica que el destino exista o pueda crearse y que tenga al menos **200 MB libres**.
-- Cada respaldo incluye base de datos, adjuntos y un manifiesto con conteos y SHA-256.
-- Retención inicial: 30 días (`BACKUP_RETENTION_DAYS`).
-- Mantener una copia semanal rotada **fuera de la sede**.
-
-Respaldos manuales:
+- Automático diario 02:00 en `BACKUP_DIR` (si `BACKUP_ENABLED=true`), con manifiesto SHA-256 y retención de 30 días.
+- Manual: `corepack pnpm --dir server run backup:pg`.
+- Copiar periódicamente `BACKUP_DIR` y `uploads/` a un disco externo y probar una restauración mensual:
 
 ```bash
-corepack pnpm --dir server run backup:pg
+corepack pnpm --dir server run restore:pg -- --dir <nombre-del-respaldo>
 ```
 
-Verificar que se creó la carpeta `sg-sst-pg-backup-*` en `BACKUP_DIR` y que el `MANIFEST.json` abre correctamente.
+- El destino de respaldo debe tener al menos 200 MB libres; la app lo valida antes de copiar.
 
-## 5. Restauración
+## 5. Actualización
 
-1. Detener el servicio `SG-SST`.
-2. Crear un respaldo manual previo.
-3. Restaurar en una base separada para verificar:
+1. Cerrar la ventana del servidor y hacer un respaldo manual.
+2. Actualizar el código y ejecutar `corepack pnpm install --frozen-lockfile`.
+3. Con PostgreSQL: `corepack pnpm --dir server run migrate:pg`.
+4. Volver a ejecutar `iniciar-proyecto.bat` (reconstruye y arranca).
+5. Probar inicio de sesión, una lectura, una escritura y una descarga.
 
-```bash
-# Ejemplo: restaurar el respaldo más reciente en una base de comprobación
-corepack pnpm --dir server run restore:pg -- --dir sg-sst-pg-backup-AAAA-MM-DDTHH-MM-SS --url-env DATABASE_URL
-```
+## 6. Seguridad básica en el portátil
 
-4. Comparar conteos y muestras contra el manifiesto.
-5. Solo si la verificación es correcta, restaurar sobre la base productiva siguiendo el procedimiento documentado y con el servicio detenido.
-
-Probar una restauración al menos **una vez al mes** y registrar la fecha en el control de respaldos.
-
-## 6. Actualización
-
-1. Avisar a los usuarios y elegir la ventana de actualización.
-2. Detener el servicio `SG-SST`.
-3. Crear un respaldo manual y verificar el manifiesto.
-4. Actualizar el código desde la versión aprobada.
-5. Instalar dependencias: `corepack pnpm install --frozen-lockfile`.
-6. Aplicar migraciones: `corepack pnpm --dir server run migrate:pg`.
-7. Ejecutar `typecheck`, pruebas y build.
-8. Iniciar el servicio y verificar `/api/health`.
-9. Probar inicio de sesión, una lectura, una escritura y una descarga.
-10. Si algo falla, restaurar la versión anterior y el respaldo correspondiente.
-
-## 7. Seguridad operativa
-
-- La cuenta diaria no debe ser administradora del equipo.
-- BitLocker activo en el disco del sistema y, si es posible, en el disco de respaldos.
-- Archivo de entorno y carpeta de respaldos accesibles solo por el servicio y el administrador.
-- No compartir `ENCRYPTION_SECRET` ni `SESSION_SECRET`; conservar una copia segura fuera del equipo.
+- Sesión del portátil con contraseña; cerrar sesión en la app al terminar el día.
+- BitLocker activado si es posible.
 - Los datos médicos son sensibles (Ley 1581 de 2012): no copiarlos a correos, chats ni equipos personales.
-- Revisar que los logs no contengan datos médicos, firmas ni secretos.
+- No compartir `SESSION_SECRET` ni `ENCRYPTION_SECRET`.
 
-## 8. Incidentes frecuentes
+## 7. Incidentes frecuentes
 
-| Síntoma                          | Revisión sugerida                                                      |
-| -------------------------------- | ---------------------------------------------------------------------- |
-| La aplicación no abre            | Servicio `SG-SST`, Caddy y PostgreSQL activos; revisar `/api/health`   |
-| Error 502 o certificado inválido | Certificado local de Caddy y CA instalada en el equipo cliente         |
-| No se generan alertas            | `ALERTS_ENABLED=true`, hora del equipo y logs del scheduler            |
-| Falla el respaldo                | `BACKUP_DIR` accesible, espacio libre ≥ 200 MB y permisos del servicio |
-| No hay espacio en disco          | Revisar retención, tamaño de `uploads/` y capacidad del disco          |
+| Síntoma                     | Revisión sugerida                                            |
+| --------------------------- | ------------------------------------------------------------ |
+| El .bat cierra de inmediato | Node.js o pnpm no están en el PATH; leer el mensaje de error |
+| No carga la página          | Ventana "SG-SST Dev Server" abierta y PostgreSQL activo      |
+| Error de base de datos      | Revisar `DB_BACKEND`/`DATABASE_URL` en `.env`                |
+| Falla el respaldo           | `BACKUP_DIR` accesible y con espacio ≥ 200 MB                |
 
-Ante una falla que no se resuelva en la guía, detener el servicio, conservar los logs y los respaldos, y contactar al responsable técnico. No borrar carpetas de datos ni de respaldos para intentar "reiniciar" la aplicación.
+## 8. Límites de esta etapa
 
-## 9. Estado y límites
-
-- Cambios de código del despliegue local aplicados; falta la instalación física (L0–L4) y las confirmaciones de la sección 12 del plan.
+- Uso solo en el portátil; sin acceso desde otros equipos ni por Internet.
 - Sin datos reales hasta aprobación de la empresa y revisión SST.
-- Sin envío de correo, acceso remoto por Internet ni alta disponibilidad en esta etapa.

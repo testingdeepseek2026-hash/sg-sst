@@ -1,95 +1,121 @@
 @echo off
+title SG-SST - Inicio local
 setlocal enabledelayedexpansion
+cd /d "%~dp0"
 
+echo ==========================================
+echo   SG-SST - Inicio local (portatil)
+echo ==========================================
 echo.
-echo ========================================
-echo   SG-SST - Inicializador Automatico
-echo ========================================
-echo.
 
-:: Verificar prerrequisitos
-where pnpm >nul 2>nul
-if errorlevel 1 (
-    echo ERROR: pnpm no se encuentra en el PATH.
-    echo Cierre esta ventana y ejecute: npm install -g pnpm
-    pause
-    exit /b 1
-)
-
+:: 0. Verificar Node.js
 where node >nul 2>nul
 if errorlevel 1 (
-    echo ERROR: Node.js no se encuentra en el PATH.
-    echo Instale Node.js 22.x desde https://nodejs.org/
+    echo ERROR: Node.js no esta en el PATH. Instale Node.js 22 LTS.
     pause
     exit /b 1
 )
 
-echo 1. Verificando/Instalando dependencias...
-if not exist "server\node_modules" (
-    echo   Primera ejecucion: instalando dependencias, puede tardar unos minutos...
-    call pnpm install
-) else (
-    echo   Dependencias detectadas, verificando consistencia...
-    call pnpm install --frozen-lockfile
-)
+:: 1. Verificar PostgreSQL: iniciarlo si esta detenido (idea del ERP Gr Seguridad)
+echo [1/5] Verificando PostgreSQL...
+sc query postgresql-x64-17 >nul 2>nul
 if errorlevel 1 (
-    echo ERROR: Fallo la instalacion de dependencias.
-    pause
-    exit /b 1
+    echo    Nota: no se encontro el servicio "postgresql-x64-17".
+    echo    Si el servicio tiene otro nombre o usa SQLite, puede continuar igual.
+) else (
+    sc query postgresql-x64-17 | find "RUNNING" >nul
+    if errorlevel 1 (
+        echo    ^> PostgreSQL detenido. Intentando iniciarlo...
+        net start postgresql-x64-17
+        if errorlevel 1 echo    ^> No se pudo iniciar el servicio. Ejecute este .bat como administrador.
+        timeout /t 5 >nul
+    )
+    echo    ^> PostgreSQL OK
 )
-
 echo.
-echo 2. Limpiando builds anteriores...
-if exist "dist" rmdir /s /q "dist" 2>nul
-if exist "web\dist" rmdir /s /q "web\dist" 2>nul
-if exist "server\dist" rmdir /s /q "server\dist" 2>nul
-echo   Listo.
 
+:: 2. Dependencias (solo la primera vez)
+if not exist "server\node_modules" (
+    echo [2/5] Instalando dependencias, puede tardar varios minutos...
+    call corepack pnpm install
+    if errorlevel 1 (
+        echo ERROR: fallo la instalacion de dependencias.
+        pause
+        exit /b 1
+    )
+) else (
+    echo [2/5] Dependencias OK.
+)
 echo.
-echo 3. Iniciando servidores (backend + frontend)...
-echo   Espere 3-5 segundos mientras los servicios arrancan...
-start "SG-SST Dev Server" cmd /c "call pnpm run dev & pause"
 
+:: 3. Build de produccion (solo si falta): un solo servidor, interfaz y API en el puerto 4000
+if exist "server\dist\public\index.html" (
+    echo [3/5] Aplicacion ya construida.
+) else (
+    echo [3/5] Construyendo la aplicacion, espere unos minutos...
+    call corepack pnpm run build
+    if errorlevel 1 (
+        echo ERROR: fallo el build. Revise el mensaje anterior.
+        pause
+        exit /b 1
+    )
+)
 echo.
-echo 4. Esperando a que el backend este listo...
-set retries=0
 
-:health_check_loop
-echo   Health check intento !retries!...
-curl -s --max-time 5 http://localhost:4000/api/health >nul 2>nul
+:: 4. Respaldo previo al arranque y migraciones (idea del ERP: prestart backup)
+::    Solo aplica con PostgreSQL; con SQLite se usa la base local de desarrollo.
+echo [4/5] Respaldos y base de datos...
+findstr /r /c:"^DATABASE_URL=" .env >nul 2>nul
+if errorlevel 1 (
+    echo    Nota: sin DATABASE_URL en .env se usa la base local SQLite.
+) else (
+    echo    ^> Respaldo previo al arranque...
+    call corepack pnpm --dir server run backup:pg
+    if errorlevel 1 echo    ^> El respaldo previo fallo (no bloquea el arranque); revise BACKUP_DIR.
+    echo    ^> Aplicando migraciones...
+    call corepack pnpm --dir server run migrate:pg
+    if errorlevel 1 echo    ^> migrate:pg fallo; revise DATABASE_URL en .env.
+)
+echo.
+
+:: 5. Si ya esta corriendo, solo abrir; si no, iniciar un solo servidor
+curl -s --max-time 3 http://127.0.0.1:4000/api/health >nul 2>nul
 if !errorlevel! equ 0 (
-    echo   Health check OK.
-    goto health_check_success
+    echo [5/5] La aplicacion ya esta corriendo.
+    start "" http://127.0.0.1:4000
+    timeout /t 2 >nul
+    exit /b 0
 )
-set /a retries+=1
-if !retries! gtr 30 (
+
+echo [5/5] Iniciando servidor unico...
+start "SG-SST Servidor" cmd /k "cd /d %~dp0server && node dist\index.js"
+
+echo    Esperando al servidor...
+set /a intentos=0
+:esperar
+curl -s --max-time 3 http://127.0.0.1:4000/api/health >nul 2>nul
+if !errorlevel! equ 0 goto listo
+set /a intentos+=1
+if !intentos! gtr 30 (
     echo.
-    echo ERROR: El servidor no respondio despues de 30 intentos.
-    echo Revise la ventana "SG-SST Dev Server" para ver el error.
-    echo O ejecute manualmente: pnpm run dev:api
+    echo ERROR: el servidor no respondio. Revise la ventana "SG-SST Servidor".
     pause
     exit /b 1
 )
-timeout /t 3 >nul
-goto health_check_loop
+timeout /t 2 >nul
+goto esperar
 
-:health_check_success
+:listo
 echo.
-echo ========================================
-echo   SG-SST ESTA CORRIENDO
-echo ========================================
+echo   ==========================================
+echo     SG-SST corriendo en http://127.0.0.1:4000
+echo   ==========================================
 echo.
-echo   Frontend: http://localhost:5173
-echo   Backend:  http://localhost:4000
-echo   Health:   http://localhost:4000/api/health
+echo   Un solo servidor: interfaz y API en el mismo puerto.
+echo   Primera vez con base nueva: registre el usuario administrador
+echo   desde la pantalla de login (alta inicial).
+echo   Para detener: cierre la ventana "SG-SST Servidor".
 echo.
-echo   Credenciales de prueba:
-echo   - admin@sg-sst.local / Admin1234! (administrador)
-echo   - trabajador@sg-sst.local / Trab1234! (trabajador)
-echo.
-echo   Abriendo el navegador...
-start "" http://localhost:5173
-echo.
-echo   Para detener: cierre la ventana "SG-SST Dev Server"
-echo.
-pause
+start "" http://127.0.0.1:4000
+timeout /t 3 >nul
+exit /b 0
