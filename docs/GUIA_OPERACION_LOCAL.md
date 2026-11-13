@@ -30,11 +30,18 @@ Si el servidor no responde, revisar la ventana "SG-SST Servidor" y el estado de 
 
 - Automático diario 02:00 en `BACKUP_DIR` (si `BACKUP_ENABLED=true`), con manifiesto SHA-256 y retención de 30 días.
 - Manual: `corepack pnpm --dir server run backup:pg`.
-- Copiar periódicamente `BACKUP_DIR` y `uploads/` a un disco externo y probar una restauración mensual:
+- Copiar periódicamente `BACKUP_DIR` y `uploads/` a un disco externo y probar una restauración mensual (dos pasos):
 
 ```bash
-corepack pnpm --dir server run restore:pg -- --dir <nombre-del-respaldo>
+# 1. Crear una base de comprobación y aplicarle el esquema (la restauración exige esquema migrado)
+#    psql: CREATE DATABASE sg_sst_comprobacion;
+DATABASE_URL=postgresql://postgres:<contraseña>@127.0.0.1:5432/sg_sst_comprobacion corepack pnpm --dir server run migrate:pg
+
+# 2. Restaurar el respaldo en esa base (sin --apply es simulación)
+corepack pnpm --dir server run restore:pg -- --dir <nombre-del-respaldo> --url-env DATABASE_URL --apply
 ```
+
+- Tras verificar los datos, eliminar la base de comprobación (`DROP DATABASE sg_sst_comprobacion;`).
 
 - El destino de respaldo debe tener al menos 200 MB libres; la app lo valida antes de copiar.
 
@@ -58,7 +65,7 @@ corepack pnpm --dir server run restore:pg -- --dir <nombre-del-respaldo>
 | Síntoma                     | Revisión sugerida                                            |
 | --------------------------- | ------------------------------------------------------------ |
 | El .bat cierra de inmediato | Node.js o pnpm no están en el PATH; leer el mensaje de error |
-| No carga la página          | Ventana "SG-SST Dev Server" abierta y PostgreSQL activo      |
+| No carga la página          | Ventana "SG-SST Servidor" abierta y PostgreSQL activo        |
 | Error de base de datos      | Revisar `DB_BACKEND`/`DATABASE_URL` en `.env`                |
 | Falla el respaldo           | `BACKUP_DIR` accesible y con espacio ≥ 200 MB                |
 

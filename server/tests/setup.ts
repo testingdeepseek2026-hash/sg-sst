@@ -6,6 +6,12 @@ import { runMigrations } from '../src/lib/db.js';
 
 vi.mock('node:sqlite', () => process.getBuiltinModule('node:sqlite'));
 
+// Aislamiento de entorno: lib/paths.ts carga el .env de la raíz al importar
+// lib/db.ts, y el .env real del equipo puede traer DB_BACKEND=pg. En pruebas
+// el backend por defecto es SQLite; las pruebas PostgreSQL activan DB_BACKEND
+// y DATABASE_URL de forma explícita (ver tests/integration/companies.pg.test.ts).
+process.env.DB_BACKEND = 'sqlite';
+
 global.console = {
   ...console,
   log: vi.fn(),

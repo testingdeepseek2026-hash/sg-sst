@@ -45,16 +45,23 @@ El archivo `.env` (raíz, fuera del repositorio) decide el motor:
   DATABASE_URL=postgresql://postgres:<contraseña>@127.0.0.1:5432/sg_sst
   ```
 
-- Aplicar el esquema una vez: `corepack pnpm --dir server run migrate:pg`.
-- Primera vez con base nueva: registrar el usuario administrador desde la pantalla de login (alta inicial cuando no existe ningún usuario).
+- Aplicar el esquema una vez: `corepack pnpm --dir server run migrate:pg` (el `.bat` también lo hace en cada arranque).
+- Primera vez con base nueva: crear el usuario administrador. **Nota:** la pantalla de login aún no tiene formulario de alta inicial; el primer usuario se crea por API (`POST /api/users/register`). Registrar este pendiente de UX.
+
+**Estado validado (2026-11-13):** base local `sg_sst_test` con esquema al día (37 tablas), conexión y arranque contra PostgreSQL verificados (`/api/health` responde `db: connected, backend: postgresql`), administrador creado y login funcionando. Suite de pruebas completa: **292/292** (incluye las pruebas PostgreSQL que antes se omitían; el aislamiento quedó corregido en `server/tests/setup.ts`).
 
 ## 5. Respaldos
 
-- Con PostgreSQL y `BACKUP_ENABLED=true`, el servidor crea un respaldo diario a las 02:00 en `BACKUP_DIR` (retención 30 días, manifiesto con SHA-256).
+- Con PostgreSQL y `BACKUP_ENABLED=true`, el servidor crea un respaldo diario a las 02:00 en `BACKUP_DIR` (retención 30 días, manifiesto con SHA-256). Además, el `.bat` hace un **respaldo previo al arranque**.
 - Verificación incluida: el destino debe existir o poder crearse y tener al menos 200 MB libres.
-- Respaldos por comando: `corepack pnpm --dir server run backup:pg`; restauración: `restore:pg`.
+- Respaldos por comando: `corepack pnpm --dir server run backup:pg`; restauración: `restore:pg` (exige que la base destino ya tenga el esquema migrado; ver abajo).
 - Recomendación mínima: copiar `BACKUP_DIR` y `uploads/` a un disco externo con periodicidad fija y probar una restauración al menos una vez al mes.
 - BitLocker en el portátil y copia fuera del equipo reducen el riesgo de pérdida.
+
+**Prueba de restauración validada (2026-11-13):** se restauró el respaldo `sg-sst-pg-backup-2026-11-13T23-37-23` (36 tablas, 3 filas) en una base de comprobación separada `sg_sst_restore_check` y el contenido coincidió (1 usuario administrador). Procedimiento, en dos pasos:
+
+1. Crear la base de comprobación y aplicar el esquema: `CREATE DATABASE sg_sst_restore_check;` y luego `DATABASE_URL=<cadena hacia la base de comprobación> corepack pnpm --dir server run migrate:pg`.
+2. Restaurar y verificar: `corepack pnpm --dir server run restore:pg -- --dir <nombre-del-respaldo> --url-env DATABASE_URL_RESTORE --apply` (sin `--apply` es simulación). Al terminar, eliminar la base de comprobación.
 
 ## 6. Opciones futuras (archivadas, no activas)
 
@@ -62,8 +69,8 @@ Si el escenario cambia (más usuarios, acceso desde otros equipos, requisitos de
 
 ## 7. Criterios de aceptación
 
-- [ ] `iniciar-proyecto.bat` abre la aplicación con doble clic y sin pasos manuales.
-- [ ] Los datos se guardan y persisten al cerrar y reabrir (backend elegido en `.env`).
-- [ ] El respaldo diario se crea en la carpeta definida y el manifiesto es verificable.
-- [ ] No se cargaron datos reales sin aprobación de la empresa y revisión SST.
-- [ ] El flujo del plan de trabajo anual (crear actividad, ejecutarla, registrar evidencia, ver cumplimiento) se puede completar de inicio a fin.
+- [ ] `iniciar-proyecto.bat` abre la aplicación con doble clic y sin pasos manuales. _(Pendiente: el .bat no se ha ejecutado de punta a punta en el portátil; los pasos 1–5 están implementados y sus componentes validados por separado.)_
+- [x] Los datos se guardan y persisten al cerrar y reabrir (backend elegido en `.env`). _(Validado contra PostgreSQL local: arranque, registro y login con datos persistidos.)_
+- [x] El respaldo diario se crea en la carpeta definida y el manifiesto es verificable. _(Respaldo manual validado: 36 tablas, manifiesto SHA-256 y restauración de comprobación en base separada coincidente.)_
+- [x] No se cargaron datos reales sin aprobación de la empresa y revisión SST. _(La base contiene solo el usuario administrador; sin datos de demostración mezclados.)_
+- [ ] El flujo del plan de trabajo anual (crear actividad, ejecutarla, registrar evidencia, ver cumplimiento) se puede completar de inicio a fin. _(Pendiente: foco de la siguiente fase.)_
