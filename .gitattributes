@@ -1,0 +1,5 @@
+# Fines de línea consistentes: los .bat exigen CRLF para que cmd.exe los interprete
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.sh text eol=lf

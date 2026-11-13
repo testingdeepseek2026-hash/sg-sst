@@ -71,10 +71,10 @@ if errorlevel 1 (
 ) else (
     echo    ^> Respaldo previo al arranque...
     call corepack pnpm --dir server run backup:pg
-    if errorlevel 1 echo    ^> El respaldo previo fallo (no bloquea el arranque); revise BACKUP_DIR.
+    if errorlevel 1 echo    ^> El respaldo previo fallo; no bloquea el arranque. Revise BACKUP_DIR.
     echo    ^> Aplicando migraciones...
     call corepack pnpm --dir server run migrate:pg
-    if errorlevel 1 echo    ^> migrate:pg fallo; revise DATABASE_URL en .env.
+    if errorlevel 1 echo    ^> migrate:pg fallo. Revise DATABASE_URL en .env.
 )
 echo.
 

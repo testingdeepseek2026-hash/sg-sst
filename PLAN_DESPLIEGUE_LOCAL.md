@@ -69,7 +69,7 @@ Si el escenario cambia (más usuarios, acceso desde otros equipos, requisitos de
 
 ## 7. Criterios de aceptación
 
-- [ ] `iniciar-proyecto.bat` abre la aplicación con doble clic y sin pasos manuales. _(Pendiente: el .bat no se ha ejecutado de punta a punta en el portátil; los pasos 1–5 están implementados y sus componentes validados por separado.)_
+- [x] `iniciar-proyecto.bat` abre la aplicación con doble clic y sin pasos manuales. _(Validado el 2026-11-13: arranque completo con PostgreSQL verificado, respaldo previo, migraciones, servidor en 4000 y sesión iniciada en el navegador. Correcciones aplicadas: fines de línea CRLF garantizados vía `.gitattributes`, y paréntesis en mensajes `echo` dentro de bloques `if (...)`. )_
 - [x] Los datos se guardan y persisten al cerrar y reabrir (backend elegido en `.env`). _(Validado contra PostgreSQL local: arranque, registro y login con datos persistidos.)_
 - [x] El respaldo diario se crea en la carpeta definida y el manifiesto es verificable. _(Respaldo manual validado: 36 tablas, manifiesto SHA-256 y restauración de comprobación en base separada coincidente.)_
 - [x] No se cargaron datos reales sin aprobación de la empresa y revisión SST. _(La base contiene solo el usuario administrador; sin datos de demostración mezclados.)_

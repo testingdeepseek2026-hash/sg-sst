@@ -24,6 +24,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Almacén local de pnpm (Corepack) fuera del repositorio
+.pnpm-store/
 lerna-debug.log*
 
 # Editor
