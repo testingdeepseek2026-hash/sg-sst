@@ -14,7 +14,7 @@ import { createExam } from '../services/workers_exams.js';
 import { hazardCatalogSeed } from './hazard-catalog-seed.js';
 
 export async function seedAll(db: DatabaseSync) {
-  // Empresa real: Riesgo IV, 3 trabajadores, Vigía SST + Comité Convivencia, alertas solo in-app
+  // Empresa demostrativa: Riesgo IV, 3 trabajadores, Vigía SST + Comité Convivencia, alertas solo in-app
   const existing = getCompany(db);
   if (!existing) {
     const id = 'cmp-001';

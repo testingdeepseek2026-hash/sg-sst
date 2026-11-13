@@ -131,4 +131,6 @@ Elige el stack que mejor se adapte (puede ser una aplicación web propia, una pl
 - Tests usan imports con alias `@/` en lugar de rutas relativas
 
 **Fase aparente:** Post-MVP (estructura base + routing + páginas funcionales + API completa + tests completos)
-**Gaps críticos identificados:** Ver análisis detallado abajo
+**Decisión de alojamiento (13 de noviembre de 2026):** despliegue local en equipo dedicado, sin nube, por costos de operación recurrentes. Detalles y fases L0–L4 en [`PLAN_DESPLIEGUE_LOCAL.md`](./PLAN_DESPLIEGUE_LOCAL.md); estado y continuidad en [`PLAN_TRABAJO_SG_SST.md`](./PLAN_TRABAJO_SG_SST.md).
+
+**Gaps críticos identificados:** ver el análisis y el registro de avance en [`PLAN_TRABAJO_SG_SST.md`](./PLAN_TRABAJO_SG_SST.md).
