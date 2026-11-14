@@ -1,6 +1,8 @@
 import { exec, getPgPool, one, query } from '../lib/db-pg.js';
 import { genId, nowISO } from '../lib/utils.js';
 
+import type { AnnualPlanImportRow } from './plan-excel.js';
+
 /**
  * Servicio de plan anual, cronograma y ejecución de capacitaciones para
  * PostgreSQL (Neon) — Fase N3.4. Equivalente asíncrono de services/plans.ts.
@@ -20,6 +22,8 @@ const ANNUAL_PLAN_FIELDS = new Set([
   'programa',
   'evidencia_esperada',
   'meses',
+  'meses_ejecutados',
+  'porcentaje',
 ]);
 const SCHEDULE_FIELDS = new Set([
   'nombre',
@@ -69,8 +73,8 @@ export async function createAnnualPlanPg(input: Record<string, unknown>): Promis
   const id = genId();
   const now = nowISO();
   await exec(
-    `INSERT INTO annual_plan (id, anio, objetivo, meta, responsable, fecha_inicio, fecha_fin, presupuesto, estado, programa, evidencia_esperada, meses, creado_en, actualizado_en)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO annual_plan (id, anio, objetivo, meta, responsable, fecha_inicio, fecha_fin, presupuesto, estado, programa, evidencia_esperada, meses, meses_ejecutados, porcentaje, creado_en, actualizado_en)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       id,
       input.anio,
@@ -84,6 +88,8 @@ export async function createAnnualPlanPg(input: Record<string, unknown>): Promis
       input.programa ?? null,
       input.evidencia_esperada ?? null,
       input.meses ? JSON.stringify(input.meses) : null,
+      input.meses_ejecutados ? JSON.stringify(input.meses_ejecutados) : null,
+      input.porcentaje ?? null,
       now,
       now,
     ]
@@ -96,10 +102,11 @@ export async function updateAnnualPlanPg(
   patch: Record<string, unknown>
 ): Promise<PlanRecord> {
   const patchConMeses: Record<string, unknown> = { ...patch };
-  if (patchConMeses.meses !== undefined) {
-    patchConMeses.meses =
-      Array.isArray(patchConMeses.meses) && (patchConMeses.meses as unknown[]).length > 0
-        ? JSON.stringify(patchConMeses.meses)
+  for (const campo of ['meses', 'meses_ejecutados'] as const) {
+    if (patchConMeses[campo] === undefined) continue;
+    patchConMeses[campo] =
+      Array.isArray(patchConMeses[campo]) && (patchConMeses[campo] as unknown[]).length > 0
+        ? JSON.stringify(patchConMeses[campo])
         : null;
   }
   const { sets, vals } = buildUpdate(patchConMeses, ANNUAL_PLAN_FIELDS);
@@ -325,21 +332,7 @@ export async function bulkCreateTrainingAttendancePg(
 
 // ===== IMPORTACIÓN MASIVA DEL PLAN ANUAL (desde Excel) =====
 
-export type AnnualPlanImportRow = {
-  anio: number;
-  programa: string | null;
-  objetivo: string;
-  meta: string | null;
-  evidencia_esperada: string | null;
-  responsable: string | null;
-  estado: 'pendiente' | 'en_proceso' | 'cumplido' | 'incumplido';
-  meses: number[];
-  fecha_inicio: string | null;
-  fecha_fin: string | null;
-  presupuesto: number;
-  fila: number;
-  errores: string[];
-};
+export type { AnnualPlanImportRow } from './plan-excel.js';
 
 export const ESTADO_MAP: Record<string, 'pendiente' | 'en_proceso' | 'cumplido' | 'incumplido'> = {
   p: 'pendiente',
@@ -374,8 +367,8 @@ export async function importAnnualPlanPg(
         continue;
       }
       await client.query(
-        `INSERT INTO annual_plan (id, anio, objetivo, meta, responsable, fecha_inicio, fecha_fin, presupuesto, estado, programa, evidencia_esperada, meses, creado_en, actualizado_en)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+        `INSERT INTO annual_plan (id, anio, objetivo, meta, responsable, fecha_inicio, fecha_fin, presupuesto, estado, programa, evidencia_esperada, meses, meses_ejecutados, porcentaje, creado_en, actualizado_en)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
         [
           genId(),
           row.anio,
@@ -389,6 +382,8 @@ export async function importAnnualPlanPg(
           row.programa ?? null,
           row.evidencia_esperada ?? null,
           row.meses.length > 0 ? JSON.stringify(row.meses) : null,
+          row.meses_ejecutados.length > 0 ? JSON.stringify(row.meses_ejecutados) : null,
+          row.porcentaje ?? 0,
           now,
           now,
         ]

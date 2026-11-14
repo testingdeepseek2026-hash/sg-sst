@@ -1,9 +1,9 @@
-﻿import ExcelJS from 'exceljs';
-import { FastifyPluginAsync } from 'fastify';
+﻿import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 
 import { auditLog, getAuthUser, requireRole } from '../lib/auth.js';
 import { isPgBackend } from '../lib/db-pg.js';
+import { parseAnnualPlanExcel, type AnnualPlanImportRow } from '../services/plan-excel.js';
 import {
   bulkCreateTrainingAttendance,
   createAnnualPlan,
@@ -25,7 +25,6 @@ import {
   getTrainings,
   getTrainingSchedule,
   importAnnualPlan,
-  parseEstado,
   updateAnnualPlan,
   updateTraining,
   updateTrainingAttendance,
@@ -48,6 +47,8 @@ const planSchema = z.object({
   programa: z.string().optional().nullable(),
   evidencia_esperada: z.string().optional().nullable(),
   meses: z.array(z.number().int().min(1).max(12)).optional().nullable(),
+  meses_ejecutados: z.array(z.number().int().min(1).max(12)).optional().nullable(),
+  porcentaje: z.number().min(0).max(100).optional().nullable(),
 });
 const trainSchema = z.object({
   nombre: z.string().min(2),
@@ -264,14 +265,21 @@ const plansRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ===== IMPORTACIÃ“N MASIVA DESDE EXCEL (Fase 2) =====
 
-  // // POST /plans/annual/import/preview - Previsualizar importación desde Excel
+  // POST /plans/annual/import/preview - Previsualizar importación desde Excel
   fastify.post(
     '/plans/annual/import/preview',
     { preHandler: requireRole('administrador') },
     async (request, reply) => {
       try {
-        const resultado = await previewarExcelImport(request);
-        return resultado;
+        const file = await request.file();
+        if (!file) return reply.code(400).send({ error: 'No se envió archivo' });
+
+        const chunks: Buffer[] = [];
+        for await (const chunk of file.file) {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        }
+        const preview = await parseAnnualPlanExcel(Buffer.concat(chunks));
+        return preview;
       } catch (err: any) {
         return reply.code(400).send({ error: err.message });
       }
@@ -294,20 +302,23 @@ const plansRoutes: FastifyPluginAsync = async (fastify) => {
             responsable: z.string().nullable().optional(),
             estado: z.enum(['pendiente', 'en_proceso', 'cumplido', 'incumplido']),
             meses: z.array(z.number().int().min(1).max(12)),
+            meses_ejecutados: z.array(z.number().int().min(1).max(12)).optional().default([]),
+            porcentaje: z.number().min(0).max(100).optional().default(0),
             fecha_inicio: z.string().nullable().optional(),
             fecha_fin: z.string().nullable().optional(),
             presupuesto: z.number().optional().default(0),
             fila: z.number().int(),
+            errores: z.array(z.string()).optional().default([]),
           })
         ),
       });
       const parsed = schema.safeParse(request.body);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
-      const rows = parsed.data.filas;
+      const rows = parsed.data.filas as AnnualPlanImportRow[];
       const resultado = isPgBackend()
-        ? await PgPlans.importAnnualPlanPg(rows as any)
-        : importAnnualPlan(fastify.db, rows as any);
+        ? await PgPlans.importAnnualPlanPg(rows)
+        : importAnnualPlan(fastify.db, rows);
 
       const user = getAuthUser(request);
       const entry = {
@@ -630,173 +641,5 @@ const plansRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 };
-
-/**
- * Preview de importación masiva desde Excel (plan anual).
- * Lee el archivo, detecta encabezados, mapea columnas y devuelve filas válidas y con errores.
- */
-async function previewarExcelImport(request: any): Promise<any> {
-  const file = await request.file();
-  if (!file) throw new Error('No se envió archivo');
-
-  const chunks: Buffer[] = [];
-  for await (const chunk of file.file) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-  const buffer = Buffer.concat(chunks) as any;
-
-  const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(buffer);
-
-  const hoja = wb.worksheets.find((s: any) =>
-    String(s.name ?? '').includes('Plan de trabajo Anual')
-  );
-  if (!hoja) throw new Error('No se encontró la hoja "Plan de trabajo Anual"');
-  const ws = wb.getWorksheet(hoja.name);
-  if (!ws) throw new Error('No se pudo leer la hoja');
-
-  const filas: any[] = [];
-  ws.eachRow((row: any) => {
-    const celdas: any[] = [];
-    row.eachCell({ includeEmpty: false }, (cell: any, colNumber: number) => {
-      celdas.push({ c: colNumber, v: cell.value });
-    });
-    filas.push(celdas);
-  });
-
-  let encabezadoIdx = -1;
-  const colMap: Record<string, number> = {};
-  const MESES_POR_COLUMNA: Record<number, number> = {
-    8: 6,
-    9: 7,
-    10: 8,
-    11: 9,
-    12: 10,
-    13: 11,
-    14: 12,
-    15: 1,
-    16: 2,
-    17: 3,
-    18: 4,
-    19: 5,
-  };
-
-  for (let i = 0; i < filas.length; i++) {
-    const celdas = filas[i];
-    const tieneObjetivo = celdas.some(
-      (cel: any) => typeof cel.v === 'string' && String(cel.v).trim().toLowerCase() === 'objetivo'
-    );
-    const tieneActividad = celdas.some(
-      (cel: any) => typeof cel.v === 'string' && String(cel.v).trim().toLowerCase() === 'actividad'
-    );
-    if (tieneObjetivo && tieneActividad) {
-      encabezadoIdx = i;
-      for (const cel of celdas) {
-        if (typeof cel.v === 'string') {
-          const nom = String(cel.v).trim().toLowerCase();
-          if (nom === 'objetivo') colMap.objetivo = cel.c;
-          else if (nom === 'meta') colMap.meta = cel.c;
-          else if (nom === 'actividad') colMap.actividad = cel.c;
-          else if (nom === 'evidencia') colMap.evidencia = cel.c;
-          else if (nom === 'responsable') colMap.responsable = cel.c;
-          else if (nom === '*estado de la actividad' || nom === 'estado') colMap.estado = cel.c;
-          else if (nom === 'programa' || cel.c === 1) colMap.programa = cel.c;
-        }
-      }
-      break;
-    }
-  }
-
-  if (encabezadoIdx < 0) {
-    throw new Error(
-      'No se encontró la fila de encabezados (se requieren columnas "Objetivo" y "Actividad")'
-    );
-  }
-
-  const filasValidas: any[] = [];
-  const filasConErrores: any[] = [];
-  let anioDetectado: number | null = null;
-
-  for (let i = encabezadoIdx + 1; i < filas.length; i++) {
-    const celdas = filas[i];
-    const get = (col: number) => {
-      const cel = celdas.find((c: any) => c.c === col);
-      return cel ? cel.v : null;
-    };
-
-    const programa =
-      typeof get(colMap.programa ?? 1) === 'string'
-        ? String(get(colMap.programa ?? 1)).trim()
-        : null;
-    const meta = typeof get(colMap.meta) === 'string' ? String(get(colMap.meta)).trim() : null;
-    const actividad =
-      typeof get(colMap.actividad) === 'string' ? String(get(colMap.actividad)).trim() : null;
-    const evidencia =
-      typeof get(colMap.evidencia) === 'string' ? String(get(colMap.evidencia)).trim() : null;
-    const responsable =
-      typeof get(colMap.responsable) === 'string' ? String(get(colMap.responsable)).trim() : null;
-    const estadoRaw =
-      typeof get(colMap.estado ?? 7) === 'string' ? String(get(colMap.estado ?? 7)).trim() : null;
-
-    const errores: string[] = [];
-    if (!actividad) errores.push('Falta actividad');
-
-    const meses: number[] = [];
-    let primeraFechaX: Date | null = null;
-    for (const [colStr, mes] of Object.entries(MESES_POR_COLUMNA)) {
-      const colNum = parseInt(colStr);
-      const cel = get(colNum);
-      if (cel && String(cel).trim().toUpperCase() === 'X') {
-        meses.push(mes);
-        if (!primeraFechaX) {
-          const filaFechas = filas[4];
-          if (filaFechas) {
-            const celFecha = filaFechas.find((c: any) => c.c === colNum);
-            if (celFecha && celFecha.v instanceof Date) {
-              primeraFechaX = celFecha.v as Date;
-            }
-          }
-        }
-      }
-    }
-    meses.sort((a: number, b: number) => a - b);
-
-    if (primeraFechaX) anioDetectado = primeraFechaX.getFullYear();
-    const anio = anioDetectado ?? new Date().getFullYear();
-
-    const estado = parseEstado(estadoRaw);
-
-    const filaImport = {
-      anio,
-      programa,
-      objetivo: actividad,
-      meta,
-      evidencia_esperada: evidencia,
-      responsable,
-      estado,
-      meses,
-      fecha_inicio: primeraFechaX ? primeraFechaX.toISOString().slice(0, 10) : null,
-      fecha_fin: null,
-      presupuesto: 0,
-      fila: i + 1,
-      errores,
-    };
-
-    if (errores.length > 0) {
-      filasConErrores.push(filaImport);
-    } else {
-      filasValidas.push(filaImport);
-    }
-  }
-
-  return {
-    totalFilas: filas.length - encabezadoIdx - 1,
-    validas: filasValidas.length,
-    conErrores: filasConErrores.length,
-    anioDetectado,
-    filasValidas,
-    filasConErrores,
-  };
-}
 
 export default plansRoutes;

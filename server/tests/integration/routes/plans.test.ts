@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
+import ExcelJS from 'exceljs';
 import Fastify from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -216,5 +217,116 @@ describe('Plan anual - Fase 2 (programa, evidencia, meses, soportes)', () => {
       headers: workerHeaders,
     });
     expect(eliminacion.statusCode).toBe(403);
+  });
+
+  async function crearExcelPlan(anio: number): Promise<Buffer> {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(`Plan de trabajo Anual ${anio}`);
+    ws.getCell('A1').value = 'PLAN DE TRABAJO ANUAL';
+    ws.mergeCells('A1:U2');
+    ws.getCell('A3').value = 'POLÍTICA DEL SISTEMA DE GESTIÓN';
+    ws.mergeCells('A3:A5');
+    const encabezados: [number, string][] = [
+      [2, 'Objetivo'],
+      [3, 'Meta'],
+      [4, 'Actividad'],
+      [5, 'Evidencia'],
+      [6, 'Responsable'],
+      [7, '*Estado de la actividad'],
+    ];
+    for (const [col, texto] of encabezados) {
+      ws.getCell(3, col).value = texto;
+      ws.mergeCells(3, col, 5, col);
+    }
+    ws.getCell(3, 20).value = '% DE CUMPLIMIENTO';
+    ws.mergeCells(3, 20, 5, 21);
+    for (let i = 0; i < 12; i++) {
+      ws.getCell(3, 8 + i).value = 'CRONOGRAMA DE ACTIVIDADES';
+      ws.getCell(5, 8 + i).value = new Date(Date.UTC(anio, i, 1));
+    }
+    ws.mergeCells(3, 8, 4, 19);
+
+    ws.getCell(6, 2).value = 'Objetivo de prueba';
+    ws.mergeCells(6, 2, 9, 2);
+    ws.getCell(6, 3).value = 'Meta de prueba';
+    ws.mergeCells(6, 3, 9, 3);
+    ws.getCell(6, 21).value = 0.75;
+    ws.mergeCells(6, 21, 9, 21);
+
+    for (let i = 0; i < 2; i++) {
+      const fila = 6 + i * 2;
+      ws.getCell(fila, 4).value = `Actividad ${i + 1}`;
+      ws.getCell(fila, 5).value = `Evidencia ${i + 1}`;
+      ws.getCell(fila, 6).value = `Responsable ${i + 1}`;
+      for (const col of [4, 5, 6]) ws.mergeCells(fila, col, fila + 1, col);
+      ws.getCell(fila, 7).value = 'P';
+      ws.getCell(fila + 1, 7).value = 'E';
+      ws.getCell(fila, 8).value = 'X';
+      if (i === 0) ws.getCell(fila, 9).value = 'X';
+      ws.getCell(fila + 1, 8).value = 'X';
+      ws.getCell(fila, 20).value = i === 0 ? 0.5 : 1;
+      ws.mergeCells(fila, 20, fila + 1, 20);
+    }
+    ws.getCell('A42').value = '* P: PLANEADAS\n* E: EJECUTADAS';
+    ws.mergeCells('A42:F42');
+
+    return Buffer.from(await wb.xlsx.writeBuffer());
+  }
+
+  it('previsualiza e importa el plan desde celdas combinadas con porcentaje', async () => {
+    const xlsx = await crearExcelPlan(2027);
+    const boundary = '----sgsstxlsx';
+    const cuerpo = Buffer.concat([
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="plan.xlsx"\r\n` +
+          'Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\r\n\r\n'
+      ),
+      xlsx,
+      Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]);
+
+    const previewRes = await app.inject({
+      method: 'POST',
+      url: '/api/plans/annual/import/preview',
+      headers: { ...headers(), 'content-type': `multipart/form-data; boundary=${boundary}` },
+      payload: cuerpo,
+    });
+    expect(previewRes.statusCode).toBe(200);
+    const preview = JSON.parse(previewRes.body);
+    expect(preview.validas).toBe(2);
+    expect(preview.anioDetectado).toBe(2027);
+    expect(preview.filasValidas[0]).toMatchObject({
+      objetivo: 'Actividad 1',
+      programa: 'Objetivo de prueba',
+      meses: [1, 2],
+      meses_ejecutados: [1],
+      porcentaje: 50,
+      estado: 'en_proceso',
+      fecha_inicio: '2027-01-01',
+    });
+
+    const confirmRes = await app.inject({
+      method: 'POST',
+      url: '/api/plans/annual/import/confirm',
+      headers: headers(),
+      payload: { filas: preview.filasValidas },
+    });
+    expect(confirmRes.statusCode).toBe(200);
+    expect(JSON.parse(confirmRes.body).importados).toBe(2);
+
+    const lista = JSON.parse(
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/api/plans/annual?anio=2027',
+          headers: headers(),
+        })
+      ).body
+    ) as { objetivo: string; meses: string; meses_ejecutados: string; porcentaje: number }[];
+    expect(lista).toHaveLength(2);
+    const primera = lista.find((p) => p.objetivo === 'Actividad 1')!;
+    expect(JSON.parse(primera.meses)).toEqual([1, 2]);
+    expect(JSON.parse(primera.meses_ejecutados)).toEqual([1]);
+    expect(primera.porcentaje).toBe(50);
   });
 });

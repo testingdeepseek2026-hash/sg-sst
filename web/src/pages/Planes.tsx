@@ -34,6 +34,8 @@ interface AnnualActivity {
   programa?: string | null;
   evidencia_esperada?: string | null;
   meses?: number[] | null;
+  meses_ejecutados?: number[] | null;
+  porcentaje?: number | null;
   creado_en?: string;
   actualizado_en?: string;
 }
@@ -214,7 +216,13 @@ export default function Planes() {
         api.get('/plans/trainings'),
         api.get('/workers'),
       ]);
-      setPlans((plansData as AnnualActivity[]).map((p) => ({ ...p, meses: parseMeses(p.meses) })));
+      setPlans(
+        (plansData as AnnualActivity[]).map((p) => ({
+          ...p,
+          meses: parseMeses(p.meses),
+          meses_ejecutados: parseMeses(p.meses_ejecutados),
+        }))
+      );
       setTrainings(trainingData as TrainingSchedule[]);
       setExecutions(executionsData as TrainingExecution[]);
       setWorkers((workersData as WorkerSimple[]).filter((w) => w.estado === 'activo'));
@@ -1329,6 +1337,11 @@ export default function Planes() {
                   <th
                     style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
                   >
+                    % Cumpl.
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
                     Presupuesto
                   </th>
                   <th
@@ -1346,7 +1359,7 @@ export default function Planes() {
               <tbody>
                 {filteredPlans.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ padding: 20, textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan={10} style={{ padding: 20, textAlign: 'center', color: '#6b7280' }}>
                       {loading ? 'Cargando...' : 'No hay actividades registradas'}
                     </td>
                   </tr>
@@ -1405,24 +1418,63 @@ export default function Planes() {
                           {p.fecha_inicio} {p.fecha_fin ? `→ ${p.fecha_fin}` : ''}
                         </td>
                         <td style={{ padding: 10 }}>
-                          {(p.meses ?? []).length ? (
-                            <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                              {(p.meses ?? []).map((mes) => (
-                                <span
-                                  key={mes}
-                                  title={MESES_ABREVIATURA[mes - 1]}
+                          {(p.meses ?? []).length || (p.meses_ejecutados ?? []).length ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {(p.meses ?? []).length ? (
+                                <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                                  {(p.meses ?? []).map((mes) => (
+                                    <span
+                                      key={mes}
+                                      title={MESES_ABREVIATURA[mes - 1]}
+                                      style={{
+                                        padding: '1px 5px',
+                                        borderRadius: 4,
+                                        background: '#ccfbf1',
+                                        color: '#0f766e',
+                                        fontSize: 'var(--font-size-micro)',
+                                        fontWeight: 'bold',
+                                      }}
+                                    >
+                                      {MESES_ABREVIATURA[mes - 1]}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : null}
+                              {(p.meses_ejecutados ?? []).length ? (
+                                <div
                                   style={{
-                                    padding: '1px 5px',
-                                    borderRadius: 4,
-                                    background: '#ccfbf1',
-                                    color: '#0f766e',
-                                    fontSize: 'var(--font-size-micro)',
-                                    fontWeight: 'bold',
+                                    display: 'flex',
+                                    gap: 3,
+                                    flexWrap: 'wrap',
+                                    alignItems: 'center',
                                   }}
                                 >
-                                  {MESES_ABREVIATURA[mes - 1]}
-                                </span>
-                              ))}
+                                  <span
+                                    style={{
+                                      fontSize: 'var(--font-size-micro)',
+                                      color: '#6b7280',
+                                    }}
+                                  >
+                                    Ejec.:
+                                  </span>
+                                  {(p.meses_ejecutados ?? []).map((mes) => (
+                                    <span
+                                      key={mes}
+                                      title={MESES_ABREVIATURA[mes - 1]}
+                                      style={{
+                                        padding: '1px 5px',
+                                        borderRadius: 4,
+                                        background: '#dcfce7',
+                                        color: '#166534',
+                                        fontSize: 'var(--font-size-micro)',
+                                        fontWeight: 'bold',
+                                      }}
+                                    >
+                                      {MESES_ABREVIATURA[mes - 1]}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : null}
                             </div>
                           ) : (
                             <span style={{ color: '#9ca3af' }}>—</span>
@@ -1456,6 +1508,9 @@ export default function Planes() {
                               </>
                             )}
                           </span>
+                        </td>
+                        <td style={{ padding: 10, fontSize: 'var(--font-size-caption)' }}>
+                          {p.porcentaje == null ? '—' : `${p.porcentaje}%`}
                         </td>
                         <td
                           style={{
@@ -1588,9 +1643,11 @@ export default function Planes() {
         <section aria-labelledby="plans-tab-importar" id="plans-panel-importar">
           <h3 style={{ margin: '0 0 12px', color: '#0f766e' }}>Importar plan anual desde Excel</h3>
           <p style={{ fontSize: 'var(--font-size-caption)', color: '#6b7280', marginBottom: 14 }}>
-            Sube tu archivo Excel con el plan anual (columnas: programa, objetivo, meta, actividad,
-            evidencia, responsable, estado, cronograma mensual). Se mostrará una vista previa antes
-            de confirmar. Ningún dato se guarda hasta que hagas clic en &quot;Importar&quot;.
+            Sube tu archivo Excel con el plan anual en el formato PL-SGSST-01 (actividad, evidencia
+            y responsable combinados en dos filas: P = programada, E = ejecutada). Se detectan el
+            cronograma, el % de cumplimiento y los meses programados/ejecutados automáticamente. Se
+            mostrará una vista previa antes de confirmar: ningún dato se guarda hasta que hagas clic
+            en &quot;Importar&quot;.
           </p>
 
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
@@ -1663,8 +1720,10 @@ export default function Planes() {
                       <th style={{ padding: 6, textAlign: 'left' }}>Fila</th>
                       <th style={{ padding: 6, textAlign: 'left' }}>Objetivo / Actividad</th>
                       <th style={{ padding: 6, textAlign: 'left' }}>Responsable</th>
+                      <th style={{ padding: 6, textAlign: 'left' }}>Prog.</th>
+                      <th style={{ padding: 6, textAlign: 'left' }}>Ejec.</th>
+                      <th style={{ padding: 6, textAlign: 'left' }}>%</th>
                       <th style={{ padding: 6, textAlign: 'left' }}>Estado</th>
-                      <th style={{ padding: 6, textAlign: 'left' }}>Meses</th>
                       <th style={{ padding: 6, textAlign: 'left' }}>Errores</th>
                     </tr>
                   </thead>
@@ -1676,17 +1735,32 @@ export default function Planes() {
                           <td
                             style={{
                               padding: 6,
-                              maxWidth: '200px',
+                              maxWidth: '260px',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
                             }}
                           >
+                            {f.programa ? (
+                              <div
+                                style={{
+                                  fontSize: 'var(--font-size-micro)',
+                                  color: '#0f766e',
+                                  fontWeight: 'bold',
+                                }}
+                              >
+                                {f.programa}
+                              </div>
+                            ) : null}
                             {f.objetivo}
                           </td>
                           <td style={{ padding: 6 }}>{f.responsable || '—'}</td>
-                          <td style={{ padding: 6 }}>{f.estado}</td>
                           <td style={{ padding: 6 }}>{(f.meses ?? []).join(', ') || '—'}</td>
+                          <td style={{ padding: 6 }}>
+                            {(f.meses_ejecutados ?? []).join(', ') || '—'}
+                          </td>
+                          <td style={{ padding: 6 }}>{f.porcentaje ?? 0}%</td>
+                          <td style={{ padding: 6 }}>{f.estado}</td>
                           <td
                             style={{ padding: 6, color: f.errores.length ? '#dc2626' : '#16a34a' }}
                           >

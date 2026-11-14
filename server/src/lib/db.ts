@@ -110,6 +110,12 @@ export function runMigrations(db: DatabaseSync) {
     // Cronograma mensual del Excel real: JSON con los números de mes (1-12).
     db.exec('ALTER TABLE annual_plan ADD COLUMN meses TEXT');
   }
+  if (!annualPlanColumns.some(({ name }) => name === 'meses_ejecutados')) {
+    db.exec('ALTER TABLE annual_plan ADD COLUMN meses_ejecutados TEXT');
+  }
+  if (!annualPlanColumns.some(({ name }) => name === 'porcentaje')) {
+    db.exec('ALTER TABLE annual_plan ADD COLUMN porcentaje REAL');
+  }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS annual_plan_evidences (

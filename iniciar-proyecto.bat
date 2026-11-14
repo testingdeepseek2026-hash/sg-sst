@@ -48,10 +48,12 @@ if not exist "server\node_modules" (
 )
 echo.
 
-:: 3. Build de produccion (solo si falta): un solo servidor, interfaz y API en el puerto 4000
-if exist "server\dist\public\index.html" (
-    echo [3/5] Aplicacion ya construida.
-) else (
+:: 3. Build de produccion cuando falta o cuando el codigo cambio
+set "NECESITA_BUILD=0"
+if not exist "server\dist\public\index.html" set "NECESITA_BUILD=1"
+node scripts\build-pendiente.mjs >nul 2>nul
+if errorlevel 1 set "NECESITA_BUILD=1"
+if "!NECESITA_BUILD!"=="1" (
     echo [3/5] Construyendo la aplicacion, espere unos minutos...
     call corepack pnpm run build
     if errorlevel 1 (
@@ -59,6 +61,8 @@ if exist "server\dist\public\index.html" (
         pause
         exit /b 1
     )
+) else (
+    echo [3/5] Aplicacion ya construida y al dia.
 )
 echo.
 
@@ -78,13 +82,19 @@ if errorlevel 1 (
 )
 echo.
 
-:: 5. Si ya esta corriendo, solo abrir; si no, iniciar un solo servidor
+:: 5. Si ya esta corriendo, solo abrir; si se recompilo, reiniciar para aplicar la version nueva
 curl -s --max-time 3 http://127.0.0.1:4000/api/health >nul 2>nul
 if !errorlevel! equ 0 (
-    echo [5/5] La aplicacion ya esta corriendo.
-    start "" http://127.0.0.1:4000
-    timeout /t 2 >nul
-    exit /b 0
+    if "!NECESITA_BUILD!"=="1" (
+        echo [5/5] Reiniciando el servidor para aplicar la actualizacion...
+        powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"
+        timeout /t 2 >nul
+    ) else (
+        echo [5/5] La aplicacion ya esta corriendo.
+        start "" http://127.0.0.1:4000
+        timeout /t 2 >nul
+        exit /b 0
+    )
 )
 
 echo [5/5] Iniciando servidor unico...

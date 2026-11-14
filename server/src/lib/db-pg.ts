@@ -99,6 +99,7 @@ const PG_MIGRATIONS: { name: string }[] = [
   { name: '003_altura_permits_evidence.sql' },
   { name: '004_indicators_formula_frequency.sql' },
   { name: '005_plan_anual_evidencias.sql' },
+  { name: '006_plan_anual_ejecucion.sql' },
 ];
 
 function resolveMigrationPath(name: string): string {

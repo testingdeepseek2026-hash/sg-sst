@@ -1,5 +1,19 @@
 import { genId, nowISO } from '../lib/utils.js';
 
+import type { AnnualPlanImportRow } from './plan-excel.js';
+
+export type { AnnualPlanImportRow } from './plan-excel.js';
+
+export const ESTADO_MAP: Record<string, 'pendiente' | 'en_proceso' | 'cumplido' | 'incumplido'> = {
+  p: 'pendiente',
+  e: 'en_proceso',
+  c: 'cumplido',
+  i: 'incumplido',
+  cerrada: 'cumplido',
+  'en ejecución': 'en_proceso',
+  'en proceso': 'en_proceso',
+};
+
 export function getAnnualPlan(db: any, anio?: number) {
   if (anio)
     return db.prepare('SELECT * FROM annual_plan WHERE anio = ? ORDER BY fecha_inicio').all(anio);
@@ -9,8 +23,8 @@ export function createAnnualPlan(db: any, input: any) {
   const id = genId();
   const now = nowISO();
   db.prepare(
-    `INSERT INTO annual_plan (id, anio, objetivo, meta, responsable, fecha_inicio, fecha_fin, presupuesto, estado, programa, evidencia_esperada, meses, creado_en, actualizado_en)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    `INSERT INTO annual_plan (id, anio, objetivo, meta, responsable, fecha_inicio, fecha_fin, presupuesto, estado, programa, evidencia_esperada, meses, meses_ejecutados, porcentaje, creado_en, actualizado_en)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).run(
     id,
     input.anio,
@@ -24,6 +38,8 @@ export function createAnnualPlan(db: any, input: any) {
     input.programa ?? null,
     input.evidencia_esperada ?? null,
     input.meses ? JSON.stringify(input.meses) : null,
+    input.meses_ejecutados ? JSON.stringify(input.meses_ejecutados) : null,
+    input.porcentaje ?? null,
     now,
     now
   );
@@ -32,10 +48,11 @@ export function createAnnualPlan(db: any, input: any) {
 export function updateAnnualPlan(db: any, id: string, patch: any) {
   const now = nowISO();
   const patchConMeses = { ...patch };
-  if (patchConMeses.meses !== undefined) {
-    patchConMeses.meses =
-      Array.isArray(patchConMeses.meses) && patchConMeses.meses.length > 0
-        ? JSON.stringify(patchConMeses.meses)
+  for (const campo of ['meses', 'meses_ejecutados'] as const) {
+    if (patchConMeses[campo] === undefined) continue;
+    patchConMeses[campo] =
+      Array.isArray(patchConMeses[campo]) && patchConMeses[campo].length > 0
+        ? JSON.stringify(patchConMeses[campo])
         : null;
   }
   const sets: string[] = [];
@@ -54,32 +71,6 @@ export function deleteAnnualPlan(db: any, id: string) {
   db.prepare('DELETE FROM annual_plan WHERE id = ?').run(id);
 }
 
-export type AnnualPlanImportRow = {
-  anio: number;
-  programa: string | null;
-  objetivo: string;
-  meta: string | null;
-  evidencia_esperada: string | null;
-  responsable: string | null;
-  estado: 'pendiente' | 'en_proceso' | 'cumplido' | 'incumplido';
-  meses: number[];
-  fecha_inicio: string | null;
-  fecha_fin: string | null;
-  presupuesto: number;
-  fila: number;
-  errores: string[];
-};
-
-export const ESTADO_MAP: Record<string, 'pendiente' | 'en_proceso' | 'cumplido' | 'incumplido'> = {
-  p: 'pendiente',
-  e: 'en_proceso',
-  c: 'cumplido',
-  i: 'incumplido',
-  cerrada: 'cumplido',
-  'en ejecución': 'en_proceso',
-  'en proceso': 'en_proceso',
-};
-
 export function parseEstado(
   valor: string | null | undefined
 ): 'pendiente' | 'en_proceso' | 'cumplido' | 'incumplido' {
@@ -94,8 +85,8 @@ export function importAnnualPlan(
 ): { importados: number; errores: string[] } {
   const now = nowISO();
   const stmt = db.prepare(
-    `INSERT INTO annual_plan (id, anio, objetivo, meta, responsable, fecha_inicio, fecha_fin, presupuesto, estado, programa, evidencia_esperada, meses, creado_en, actualizado_en)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    `INSERT INTO annual_plan (id, anio, objetivo, meta, responsable, fecha_inicio, fecha_fin, presupuesto, estado, programa, evidencia_esperada, meses, meses_ejecutados, porcentaje, creado_en, actualizado_en)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   );
   const errores: string[] = [];
   let importados = 0;
@@ -119,6 +110,8 @@ export function importAnnualPlan(
         row.programa ?? null,
         row.evidencia_esperada ?? null,
         row.meses.length > 0 ? JSON.stringify(row.meses) : null,
+        row.meses_ejecutados.length > 0 ? JSON.stringify(row.meses_ejecutados) : null,
+        row.porcentaje ?? 0,
         now,
         now
       );
