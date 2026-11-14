@@ -105,15 +105,27 @@ app.register(privacyRoutes, { prefix: '/api' });
 app.register(restoreRoutes, { prefix: '/api' });
 
 const publicDir = join(process.cwd(), 'dist', 'public');
+const uploadsDir = join(process.cwd(), 'uploads');
+
+// Registrar el plugin de archivos estáticos una sola vez.
+// Sirve el frontend compilado desde dist/public y provee reply.sendFile().
 if (existsSync(publicDir)) {
   await app.register(staticPlugin, { root: publicDir, prefix: '/' });
 }
 
-// Servir archivos subidos
-const uploadsDir = join(process.cwd(), 'uploads');
-if (existsSync(uploadsDir)) {
-  await app.register(staticPlugin, { root: uploadsDir, prefix: '/uploads' });
-}
+// Servir archivos subidos usando reply.sendFile con root alternativo
+// (evita registrar @fastify/static dos veces, que rompe el decorador sendFile).
+app.get('/uploads/:file*', async (req, reply) => {
+  if (!existsSync(uploadsDir))
+    return reply.code(404).send({ error: 'Carpeta de subidas no disponible' });
+  const file = (req.params as { file?: string }).file;
+  if (!file) return reply.code(400).send({ error: 'Archivo no especificado' });
+  try {
+    return reply.sendFile(file, uploadsDir);
+  } catch {
+    return reply.code(404).send({ error: 'Archivo no encontrado' });
+  }
+});
 
 app.setNotFoundHandler((request, reply) => {
   if (!request.url.startsWith('/api/') && !request.url.startsWith('/uploads/')) {
