@@ -102,6 +102,12 @@ export default function Planes() {
   const [activeTab, setActiveTab] = useState<'planes' | 'capacitacion' | 'ejecucion'>('planes');
   const [plans, setPlans] = useState<AnnualActivity[]>([]);
   const [evidencias, setEvidencias] = useState<Record<string, PlanEvidence[]>>({});
+
+  // Estado de importación masiva desde Excel
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<any>(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importConfirmando, setImportConfirmando] = useState(false);
   const [trainings, setTrainings] = useState<TrainingSchedule[]>([]);
   const [executions, setExecutions] = useState<TrainingExecution[]>([]);
   const [workers, setWorkers] = useState<WorkerSimple[]>([]);
@@ -352,6 +358,57 @@ export default function Planes() {
       await recargarEvidencias();
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Error eliminando evidencia' });
+    }
+  };
+
+  // ===== IMPORTACIÓN MASIVA DESDE EXCEL =====
+
+  const handleImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const archivo = e.target.files?.[0] ?? null;
+    setImportFile(archivo);
+    if (archivo) setImportPreview(null);
+  };
+
+  const handlePreviewImport = async () => {
+    if (!importFile) return;
+    try {
+      setImportLoading(true);
+      setMessage(null);
+      const formData = new FormData();
+      formData.append('file', importFile);
+      const resultado = await api.postFile('/plans/annual/import/preview', formData);
+      setImportPreview(resultado);
+      setMessage({
+        type: 'success',
+        text: `Preview listo: ${resultado.validas} actividades válidas, ${resultado.conErrores} con errores`,
+      });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Error al previsualizar' });
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!importPreview?.filasValidas?.length) return;
+    if (!confirm('¿Confirmar importación de las actividades válidas?')) return;
+    try {
+      setImportConfirmando(true);
+      setMessage(null);
+      const resultado = await api.post('/plans/annual/import/confirm', {
+        filas: importPreview.filasValidas,
+      });
+      setMessage({
+        type: 'success',
+        text: `Importación completada: ${resultado.importados} actividades importadas`,
+      });
+      setImportPreview(null);
+      setImportFile(null);
+      await loadData();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Error al importar' });
+    } finally {
+      setImportConfirmando(false);
     }
   };
 
@@ -1526,7 +1583,156 @@ export default function Planes() {
         </section>
       )}
 
-      {/* Cronograma de Capacitación Tab */}
+      {/* Importación masiva desde Excel */}
+      {activeTab === 'planes' && (
+        <section aria-labelledby="plans-tab-importar" id="plans-panel-importar">
+          <h3 style={{ margin: '0 0 12px', color: '#0f766e' }}>Importar plan anual desde Excel</h3>
+          <p style={{ fontSize: 'var(--font-size-caption)', color: '#6b7280', marginBottom: 14 }}>
+            Sube tu archivo Excel con el plan anual (columnas: programa, objetivo, meta, actividad,
+            evidencia, responsable, estado, cronograma mensual). Se mostrará una vista previa antes
+            de confirmar. Ningún dato se guarda hasta que hagas clic en &quot;Importar&quot;.
+          </p>
+
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleImportFileChange}
+              disabled={importLoading}
+              style={{
+                padding: 8,
+                borderRadius: 6,
+                border: '1px solid #d1d5db',
+                background: importLoading ? '#e5e7eb' : '#fff',
+              }}
+            />
+            {importFile && (
+              <span style={{ fontSize: 'var(--font-size-micro)', color: '#0f766e' }}>
+                {importFile.name}
+              </span>
+            )}
+            <button
+              onClick={handlePreviewImport}
+              disabled={!importFile || importLoading}
+              style={{
+                padding: '8px 16px',
+                background: !importFile || importLoading ? '#94a3b8' : '#0f766e',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                cursor: !importFile || importLoading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {importLoading ? 'Procesando...' : 'Previsualizar'}
+            </button>
+          </div>
+
+          {importPreview && (
+            <div
+              style={{
+                background: '#fff',
+                borderRadius: 10,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                overflow: 'hidden',
+                marginBottom: 16,
+              }}
+            >
+              <div
+                style={{
+                  padding: 12,
+                  background: '#f3f4f6',
+                  fontWeight: 'bold',
+                  fontSize: 'var(--font-size-caption)',
+                  color: '#374151',
+                }}
+              >
+                Resumen: {importPreview.validas} válidas · {importPreview.conErrores} con errores ·
+                de {importPreview.totalFilas} filas
+                {importPreview.anioDetectado && ` · Año detectado: ${importPreview.anioDetectado}`}
+              </div>
+              <div style={{ padding: 12, overflowX: 'auto' }}>
+                <table
+                  style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    fontSize: 'var(--font-size-micro)',
+                  }}
+                >
+                  <thead>
+                    <tr style={{ background: '#f9fafb' }}>
+                      <th style={{ padding: 6, textAlign: 'left' }}>Fila</th>
+                      <th style={{ padding: 6, textAlign: 'left' }}>Objetivo / Actividad</th>
+                      <th style={{ padding: 6, textAlign: 'left' }}>Responsable</th>
+                      <th style={{ padding: 6, textAlign: 'left' }}>Estado</th>
+                      <th style={{ padding: 6, textAlign: 'left' }}>Meses</th>
+                      <th style={{ padding: 6, textAlign: 'left' }}>Errores</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...importPreview.filasValidas, ...importPreview.filasConErrores].map(
+                      (f: any) => (
+                        <tr key={f.fila} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: 6 }}>{f.fila}</td>
+                          <td
+                            style={{
+                              padding: 6,
+                              maxWidth: '200px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {f.objetivo}
+                          </td>
+                          <td style={{ padding: 6 }}>{f.responsable || '—'}</td>
+                          <td style={{ padding: 6 }}>{f.estado}</td>
+                          <td style={{ padding: 6 }}>{(f.meses ?? []).join(', ') || '—'}</td>
+                          <td
+                            style={{ padding: 6, color: f.errores.length ? '#dc2626' : '#16a34a' }}
+                          >
+                            {f.errores.length ? f.errores.join('; ') : 'Válida'}
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {importPreview.conErrores > 0 && (
+                <div
+                  style={{
+                    padding: 12,
+                    background: '#fef2f2',
+                    color: '#991b1b',
+                    fontSize: 'var(--font-size-micro)',
+                  }}
+                >
+                  ⚠️ Las filas con errores no se importarán hasta que se corrijan en el archivo
+                  original.
+                </div>
+              )}
+              {importPreview.validas > 0 && (
+                <div style={{ padding: 12, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={handleConfirmImport}
+                    disabled={importConfirmando}
+                    style={{
+                      padding: '8px 16px',
+                      background: importConfirmando ? '#94a3b8' : '#0f766e',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 6,
+                      cursor: importConfirmando ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {importConfirmando ? 'Importando...' : 'Importar actividades válidas'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
       {activeTab === 'capacitacion' && (
         <section
           aria-labelledby="plans-tab-capacitacion"
