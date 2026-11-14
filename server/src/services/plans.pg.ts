@@ -17,6 +17,9 @@ const ANNUAL_PLAN_FIELDS = new Set([
   'fecha_fin',
   'presupuesto',
   'estado',
+  'programa',
+  'evidencia_esperada',
+  'meses',
 ]);
 const SCHEDULE_FIELDS = new Set([
   'nombre',
@@ -66,8 +69,8 @@ export async function createAnnualPlanPg(input: Record<string, unknown>): Promis
   const id = genId();
   const now = nowISO();
   await exec(
-    `INSERT INTO annual_plan (id, anio, objetivo, meta, responsable, fecha_inicio, fecha_fin, presupuesto, estado, creado_en, actualizado_en)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO annual_plan (id, anio, objetivo, meta, responsable, fecha_inicio, fecha_fin, presupuesto, estado, programa, evidencia_esperada, meses, creado_en, actualizado_en)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       id,
       input.anio,
@@ -78,6 +81,9 @@ export async function createAnnualPlanPg(input: Record<string, unknown>): Promis
       input.fecha_fin ?? null,
       input.presupuesto ?? 0,
       input.estado ?? 'pendiente',
+      input.programa ?? null,
+      input.evidencia_esperada ?? null,
+      input.meses ? JSON.stringify(input.meses) : null,
       now,
       now,
     ]
@@ -89,7 +95,14 @@ export async function updateAnnualPlanPg(
   id: string,
   patch: Record<string, unknown>
 ): Promise<PlanRecord> {
-  const { sets, vals } = buildUpdate(patch, ANNUAL_PLAN_FIELDS);
+  const patchConMeses: Record<string, unknown> = { ...patch };
+  if (patchConMeses.meses !== undefined) {
+    patchConMeses.meses =
+      Array.isArray(patchConMeses.meses) && (patchConMeses.meses as unknown[]).length > 0
+        ? JSON.stringify(patchConMeses.meses)
+        : null;
+  }
+  const { sets, vals } = buildUpdate(patchConMeses, ANNUAL_PLAN_FIELDS);
   sets.push('actualizado_en = ?');
   vals.push(nowISO(), id);
   await exec(`UPDATE annual_plan SET ${sets.join(', ')} WHERE id = ?`, vals);
@@ -98,6 +111,54 @@ export async function updateAnnualPlanPg(
 
 export async function deleteAnnualPlanPg(id: string): Promise<void> {
   await exec('DELETE FROM annual_plan WHERE id = ?', [id]);
+}
+
+export async function getAnnualPlanByIdPg(id: string): Promise<PlanRecord | undefined> {
+  return await one<PlanRecord | undefined>('SELECT * FROM annual_plan WHERE id = ?', [id]);
+}
+
+// ===== EVIDENCIAS DEL PLAN ANUAL (soportes reales por actividad) =====
+
+export async function getPlanEvidencesPg(planId: string): Promise<PlanRecord[]> {
+  return query<PlanRecord>(
+    'SELECT * FROM annual_plan_evidences WHERE plan_id = ? ORDER BY creado_en DESC',
+    [planId]
+  );
+}
+
+export async function getAllPlanEvidencesPg(): Promise<PlanRecord[]> {
+  return query<PlanRecord>('SELECT * FROM annual_plan_evidences ORDER BY creado_en DESC');
+}
+
+export async function getPlanEvidenceByIdPg(id: string): Promise<PlanRecord | undefined> {
+  return await one<PlanRecord | undefined>('SELECT * FROM annual_plan_evidences WHERE id = ?', [
+    id,
+  ]);
+}
+
+export async function createPlanEvidencePg(input: Record<string, unknown>): Promise<PlanRecord> {
+  const id = genId();
+  await exec(
+    `INSERT INTO annual_plan_evidences (id, plan_id, url, nombre_original, mime, tamano, subido_por, creado_en)
+     VALUES (?,?,?,?,?,?,?,?)`,
+    [
+      id,
+      input.plan_id,
+      input.url,
+      input.nombre_original,
+      input.mime ?? null,
+      input.tamano ?? null,
+      input.subido_por ?? null,
+      nowISO(),
+    ]
+  );
+  return (await one<PlanRecord>('SELECT * FROM annual_plan_evidences WHERE id = ?', [
+    id,
+  ])) as PlanRecord;
+}
+
+export async function deletePlanEvidencePg(id: string): Promise<void> {
+  await exec('DELETE FROM annual_plan_evidences WHERE id = ?', [id]);
 }
 
 // ===== CRONOGRAMA DE CAPACITACIÓN =====

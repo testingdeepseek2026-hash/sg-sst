@@ -6,14 +6,19 @@ import { isPgBackend } from '../lib/db-pg.js';
 import {
   bulkCreateTrainingAttendance,
   createAnnualPlan,
+  createPlanEvidence,
   createTraining,
   createTrainingAttendance,
   createTrainingSchedule,
   deleteAnnualPlan,
+  deletePlanEvidence,
   deleteTraining,
   deleteTrainingAttendance,
   deleteTrainingSchedule,
+  getAllPlanEvidences,
   getAnnualPlan,
+  getPlanEvidenceById,
+  getPlanEvidences,
   getTrainingAttendance,
   getTrainingById,
   getTrainings,
@@ -24,6 +29,7 @@ import {
   updateTrainingSchedule,
 } from '../services/plans.js';
 import * as PgPlans from '../services/plans.pg.js';
+import { saveUploadedFile } from '../services/uploads.js';
 import { auditLogPg } from '../services/users.pg.js';
 
 const planSchema = z.object({
@@ -35,6 +41,10 @@ const planSchema = z.object({
   fecha_fin: z.string().optional().nullable(),
   presupuesto: z.number().optional().default(0),
   estado: z.enum(['pendiente', 'en_proceso', 'cumplido', 'incumplido']).default('pendiente'),
+  // Fase 2 — alineación con el Excel real (PL-SGSST-01)
+  programa: z.string().optional().nullable(),
+  evidencia_esperada: z.string().optional().nullable(),
+  meses: z.array(z.number().int().min(1).max(12)).optional().nullable(),
 });
 const trainSchema = z.object({
   nombre: z.string().min(2),
@@ -147,6 +157,100 @@ const plansRoutes: FastifyPluginAsync = async (fastify) => {
         accion: 'eliminar',
         entidad: 'annual_plan',
         entidad_id: id,
+      };
+      if (isPgBackend()) await auditLogPg(entry);
+      else auditLog(fastify.db, entry);
+
+      return { ok: true };
+    }
+  );
+
+  // ===== EVIDENCIAS DEL PLAN ANUAL (Fase 2) =====
+
+  // GET /plans/annual/evidencias - Todas las evidencias agrupadas por plan_id
+  fastify.get('/plans/annual/evidencias', async (_request, _reply) => {
+    return isPgBackend() ? PgPlans.getAllPlanEvidencesPg() : getAllPlanEvidences(fastify.db);
+  });
+
+  // POST /plans/annual/:id/evidencias - Subir archivo de soporte (solo administrador)
+  fastify.post(
+    '/plans/annual/:id/evidencias',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const plan = isPgBackend()
+        ? await PgPlans.getAnnualPlanByIdPg(id)
+        : fastify.db.prepare('SELECT id FROM annual_plan WHERE id = ?').get(id);
+      if (!plan) return reply.code(404).send({ error: 'Actividad no encontrada' });
+
+      let file: Awaited<ReturnType<typeof request.file>> | undefined;
+      try {
+        file = await request.file();
+      } catch {
+        file = undefined;
+      }
+      if (!file) return reply.code(400).send({ error: 'No se envió archivo' });
+      try {
+        const saved = await saveUploadedFile(file, 'plan-anual');
+        const user = getAuthUser(request);
+        const input = {
+          plan_id: id,
+          url: saved.url,
+          nombre_original: saved.filename,
+          mime: file.mimetype,
+          tamano: saved.size,
+          subido_por: user.email,
+        };
+        const evidence = isPgBackend()
+          ? await PgPlans.createPlanEvidencePg(input)
+          : createPlanEvidence(fastify.db, input);
+
+        const entry = {
+          usuario_id: user.id,
+          usuario_email: user.email,
+          accion: 'subir_archivo',
+          entidad: 'annual_plan_evidences',
+          entidad_id: evidence.id,
+          valores_nuevos: { plan_id: id, url: saved.url, nombre_original: saved.filename },
+        };
+        if (isPgBackend()) await auditLogPg(entry);
+        else auditLog(fastify.db, entry);
+
+        return evidence;
+      } catch (err: any) {
+        return reply.code(400).send({ error: err.message });
+      }
+    }
+  );
+
+  // GET /plans/annual/:id/evidencias - Evidencias de una actividad
+  fastify.get('/plans/annual/:id/evidencias', async (request, _reply) => {
+    const { id } = request.params as { id: string };
+    return isPgBackend() ? PgPlans.getPlanEvidencesPg(id) : getPlanEvidences(fastify.db, id);
+  });
+
+  // DELETE /plans/annual/evidencias/:evidId - Eliminar evidencia (solo administrador)
+  fastify.delete(
+    '/plans/annual/evidencias/:evidId',
+    { preHandler: requireRole('administrador') },
+    async (request, reply) => {
+      const { evidId } = request.params as { evidId: string };
+      const evidence = isPgBackend()
+        ? await PgPlans.getPlanEvidenceByIdPg(evidId)
+        : getPlanEvidenceById(fastify.db, evidId);
+      if (!evidence) return reply.code(404).send({ error: 'Evidencia no encontrada' });
+
+      if (isPgBackend()) await PgPlans.deletePlanEvidencePg(evidId);
+      else deletePlanEvidence(fastify.db, evidId);
+
+      const user = getAuthUser(request);
+      const entry = {
+        usuario_id: user.id,
+        usuario_email: user.email,
+        accion: 'eliminar',
+        entidad: 'annual_plan_evidences',
+        entidad_id: evidId,
+        valores_anteriores: evidence,
       };
       if (isPgBackend()) await auditLogPg(entry);
       else auditLog(fastify.db, entry);

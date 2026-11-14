@@ -31,8 +31,59 @@ interface AnnualActivity {
   fecha_fin?: string;
   presupuesto?: number;
   estado: 'pendiente' | 'en_proceso' | 'cumplido' | 'incumplido';
+  programa?: string | null;
+  evidencia_esperada?: string | null;
+  meses?: number[] | null;
   creado_en?: string;
   actualizado_en?: string;
+}
+
+interface PlanEvidence {
+  id: string;
+  plan_id: string;
+  url: string;
+  nombre_original: string;
+  mime?: string | null;
+  tamano?: number | null;
+  subido_por?: string | null;
+  creado_en: string;
+}
+
+const MESES_ABREVIATURA = [
+  'Ene',
+  'Feb',
+  'Mar',
+  'Abr',
+  'May',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dic',
+];
+
+/** El backend guarda el cronograma mensual como JSON (texto); en pantalla es number[]. */
+function parseMeses(valor: unknown): number[] {
+  if (Array.isArray(valor)) return valor.map(Number);
+  if (typeof valor === 'string' && valor.trim()) {
+    try {
+      const parsed = JSON.parse(valor);
+      return Array.isArray(parsed) ? parsed.map(Number) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function agruparEvidencias(lista: PlanEvidence[]): Record<string, PlanEvidence[]> {
+  const grupos: Record<string, PlanEvidence[]> = {};
+  for (const evidencia of lista) {
+    (grupos[evidencia.plan_id] ??= []).push(evidencia);
+  }
+  return grupos;
 }
 
 interface TrainingSchedule {
@@ -50,6 +101,7 @@ interface TrainingSchedule {
 export default function Planes() {
   const [activeTab, setActiveTab] = useState<'planes' | 'capacitacion' | 'ejecucion'>('planes');
   const [plans, setPlans] = useState<AnnualActivity[]>([]);
+  const [evidencias, setEvidencias] = useState<Record<string, PlanEvidence[]>>({});
   const [trainings, setTrainings] = useState<TrainingSchedule[]>([]);
   const [executions, setExecutions] = useState<TrainingExecution[]>([]);
   const [workers, setWorkers] = useState<WorkerSimple[]>([]);
@@ -67,6 +119,9 @@ export default function Planes() {
     fecha_fin: '',
     presupuesto: 0,
     estado: 'pendiente',
+    programa: '',
+    evidencia_esperada: '',
+    meses: [],
     creado_en: undefined,
     actualizado_en: undefined,
   });
@@ -139,6 +194,11 @@ export default function Planes() {
     estado: string;
   }
 
+  const recargarEvidencias = useCallback(async () => {
+    const lista = (await api.get('/plans/annual/evidencias')) as PlanEvidence[];
+    setEvidencias(agruparEvidencias(lista));
+  }, []);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -148,17 +208,18 @@ export default function Planes() {
         api.get('/plans/trainings'),
         api.get('/workers'),
       ]);
-      setPlans(plansData as AnnualActivity[]);
+      setPlans((plansData as AnnualActivity[]).map((p) => ({ ...p, meses: parseMeses(p.meses) })));
       setTrainings(trainingData as TrainingSchedule[]);
       setExecutions(executionsData as TrainingExecution[]);
       setWorkers((workersData as WorkerSimple[]).filter((w) => w.estado === 'activo'));
+      await recargarEvidencias();
     } catch (err: any) {
       console.error('Error cargando datos:', err);
       setMessage({ type: 'error', text: err.message || 'Error cargando datos' });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [recargarEvidencias]);
 
   useEffect(() => {
     loadData();
@@ -185,6 +246,9 @@ export default function Planes() {
           fecha_fin: planForm.fecha_fin,
           presupuesto: planForm.presupuesto,
           estado: planForm.estado,
+          programa: planForm.programa,
+          evidencia_esperada: planForm.evidencia_esperada,
+          meses: planForm.meses,
         });
         setMessage({ type: 'success', text: 'Plan actualizado correctamente' });
       } else {
@@ -202,6 +266,9 @@ export default function Planes() {
         fecha_fin: '',
         presupuesto: 0,
         estado: 'pendiente',
+        programa: '',
+        evidencia_esperada: '',
+        meses: [],
       });
 
       await loadData();
@@ -238,6 +305,9 @@ export default function Planes() {
         fecha_fin: plan.fecha_fin || '',
         presupuesto: plan.presupuesto || 0,
         estado: plan.estado,
+        programa: plan.programa || '',
+        evidencia_esperada: plan.evidencia_esperada || '',
+        meses: parseMeses(plan.meses),
       });
       setActiveTab('planes');
     } else {
@@ -250,7 +320,38 @@ export default function Planes() {
         fecha_fin: '',
         presupuesto: 0,
         estado: 'pendiente',
+        programa: '',
+        evidencia_esperada: '',
+        meses: [],
       });
+    }
+  };
+
+  const handleEvidenciaUpload = async (planId: string, archivo: File | null) => {
+    if (!archivo) return;
+    try {
+      setLoading(true);
+      setMessage(null);
+      const formData = new FormData();
+      formData.append('file', archivo);
+      await api.postFile(`/plans/annual/${planId}/evidencias`, formData);
+      setMessage({ type: 'success', text: 'Evidencia adjuntada correctamente' });
+      await recargarEvidencias();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Error adjuntando evidencia' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEvidenciaDelete = async (planId: string, evidId: string) => {
+    if (!confirm('¿Eliminar esta evidencia?')) return;
+    try {
+      await api.del(`/plans/annual/evidencias/${evidId}`);
+      setMessage({ type: 'success', text: 'Evidencia eliminada' });
+      await recargarEvidencias();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Error eliminando evidencia' });
     }
   };
 
@@ -474,7 +575,12 @@ export default function Planes() {
       return fechaFin < today && p.estado !== 'cumplido';
     }).length;
 
-    return { total, porEstado, byYear, alertadas, vencidas };
+    // Porcentaje de cumplimiento (igual que la columna del Excel real):
+    // actividades cumplidas / total de actividades.
+    const cumplidas = plans.filter((p) => p.estado === 'cumplido').length;
+    const porcentaje = total ? Math.round((cumplidas / total) * 100) : 0;
+
+    return { total, porEstado, byYear, alertadas, vencidas, porcentaje, cumplidas };
   };
 
   const getTrainingKPIs = () => {
@@ -611,6 +717,29 @@ export default function Planes() {
               </div>
             </div>
             <div className="ui-surface plans-kpi-card">
+              <div className="plans-kpi-card-label">% de cumplimiento</div>
+              <div className="plans-kpi-card-value" style={{ color: '#0f766e' }}>
+                {getPlanKPIs().porcentaje}%
+              </div>
+              <div
+                aria-label={`Porcentaje de cumplimiento: ${getPlanKPIs().porcentaje}%`}
+                role="progressbar"
+                aria-valuenow={getPlanKPIs().porcentaje}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                style={{ height: 6, background: '#e5e7eb', borderRadius: 4, marginTop: 6 }}
+              >
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${getPlanKPIs().porcentaje}%`,
+                    background: '#0f766e',
+                    borderRadius: 4,
+                  }}
+                />
+              </div>
+            </div>
+            <div className="ui-surface plans-kpi-card">
               <div className="plans-kpi-card-label">Vencidas</div>
               <div className="plans-kpi-card-value" style={{ color: '#dc2626' }}>
                 {getPlanKPIs().vencidas}
@@ -659,6 +788,42 @@ export default function Planes() {
                 <X aria-hidden="true" size={14} /> Quitar filtro
               </button>
             )}
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+              <button
+                onClick={() =>
+                  (window.location.href = `/api/export/plan-anual${
+                    planFilterFecha ? `?anio=${planFilterFecha}` : ''
+                  }`)
+                }
+                style={{
+                  padding: '8px 12px',
+                  background: '#0f766e',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                Exportar PDF
+              </button>
+              <button
+                onClick={() =>
+                  (window.location.href = `/api/export/plan-anual/excel${
+                    planFilterFecha ? `?anio=${planFilterFecha}` : ''
+                  }`)
+                }
+                style={{
+                  padding: '8px 12px',
+                  background: '#0f766e',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                Exportar Excel
+              </button>
+            </div>
           </div>
 
           {/* Message */}
@@ -886,6 +1051,103 @@ export default function Planes() {
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label
+                  htmlFor="plan-programa"
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
+                >
+                  Programa (grupo del plan)
+                </label>
+                <input
+                  id="plan-programa"
+                  type="text"
+                  value={planForm.programa || ''}
+                  onChange={(e) => setPlanForm({ ...planForm, programa: e.target.value })}
+                  placeholder="Ej.: Política del sistema de gestión, Capacitación…"
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
+                />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label
+                  htmlFor="plan-evidencia-esperada"
+                  style={{
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
+                >
+                  Evidencia esperada
+                </label>
+                <input
+                  id="plan-evidencia-esperada"
+                  type="text"
+                  value={planForm.evidencia_esperada || ''}
+                  onChange={(e) => setPlanForm({ ...planForm, evidencia_esperada: e.target.value })}
+                  placeholder="Ej.: Acta de reunión, lista de asistencia, procedimiento creado…"
+                  style={{
+                    padding: 8,
+                    width: '100%',
+                    borderRadius: 6,
+                    border: '1px solid #d1d5db',
+                  }}
+                />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <span
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--font-size-caption)',
+                    color: '#6b7280',
+                    marginBottom: 4,
+                  }}
+                >
+                  Cronograma mensual (meses en que está programada la actividad)
+                </span>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {MESES_ABREVIATURA.map((mes, indice) => {
+                    const seleccionado = (planForm.meses ?? []).includes(indice + 1);
+                    return (
+                      <label
+                        key={mes}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '4px 8px',
+                          borderRadius: 6,
+                          border: `1px solid ${seleccionado ? '#0f766e' : '#d1d5db'}`,
+                          background: seleccionado ? '#ccfbf1' : '#fff',
+                          cursor: 'pointer',
+                          fontSize: 'var(--font-size-micro)',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={seleccionado}
+                          onChange={(e) => {
+                            const actuales = planForm.meses ?? [];
+                            const meses = e.target.checked
+                              ? [...actuales, indice + 1].sort((a, b) => a - b)
+                              : actuales.filter((m) => m !== indice + 1);
+                            setPlanForm({ ...planForm, meses });
+                          }}
+                          style={{ margin: 0 }}
+                        />
+                        {mes}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label
                   htmlFor="plan-meta"
                   style={{
                     fontSize: 'var(--font-size-caption)',
@@ -938,6 +1200,9 @@ export default function Planes() {
                         fecha_fin: '',
                         presupuesto: 0,
                         estado: 'pendiente',
+                        programa: '',
+                        evidencia_esperada: '',
+                        meses: [],
                       })
                     }
                     style={{
@@ -997,12 +1262,22 @@ export default function Planes() {
                   <th
                     style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
                   >
+                    Cronograma
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
                     Estado
                   </th>
                   <th
                     style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
                   >
                     Presupuesto
+                  </th>
+                  <th
+                    style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
+                  >
+                    Evidencias
                   </th>
                   <th
                     style={{ padding: 10, fontSize: 'var(--font-size-caption)', color: '#374151' }}
@@ -1014,7 +1289,7 @@ export default function Planes() {
               <tbody>
                 {filteredPlans.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ padding: 20, textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan={9} style={{ padding: 20, textAlign: 'center', color: '#6b7280' }}>
                       {loading ? 'Cargando...' : 'No hay actividades registradas'}
                     </td>
                   </tr>
@@ -1038,7 +1313,30 @@ export default function Planes() {
                             maxWidth: '250px',
                           }}
                         >
+                          {p.programa ? (
+                            <div
+                              style={{
+                                fontSize: 'var(--font-size-micro)',
+                                color: '#0f766e',
+                                fontWeight: 'bold',
+                                marginBottom: 2,
+                              }}
+                            >
+                              {p.programa}
+                            </div>
+                          ) : null}
                           {p.objetivo}
+                          {p.evidencia_esperada ? (
+                            <div
+                              style={{
+                                fontSize: 'var(--font-size-micro)',
+                                color: '#6b7280',
+                                marginTop: 2,
+                              }}
+                            >
+                              Evidencia: {p.evidencia_esperada}
+                            </div>
+                          ) : null}
                         </td>
                         <td style={{ padding: 10, fontSize: 'var(--font-size-caption)' }}>
                           {p.anio}
@@ -1048,6 +1346,30 @@ export default function Planes() {
                         </td>
                         <td style={{ padding: 10, fontSize: 'var(--font-size-caption)' }}>
                           {p.fecha_inicio} {p.fecha_fin ? `→ ${p.fecha_fin}` : ''}
+                        </td>
+                        <td style={{ padding: 10 }}>
+                          {(p.meses ?? []).length ? (
+                            <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                              {(p.meses ?? []).map((mes) => (
+                                <span
+                                  key={mes}
+                                  title={MESES_ABREVIATURA[mes - 1]}
+                                  style={{
+                                    padding: '1px 5px',
+                                    borderRadius: 4,
+                                    background: '#ccfbf1',
+                                    color: '#0f766e',
+                                    fontSize: 'var(--font-size-micro)',
+                                    fontWeight: 'bold',
+                                  }}
+                                >
+                                  {MESES_ABREVIATURA[mes - 1]}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span style={{ color: '#9ca3af' }}>—</span>
+                          )}
                         </td>
                         <td style={{ padding: 10 }}>
                           <span
@@ -1086,6 +1408,79 @@ export default function Planes() {
                           }}
                         >
                           ${p.presupuesto ? p.presupuesto.toLocaleString() : '0'}
+                        </td>
+                        <td style={{ padding: 10, maxWidth: '220px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <label
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '4px 8px',
+                                background: '#0f766e',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 4,
+                                fontSize: 'var(--font-size-micro)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <Paperclip aria-hidden="true" size={12} />
+                              Adjuntar
+                              <input
+                                type="file"
+                                style={{ display: 'none' }}
+                                onChange={(e) => {
+                                  const archivo = e.target.files?.[0];
+                                  e.target.value = '';
+                                  if (p.id) void handleEvidenciaUpload(p.id, archivo ?? null);
+                                }}
+                              />
+                            </label>
+                            {(evidencias[p.id ?? ''] ?? []).map((ev) => (
+                              <div
+                                key={ev.id}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  fontSize: 'var(--font-size-micro)',
+                                }}
+                              >
+                                <a
+                                  href={ev.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title={ev.nombre_original}
+                                  style={{
+                                    color: '#1d4ed8',
+                                    textDecoration: 'underline',
+                                    maxWidth: 140,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    display: 'inline-block',
+                                  }}
+                                >
+                                  {ev.nombre_original}
+                                </a>
+                                <button
+                                  onClick={() => p.id && handleEvidenciaDelete(p.id, ev.id)}
+                                  aria-label={`Eliminar evidencia ${ev.nombre_original}`}
+                                  style={{
+                                    padding: '1px 5px',
+                                    background: '#dc2626',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: 4,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  <X aria-hidden="true" size={12} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
                         </td>
                         <td style={{ padding: 10 }}>
                           <div style={{ display: 'flex', gap: 6 }}>

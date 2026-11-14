@@ -9,8 +9,8 @@ export function createAnnualPlan(db: any, input: any) {
   const id = genId();
   const now = nowISO();
   db.prepare(
-    `INSERT INTO annual_plan (id, anio, objetivo, meta, responsable, fecha_inicio, fecha_fin, presupuesto, estado, creado_en, actualizado_en)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+    `INSERT INTO annual_plan (id, anio, objetivo, meta, responsable, fecha_inicio, fecha_fin, presupuesto, estado, programa, evidencia_esperada, meses, creado_en, actualizado_en)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).run(
     id,
     input.anio,
@@ -21,6 +21,9 @@ export function createAnnualPlan(db: any, input: any) {
     input.fecha_fin ?? null,
     input.presupuesto ?? 0,
     input.estado ?? 'pendiente',
+    input.programa ?? null,
+    input.evidencia_esperada ?? null,
+    input.meses ? JSON.stringify(input.meses) : null,
     now,
     now
   );
@@ -28,9 +31,16 @@ export function createAnnualPlan(db: any, input: any) {
 }
 export function updateAnnualPlan(db: any, id: string, patch: any) {
   const now = nowISO();
+  const patchConMeses = { ...patch };
+  if (patchConMeses.meses !== undefined) {
+    patchConMeses.meses =
+      Array.isArray(patchConMeses.meses) && patchConMeses.meses.length > 0
+        ? JSON.stringify(patchConMeses.meses)
+        : null;
+  }
   const sets: string[] = [];
   const vals: any[] = [];
-  for (const [k, v] of Object.entries(patch)) {
+  for (const [k, v] of Object.entries(patchConMeses)) {
     if (v === undefined) continue;
     sets.push(`${k} = ?`);
     vals.push(v);
@@ -42,6 +52,44 @@ export function updateAnnualPlan(db: any, id: string, patch: any) {
 }
 export function deleteAnnualPlan(db: any, id: string) {
   db.prepare('DELETE FROM annual_plan WHERE id = ?').run(id);
+}
+
+// ===== EVIDENCIAS DEL PLAN ANUAL (soportes reales por actividad) =====
+
+export function getPlanEvidences(db: any, planId: string) {
+  return db
+    .prepare('SELECT * FROM annual_plan_evidences WHERE plan_id = ? ORDER BY creado_en DESC')
+    .all(planId) as any[];
+}
+
+export function getAllPlanEvidences(db: any) {
+  return db.prepare('SELECT * FROM annual_plan_evidences ORDER BY creado_en DESC').all() as any[];
+}
+
+export function getPlanEvidenceById(db: any, id: string) {
+  return db.prepare('SELECT * FROM annual_plan_evidences WHERE id = ?').get(id) as any | undefined;
+}
+
+export function createPlanEvidence(db: any, input: any) {
+  const id = genId();
+  db.prepare(
+    `INSERT INTO annual_plan_evidences (id, plan_id, url, nombre_original, mime, tamano, subido_por, creado_en)
+     VALUES (?,?,?,?,?,?,?,?)`
+  ).run(
+    id,
+    input.plan_id,
+    input.url,
+    input.nombre_original,
+    input.mime ?? null,
+    input.tamano ?? null,
+    input.subido_por ?? null,
+    nowISO()
+  );
+  return db.prepare('SELECT * FROM annual_plan_evidences WHERE id = ?').get(id);
+}
+
+export function deletePlanEvidence(db: any, id: string) {
+  db.prepare('DELETE FROM annual_plan_evidences WHERE id = ?').run(id);
 }
 
 export function getTrainingSchedule(db: any) {

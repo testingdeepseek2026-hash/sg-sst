@@ -94,6 +94,37 @@ export function runMigrations(db: DatabaseSync) {
   if (!indicatorColumns.some(({ name }) => name === 'frecuencia')) {
     db.exec('ALTER TABLE indicators ADD COLUMN frecuencia TEXT');
   }
+
+  // Migración incremental: Fase 2 — plan anual alineado al Excel real
+  // (PL-SGSST-01): programa, evidencia esperada y cronograma mensual.
+  const annualPlanColumns = db.prepare('PRAGMA table_info(annual_plan)').all() as {
+    name: string;
+  }[];
+  if (!annualPlanColumns.some(({ name }) => name === 'programa')) {
+    db.exec('ALTER TABLE annual_plan ADD COLUMN programa TEXT');
+  }
+  if (!annualPlanColumns.some(({ name }) => name === 'evidencia_esperada')) {
+    db.exec('ALTER TABLE annual_plan ADD COLUMN evidencia_esperada TEXT');
+  }
+  if (!annualPlanColumns.some(({ name }) => name === 'meses')) {
+    // Cronograma mensual del Excel real: JSON con los números de mes (1-12).
+    db.exec('ALTER TABLE annual_plan ADD COLUMN meses TEXT');
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS annual_plan_evidences (
+      id TEXT PRIMARY KEY,
+      plan_id TEXT NOT NULL REFERENCES annual_plan(id) ON DELETE CASCADE,
+      url TEXT NOT NULL,
+      nombre_original TEXT NOT NULL,
+      mime TEXT,
+      tamano INTEGER,
+      subido_por TEXT,
+      creado_en TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_annual_plan_evidences_plan
+      ON annual_plan_evidences(plan_id);
+  `);
 }
 
 export { DATA_DIR, DB_PATH };
