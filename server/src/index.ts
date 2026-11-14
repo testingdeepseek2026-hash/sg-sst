@@ -78,7 +78,13 @@ app.get('/api/health', async () => {
 
 // Hook global: autenticación y adjuntar request.user tipado
 // Las rutas individuales usan requireRole/requireOwnership para autorización
-app.addHook('preHandler', requireAuth);
+app.addHook('preHandler', async (request, reply) => {
+  // Los archivos subidos bajo /uploads/ no requieren auth adicional:
+  // sus nombres son UUID difíciles de adivinar y el acceso es solo localhost.
+  // Esto permite abrirlos directamente en el navegador (PDF, fotos, Excel).
+  if (request.url.startsWith('/uploads/')) return;
+  await requireAuth(request, reply);
+});
 app.register(usersRoutes, { prefix: '/api' });
 app.register(companiesRoutes, { prefix: '/api' });
 app.register(rolesRoutes, { prefix: '/api' });
