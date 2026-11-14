@@ -54,6 +54,84 @@ export function deleteAnnualPlan(db: any, id: string) {
   db.prepare('DELETE FROM annual_plan WHERE id = ?').run(id);
 }
 
+export type AnnualPlanImportRow = {
+  anio: number;
+  programa: string | null;
+  objetivo: string;
+  meta: string | null;
+  evidencia_esperada: string | null;
+  responsable: string | null;
+  estado: 'pendiente' | 'en_proceso' | 'cumplido' | 'incumplido';
+  meses: number[];
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  presupuesto: number;
+  fila: number;
+  errores: string[];
+};
+
+export const ESTADO_MAP: Record<string, 'pendiente' | 'en_proceso' | 'cumplido' | 'incumplido'> = {
+  p: 'pendiente',
+  e: 'en_proceso',
+  c: 'cumplido',
+  i: 'incumplido',
+  cerrada: 'cumplido',
+  'en ejecución': 'en_proceso',
+  'en proceso': 'en_proceso',
+};
+
+export function parseEstado(
+  valor: string | null | undefined
+): 'pendiente' | 'en_proceso' | 'cumplido' | 'incumplido' {
+  if (!valor) return 'pendiente';
+  const key = String(valor).trim().toLowerCase();
+  return ESTADO_MAP[key] ?? 'pendiente';
+}
+
+export function importAnnualPlan(
+  db: any,
+  rows: AnnualPlanImportRow[]
+): { importados: number; errores: string[] } {
+  const now = nowISO();
+  const stmt = db.prepare(
+    `INSERT INTO annual_plan (id, anio, objetivo, meta, responsable, fecha_inicio, fecha_fin, presupuesto, estado, programa, evidencia_esperada, meses, creado_en, actualizado_en)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+  );
+  const errores: string[] = [];
+  let importados = 0;
+  db.prepare('BEGIN').run();
+  try {
+    for (const row of rows) {
+      if (row.errores.length > 0) {
+        errores.push(`Fila ${row.fila}: ${row.errores.join('; ')}`);
+        continue;
+      }
+      stmt.run(
+        genId(),
+        row.anio,
+        row.objetivo,
+        row.meta ?? null,
+        row.responsable ?? null,
+        row.fecha_inicio ?? null,
+        row.fecha_fin ?? null,
+        row.presupuesto ?? 0,
+        row.estado,
+        row.programa ?? null,
+        row.evidencia_esperada ?? null,
+        row.meses.length > 0 ? JSON.stringify(row.meses) : null,
+        now,
+        now
+      );
+      importados++;
+    }
+    db.prepare('COMMIT').run();
+  } catch (err: any) {
+    db.prepare('ROLLBACK').run();
+    throw err;
+  }
+  return { importados, errores };
+}
+
 // ===== EVIDENCIAS DEL PLAN ANUAL (soportes reales por actividad) =====
 
 export function getPlanEvidences(db: any, planId: string) {

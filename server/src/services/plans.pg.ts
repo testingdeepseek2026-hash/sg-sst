@@ -322,3 +322,85 @@ export async function bulkCreateTrainingAttendancePg(
   }
   return getTrainingAttendancePg(trainingId);
 }
+
+// ===== IMPORTACIÓN MASIVA DEL PLAN ANUAL (desde Excel) =====
+
+export type AnnualPlanImportRow = {
+  anio: number;
+  programa: string | null;
+  objetivo: string;
+  meta: string | null;
+  evidencia_esperada: string | null;
+  responsable: string | null;
+  estado: 'pendiente' | 'en_proceso' | 'cumplido' | 'incumplido';
+  meses: number[];
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  presupuesto: number;
+  fila: number;
+  errores: string[];
+};
+
+export const ESTADO_MAP: Record<string, 'pendiente' | 'en_proceso' | 'cumplido' | 'incumplido'> = {
+  p: 'pendiente',
+  e: 'en_proceso',
+  c: 'cumplido',
+  i: 'incumplido',
+  cerrada: 'cumplido',
+  'en ejecución': 'en_proceso',
+  'en proceso': 'en_proceso',
+};
+
+export function parseEstado(
+  valor: string | null | undefined
+): 'pendiente' | 'en_proceso' | 'cumplido' | 'incumplido' {
+  if (!valor) return 'pendiente';
+  const key = String(valor).trim().toLowerCase();
+  return ESTADO_MAP[key] ?? 'pendiente';
+}
+
+export async function importAnnualPlanPg(
+  rows: AnnualPlanImportRow[]
+): Promise<{ importados: number; errores: string[] }> {
+  const now = nowISO();
+  const errores: string[] = [];
+  let importados = 0;
+  const client = await getPgPool().connect();
+  try {
+    await client.query('BEGIN');
+    for (const row of rows) {
+      if (row.errores.length > 0) {
+        errores.push(`Fila ${row.fila}: ${row.errores.join('; ')}`);
+        continue;
+      }
+      await client.query(
+        `INSERT INTO annual_plan (id, anio, objetivo, meta, responsable, fecha_inicio, fecha_fin, presupuesto, estado, programa, evidencia_esperada, meses, creado_en, actualizado_en)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+        [
+          genId(),
+          row.anio,
+          row.objetivo,
+          row.meta ?? null,
+          row.responsable ?? null,
+          row.fecha_inicio ?? null,
+          row.fecha_fin ?? null,
+          row.presupuesto ?? 0,
+          row.estado,
+          row.programa ?? null,
+          row.evidencia_esperada ?? null,
+          row.meses.length > 0 ? JSON.stringify(row.meses) : null,
+          now,
+          now,
+        ]
+      );
+      importados++;
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+  return { importados, errores };
+}
